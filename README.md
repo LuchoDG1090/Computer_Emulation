@@ -75,6 +75,39 @@ Este proyecto implementa un emulador de CPU que sigue la arquitectura Von Neuman
 [31-0]  IMM32 - Campo inmediato/direccion (32 bits)
 ```
 
+## Tipos de Instrucción
+
+Las instrucciones se clasifican en 4 tipos principales:
+
+### R-Type (Registro-Registro)
+- **Uso**: Operaciones ALU entre registros
+- **Campos**: Opcode, RD, RS1, RS2, FUNC
+- **Ejemplos**: ADD R2, R0, R1; SUB R3, R1, R2
+- **FUNC**: Sub-opcodes para variantes de operación
+
+### I-Type (Inmediato/Direccion) 
+- **Uso**: Operaciones con inmediatos, LOAD/STORE
+- **Campos**: Opcode, RD, RS1, FUNC, IMM32
+- **Ejemplos**: MOV R0, #42; LOAD R1, #200
+- **FUNC**: Modo de direccionamiento (0=inmediato, 1=registro)
+
+### J-Type (Salto/Llamada)
+- **Uso**: Saltos y llamadas a funciones
+- **Campos**: Opcode, FUNC, IMM32
+- **Ejemplos**: JMP #1000; CALL #500
+- **IMM32**: Dirección de salto absoluta
+
+### S-Type (Sistema/Efecto)
+- **Uso**: Instrucciones de sistema
+- **Campos**: Opcode, FUNC
+- **Ejemplos**: HALT, NOP
+- **FUNC**: Modificadores especiales
+
+## Codificación de Registros
+
+Los 16 registros R0-R15 se codifican en 4 bits usando representación binaria:
+- R0 = 0000, R1 = 0001, R2 = 0010, ..., R15 = 1111
+
 
 
 
