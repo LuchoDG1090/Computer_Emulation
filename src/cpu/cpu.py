@@ -13,6 +13,7 @@ Implementacion de CPU que sigue la arquitectura Von Neumann con:
 import struct
 from typing import Dict, List, Tuple, Optional, Any
 from enum import Enum, IntEnum
+from isa.isa import Opcodes, InstructionType
 
 
 # Banderas de la CPU
@@ -25,52 +26,6 @@ class Flags(IntEnum):
     OVERFLOW = 4    # Bit 4: Desbordamiento
     INTERRUPT = 5   # Bit 5: Interrupcion
     # Bits 6-7: Reservados
-
-
-# Operaciones de las instrucciones
-class Opcodes(IntEnum):
-    """Codigos de operacion para las instrucciones"""
-    # Instrucciones ALU
-    ADD = 0x01      # Suma
-    SUB = 0x02      # Resta
-    MUL = 0x03      # Multiplicacion
-    DIV = 0x04      # Division
-    AND = 0x05      # AND logico
-    OR = 0x06       # OR logico
-    XOR = 0x07      # XOR logico
-    NOT = 0x08      # NOT logico
-    SHL = 0x09      # Desplazamiento izquierda
-    SHR = 0x0A      # Desplazamiento derecha
-    CMP = 0x0B      # Comparacion
-    
-    # Instrucciones de transferencia de datos
-    MOV = 0x10      # Mover datos
-    LOAD = 0x11     # Cargar desde memoria
-    STORE = 0x12    # Almacenar en memoria
-    PUSH = 0x13     # Empujar a pila
-    POP = 0x14      # Sacar de pila
-    
-    # Instrucciones de control de flujo
-    JMP = 0x20      # Salto incondicional
-    JZ = 0x21       # Salto si cero
-    JNZ = 0x22      # Salto si no cero
-    JC = 0x23       # Salto si carry
-    JNC = 0x24      # Salto si no carry
-    CALL = 0x25     # Llamada a subrutina
-    RET = 0x26      # Retorno de subrutina
-    
-    # Instrucciones de sistema
-    HALT = 0xFF     # Detener CPU
-    NOP = 0x00      # No operacion
-
-
-class InstructionType(IntEnum):
-    """Tipos de instruccion"""
-    R_TYPE = 0      # Registro-Registro (operaciones ALU entre registros)
-    I_TYPE = 1      # Inmediato/Direccion (operaciones con inmediatos, LOAD/STORE)
-    J_TYPE = 2      # Salto/Llamada (JMP, CALL, saltos condicionales)
-    S_TYPE = 3      # Sistema/Efecto (HALT, NOP, operaciones especiales)
-
 
 class AddressingMode(IntEnum):
     """Modos de direccionamiento"""
@@ -685,120 +640,6 @@ class InstructionDecoder:
             'func': func,
             'imm32': imm32
         }
-    
-    def encode_r_type(self, opcode: int, rd: int, rs1: int, rs2: int, func: int = 0) -> int:
-        """
-        Codifica una instruccion R-Type (registro-registro)
-        
-        Args:
-            opcode: Codigo de operacion (8 bits)
-            rd: Registro destino (4 bits, 0-15)
-            rs1: Registro fuente 1 (4 bits, 0-15)
-            rs2: Registro fuente 2 (4 bits, 0-15)
-            func: Campo de funcion/modificador (12 bits)
-            
-        Returns:
-            Instruccion codificada de 64 bits
-        """
-        instruction = 0
-        instruction |= (opcode & 0xFF) << 56
-        instruction |= (rd & 0xF) << 52
-        instruction |= (rs1 & 0xF) << 48
-        instruction |= (rs2 & 0xF) << 44
-        instruction |= (func & 0xFFF) << 32
-        # IMM32 = 0 para R-Type
-        
-        return instruction
-    
-    def encode_i_type(self, opcode: int, rd: int, rs1: int, imm32: int, func: int = 0) -> int:
-        """
-        Codifica una instruccion I-Type (inmediato/direccion)
-        
-        Args:
-            opcode: Codigo de operacion (8 bits)
-            rd: Registro destino (4 bits, 0-15)
-            rs1: Registro fuente 1 (4 bits, 0-15)
-            imm32: Inmediato o direccion (32 bits)
-            func: Campo de funcion/modificador (12 bits)
-            
-        Returns:
-            Instruccion codificada de 64 bits
-        """
-        instruction = 0
-        instruction |= (opcode & 0xFF) << 56
-        instruction |= (rd & 0xF) << 52
-        instruction |= (rs1 & 0xF) << 48
-        # RS2 = 0 para I-Type (o puede usarse como parte de func)
-        instruction |= (func & 0xFFF) << 32
-        instruction |= (imm32 & 0xFFFFFFFF)
-        
-        return instruction
-    
-    def encode_j_type(self, opcode: int, address: int, func: int = 0) -> int:
-        """
-        Codifica una instruccion J-Type (salto/llamada)
-        
-        Args:
-            opcode: Codigo de operacion (8 bits)
-            address: Direccion de salto (32 bits)
-            func: Campo de funcion/modificador (12 bits)
-            
-        Returns:
-            Instruccion codificada de 64 bits
-        """
-        instruction = 0
-        instruction |= (opcode & 0xFF) << 56
-        # RD, RS1, RS2 = 0 para J-Type basico
-        instruction |= (func & 0xFFF) << 32
-        instruction |= (address & 0xFFFFFFFF)
-        
-        return instruction
-    
-    def encode_s_type(self, opcode: int, func: int = 0) -> int:
-        """
-        Codifica una instruccion S-Type (sistema)
-        
-        Args:
-            opcode: Codigo de operacion (8 bits)
-            func: Campo de funcion/modificador (12 bits)
-            
-        Returns:
-            Instruccion codificada de 64 bits
-        """
-        instruction = 0
-        instruction |= (opcode & 0xFF) << 56
-        # Todos los demas campos = 0 para S-Type basico
-        instruction |= (func & 0xFFF) << 32
-        
-        return instruction
-    
-    def encode(self, opcode: int, rd: int = 0, rs1: int = 0, rs2: int = 0, 
-               func: int = 0, imm32: int = 0) -> int:
-        """
-        Metodo de codificacion generico (mantiene compatibilidad)
-        Determina automaticamente el tipo basado en el opcode
-        
-        Args:
-            opcode: Codigo de operacion
-            rd: Registro destino
-            rs1: Registro fuente 1
-            rs2: Registro fuente 2
-            func: Campo de funcion
-            imm32: Inmediato/direccion
-            
-        Returns:
-            Instruccion codificada
-        """
-        inst_type = self.opcode_to_type.get(opcode, InstructionType.S_TYPE)
-        
-        if inst_type == InstructionType.R_TYPE:
-            return self.encode_r_type(opcode, rd, rs1, rs2, func)
-        elif inst_type == InstructionType.I_TYPE:
-            return self.encode_i_type(opcode, rd, rs1, imm32, func)
-        elif inst_type == InstructionType.J_TYPE:
-            return self.encode_j_type(opcode, imm32, func)
-        else:  # S_TYPE
-            return self.encode_s_type(opcode, func)
 
 
 def create_sample_program() -> bytes:
