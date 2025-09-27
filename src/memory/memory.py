@@ -4,11 +4,6 @@ from typing import Optional
 
 
 class Memory:
-    """
-    Implementación simple de memoria de palabras de 64 bits.
-    - Soporta acceso por palabra (64 bits), byte y bit.
-    - Endianness: little-endian.
-    """
 
     def __init__(self, size_bytes: int = 1024 * 1024):
         """
