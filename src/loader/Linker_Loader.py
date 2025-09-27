@@ -101,7 +101,7 @@ class Loader:
                     words = [w.strip() for w in linea.split(',') if w.strip() != '']
                 
                 for w in words:
-                    value = Loader.hex_instruccion(w)
+                    value = Loader.hex_instruccion(w) & 0xFFFFFFFFFFFFFFFF
                     memory.write_word(dir,value) # se escribe la dirección en instrucción en hexadecimal en la memoria
                     if min_dir is None or dir < min_dir:
                         min_dir = dir
@@ -109,5 +109,5 @@ class Loader:
                         max_dir = dir
                     dir +=1
                     dir_sig = dir
-            return (min_dir if min_dir is not None else 0, max_dir if max_dir is not None else -1)
+        return (min_dir if min_dir is not None else 0, max_dir if max_dir is not None else -1)
         
