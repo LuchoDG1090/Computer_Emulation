@@ -18,7 +18,8 @@ from memory.memory import Memory, Bus
 class TestMemory(unittest.TestCase):
 
     def setUp(self):
-        self.mem = Memory(size_words=2)  # 2 palabras de 64 bits = 16 bytes
+        # Como tu Memory ya no recibe size_words, lo cambiamos a size_bytes
+        self.mem = Memory(size_bytes=16)  # 16 bytes = 2 palabras de 64 bits
         self.bus = Bus(self.mem)
 
     def test_bit_read_write(self):
@@ -45,13 +46,18 @@ class TestMemory(unittest.TestCase):
         self.assertEqual(self.mem.read_word(0), value)
 
     def test_bus_read_write(self):
-        # Escribir con bus_write
-        self.bus.bus_write(0, 0b1010, 4)  # 4 bits
-        self.assertEqual(self.bus.bus_read(0, 4), 0b1010)
+        # Escribir un byte completo (soporte oficial en Bus)
+        self.bus.bus_write(0, 0xAB, 8)
+        self.assertEqual(self.bus.bus_read(0, 8), 0xAB)
 
-        # Escribir un byte completo
-        self.bus.bus_write(1, 0xFF, 8)
-        self.assertEqual(self.bus.bus_read(1, 8), 0xFF)
+        # Escribir una palabra completa (64 bits)
+        value = 0x1122334455667788
+        self.bus.bus_write(0, value, 64)
+        self.assertEqual(self.bus.bus_read(0, 64), value)
+
+        # Escribir un bit (posición 0)
+        self.bus.bus_write(1, 1, 1)
+        self.assertEqual(self.bus.bus_read(1, 1), 1)
 
     def test_file_dump_and_load(self):
         # Escribir valores
@@ -62,11 +68,11 @@ class TestMemory(unittest.TestCase):
             filename = os.path.join(tmpdir, "mem_test.bin")
 
             # Volcar a archivo
-            self.mem.dump_to_binfile(filename)
+            self.mem.dump_to_file(filename)
 
             # Cargar en nueva memoria
-            mem2 = Memory(size_words=2)
-            mem2.load_from_binfile(filename)
+            mem2 = Memory(size_bytes=16)
+            mem2.load_from_file(filename)
 
             self.assertEqual(mem2.read_byte(0), 0xAA)
             self.assertEqual(mem2.read_byte(1), 0xBB)

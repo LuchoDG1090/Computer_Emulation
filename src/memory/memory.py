@@ -5,13 +5,20 @@ from typing import Optional
 
 class Memory:
 
-    def __init__(self, size_bytes: int = 1024 * 1024):
+    def __init__(self, size_bytes: Optional[int] = None, size_words: Optional[int] = None):
         """
         Inicializa la memoria.
-        :param size_bytes: tamaño total en bytes (default = 1 MiB).
+        :param size_bytes: tamaño en bytes.
+        :param size_words: tamaño en palabras de 64 bits.
         """
-        self.size = size_bytes
-        self.data = bytearray(size_bytes)
+        if size_words is not None:
+            self.size = size_words * 8  # 1 palabra = 8 bytes
+        elif size_bytes is not None:
+            self.size = size_bytes
+        else:
+            self.size = 1024 * 1024  # default = 1 MiB
+
+        self.data = bytearray(self.size)
 
     # ---------------------------
     #  ACCESO POR BYTE
@@ -80,3 +87,41 @@ class Memory:
     def _check_addr(self, addr: int, size: int = 1):
         if addr < 0 or addr + size > self.size:
             raise ValueError(f"Dirección {addr} fuera de rango (0 - {self.size - 1})")
+
+# src/memory/memory.py (continuación)
+
+class Bus:
+    """
+    Bus lógico que conecta CPU y Memoria.
+    Ofrece métodos bus_read y bus_write a nivel de bits.
+    """
+
+    def __init__(self, memory: Memory):
+        self.memory = memory
+
+    def bus_read(self, addr: int, nbits: int = 64) -> int:
+        if nbits == 1:
+            return self.memory.read_bit(addr, 0)
+        elif nbits == 4:  # nibble
+            byte_val = self.memory.read_byte(addr)
+            return byte_val & 0x0F
+        elif nbits % 8 == 0:  # múltiplos de 8 bits
+            nbytes = nbits // 8
+            self.memory._check_addr(addr, nbytes)
+            return int.from_bytes(self.memory.data[addr:addr+nbytes], "little")
+        else:
+            raise ValueError("nbits soportados: 1, 4, múltiplos de 8")
+
+    def bus_write(self, addr: int, value: int, nbits: int = 64):
+        if nbits == 1:
+            self.memory.write_bit(addr, 0, value)
+        elif nbits == 4:  # nibble
+            orig = self.memory.read_byte(addr)
+            new_val = (orig & 0xF0) | (value & 0x0F)
+            self.memory.write_byte(addr, new_val)
+        elif nbits % 8 == 0:  # múltiplos de 8 bits
+            nbytes = nbits // 8
+            self.memory._check_addr(addr, nbytes)
+            self.memory.data[addr:addr+nbytes] = value.to_bytes(nbytes, "little")
+        else:
+            raise ValueError("nbits soportados: 1, 4, múltiplos de 8")
