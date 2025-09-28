@@ -41,16 +41,31 @@ class Assembler:
                 self.loc = self._parse_int(tokens[1])
                 continue
 
+            if head == 'EXEC_FROM':
+                # Guardar como nodo (no consume palabra)
+                nodes.append({'addr': self.loc, 'tokens': tokens})
+                continue
+
             # Instrucción normal: registra dirección actual y tokens
             nodes.append({'addr': self.loc, 'tokens': tokens})
             self.loc += self.word_size
 
         # PASADA 2: resolver símbolos y emitir palabras codificadas
         emitted = []
+        exec_addrs: list[int] = []      # direcciones de instrucciones (8-byte aligned)
+        exec_from_addr: int | None = None  # inicio de rango continuo (opcional)
         for n in nodes:
             resolved = self._resolve_tokens(n['tokens'])
             tokens = resolved
             mnemonic = tokens[0].upper()
+
+            # --- Directiva EXEC_FROM (opcional) ---
+            if mnemonic == "EXEC_FROM":
+                if len(tokens) == 2:
+                    exec_from_addr = self._parse_int(tokens[1])
+                else:
+                    exec_from_addr = n['addr']  # desde la posición actual
+                continue
 
             # --- Directiva DW: emitir datos directamente ---
             if mnemonic == "DW":
@@ -74,19 +89,47 @@ class Assembler:
             # --- Instrucción real: sigue el camino normal ---
             opcode = self.encoder.mnemonic_to_opcode(mnemonic)
 
-            if len(tokens) == 4:  # Ej: ADD R1, R2, R3
+            if len(tokens) == 4:  # 3 operandos
                 rd = self.encoder.reg_to_num(tokens[1])
-                rs1 = self.encoder.reg_to_num(tokens[2])
-                rs2 = self.encoder.reg_to_num(tokens[3])
-                word = self.encoder.r_type(opcode, rd, rs1, rs2)
+                # Soportar I-Type con 3 operandos para ADDI
+                if mnemonic == "ADDI":
+                    rs1 = self.encoder.reg_to_num(tokens[2])
+                    imm_tok = tokens[3].rstrip(',')
+                    imm32 = self._parse_int(imm_tok)
+                    word = self.encoder.i_type(opcode, rd, rs1, imm32, func=0)
+                elif mnemonic == "ST":
+                    # ST Rs, Rb, imm  -> func=1 (addr = Rb + signext(imm))
+                    rs_src = self.encoder.reg_to_num(tokens[1])  # fuente
+                    rb = self.encoder.reg_to_num(tokens[2])      # base
+                    imm_tok = tokens[3].rstrip(',')
+                    imm32 = self._parse_int(imm_tok)
+                    word = self.encoder.i_type(opcode, rd=rb, rs1=rs_src, imm32=imm32, func=1)
+                else:
+                    # R-Type clásico: ADD/SUB/MUL/...
+                    rs1 = self.encoder.reg_to_num(tokens[2])
+                    rs2 = self.encoder.reg_to_num(tokens[3])
+                    word = self.encoder.r_type(opcode, rd, rs1, rs2)
 
-            elif len(tokens) == 3:  # Ej: MOV R1, 0x1000
+            elif len(tokens) == 3:  # Ej: MOV R1, 0x1000  o  CP R1, R2
                 rd = self.encoder.reg_to_num(tokens[1])
-                imm_tok = tokens[2].rstrip(',')
-                if imm_tok.startswith('[') and imm_tok.endswith(']'):
-                    imm_tok = imm_tok[1:-1]
-                imm32 = self._parse_int(imm_tok)
-                word = self.encoder.i_type(opcode, rd, 0, imm32)
+                if mnemonic == "CP":
+                    # CP Rd, Rs  -> I-Type con registro fuente en RS1 (func=1)
+                    rs1 = self.encoder.reg_to_num(tokens[2])
+                    word = self.encoder.i_type(opcode, rd, rs1, 0, func=1)
+                elif mnemonic == "ST":
+                    # ST Rs, [addr] -> I-Type absoluto: rs1=fuente, imm32=addr, func=0
+                    rs_src = rd  # primer operando es la fuente
+                    imm_tok = tokens[2].rstrip(',')
+                    if imm_tok.startswith('[') and imm_tok.endswith(']'):
+                        imm_tok = imm_tok[1:-1]
+                    imm32 = self._parse_int(imm_tok)
+                    word = self.encoder.i_type(opcode, rd=0, rs1=rs_src, imm32=imm32, func=0)
+                else:
+                    imm_tok = tokens[2].rstrip(',')
+                    if imm_tok.startswith('[') and imm_tok.endswith(']'):
+                        imm_tok = imm_tok[1:-1]
+                    imm32 = self._parse_int(imm_tok)
+                    word = self.encoder.i_type(opcode, rd, 0, imm32)
 
             elif len(tokens) == 2:  # Ej: JMP loop
                 imm32 = self._parse_int(tokens[1])
@@ -96,9 +139,19 @@ class Assembler:
                 word = self.encoder.s_type(opcode)
 
             emitted.append((n['addr'], word))
+            # Marcar esta dirección como ejecutable (es una instrucción)
+            exec_addrs.append(n['addr'])
 
+        # Si se marcó EXEC_FROM, completar un rango continuo desde allí hasta la última instrucción
+        if exec_from_addr is not None and exec_addrs:
+            last_code_addr = max(exec_addrs)
+            a = exec_from_addr & ~0x7  # alinear a 8
+            b = last_code_addr
+            for addr in range(a, b + self.word_size, self.word_size):
+                exec_addrs.append(addr)
 
         self.write_img(emitted, output_img)
+        self.write_exec_map(exec_addrs, output_img + ".exec")
 
     def write_img(self, pairs: list[tuple[int, int]], output_path: str):
         """
@@ -108,6 +161,14 @@ class Assembler:
         with open(output_path, "w", encoding="utf-8") as f:
             for addr, word in sorted(pairs, key=lambda x: x[0]):
                 f.write(f"0x{addr:08X}: 0x{word:016X}\n")
+
+    def write_exec_map(self, exec_addrs: list[int], path: str):
+        """Emite un archivo .exec con una direccion ejecutable por linea."""
+        addrs = sorted(set(exec_addrs))
+        with open(path, "w", encoding="utf-8") as f:
+            for addr in addrs:
+                f.write(f"0x{addr:08X}\n")
+
 
     def parse_line(self, line: str):
         # quita comentarios '#' y espacios extra

@@ -69,7 +69,8 @@ class Loader:
     @staticmethod
     def leer_img(memory, path: str, dir_base: int = None) -> Tuple[int,int]:
         """
-        Lee el archivo . img y carga las instrucciones en memoria.
+        Lee el archivo .img y carga las instrucciones en memoria (palabras de 64 bits).
+        Retorna (min_addr, max_addr) cargadas en bytes.
         """
         if not os.path.exists(path):
             raise FileNotFoundError(f"No existe el documento {path}")
@@ -79,11 +80,11 @@ class Loader:
 
         with open(path, 'r') as f:
             for linea_no, instruccion in enumerate(f,1):
-                linea = instruccion.split('#',1)[0].strip() # para no ver comentarios, se hace máximo 1 división y nos quedamos con la primea parte
+                linea = instruccion.split('#',1)[0].strip()
                 if linea == '':
-                    continue # en caso de una linea vacia
+                    continue
                 if ':' in linea:
-                    izq, der = linea.split(':',1) # se separa en 2 partes, la dirección y la instrucción
+                    izq, der = linea.split(':',1)
                     izq = izq.strip() 
                     der = der.strip()
                     if izq == '':
@@ -93,7 +94,7 @@ class Loader:
                     else:
                         dir = int(izq,0)
                         dir_sig = dir
-                    words = [w.strip() for w in der.split(',') if w.strip() != ''] #quita espacios y comas de la cadena de instrucciones
+                    words = [w.strip() for w in der.split(',') if w.strip() != '']
                 else:
                     if dir_sig is None:
                         raise ValueError(f"No se brindó una dirección explicita para la instrucción en la linea {linea_no}")
@@ -102,12 +103,12 @@ class Loader:
                 
                 for w in words:
                     value = Loader.hex_instruccion(w) & 0xFFFFFFFFFFFFFFFF
-                    memory.write_word(dir,value) # se escribe la dirección en instrucción en hexadecimal en la memoria
+                    memory.write_word(dir, value)  # escribe palabra de 64 bits
                     if min_dir is None or dir < min_dir:
                         min_dir = dir
                     if max_dir is None or dir > max_dir:
                         max_dir = dir
-                    dir +=1
+                    dir += 8                     # avanzar 8 bytes por palabra de 64 bits
                     dir_sig = dir
         return (min_dir if min_dir is not None else 0, max_dir if max_dir is not None else -1)
         

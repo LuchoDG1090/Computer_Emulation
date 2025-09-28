@@ -6,14 +6,15 @@ Implementacion de CPU que sigue la arquitectura Von Neumann con:
 - Endianness: Little-endian
 - Registros: PC, IR, MAR, MDR, Accumulator, Flag Register (8 bits), 16 registros de proposito general
 - ALU con 40+ microinstrucciones basicas
-- Conjunto de instrucciones: ALU, LOAD/STORE, JMP, JZ/JNZ, CALL/RET, PUSH/POP, HALT
+- Conjunto de instrucciones: ALU, LD/ST, JMP, JZ/JNZ, CALL/RET, PUSH/POP, HALT
 
 """
 
 import struct
 from typing import Dict, List, Tuple, Optional, Any
 from enum import Enum, IntEnum
-from isa.isa import Opcodes, InstructionType
+from src.isa.isa import Opcodes, InstructionType, opcode_to_type
+from src.memory.memory import Memory
 
 
 # Banderas de la CPU
@@ -59,7 +60,7 @@ class CPU:
     Clase principal de la CPU que implementa una arquitectura Von Neumann de 64 bits
     """
     
-    def __init__(self, memory_size: int = 65536):
+    def __init__(self, memory_size: int = 65536, memory: Optional[Memory] = None):
         """
         Inicializa la CPU con los registros y componentes necesarios
         
@@ -77,13 +78,15 @@ class CPU:
         # Registros de proposito general (R0-R15)
         self.registers: List[int] = [0] * 16
         
-        # Pila y stack pointer
-        self.stack_pointer: int = memory_size - 1
-        self.stack: List[int] = []
+        # Memoria principal (usar Memory externo)
+        self.mem: Memory = memory if memory is not None else Memory(size_bytes=memory_size)
+        self.memory_size: int = self.mem.size
         
-        # Memoria principal
-        self.memory: bytearray = bytearray(memory_size)
-        self.memory_size: int = memory_size
+        # Compatibilidad: exponer el buffer como 'memory'
+        self.memory: bytearray = self.mem.data
+        
+        # Pila y stack pointer (iniciar en el tope de memoria)
+        self.stack_pointer: int = self.mem.size
         
         # Estado de la CPU
         self.running: bool = False
@@ -92,6 +95,25 @@ class CPU:
         # Inicializar componentes
         self.alu = ALU()
         self.decoder = InstructionDecoder()
+
+        # Salidas MMIO simples
+        self.MMIO_CONSOLE_CHAR = 0xFFFF0000  # escribe byte (ASCII) a consola
+        self.MMIO_CONSOLE_INT  = 0xFFFF0008  # imprime entero en consola
+        self.io_ports = {
+            1: self._console_port_write_char,
+            2: self._console_port_write_int,
+        }
+
+        # Puertos de entrada
+        self.MMIO_CONSOLE_IN_CHAR = 0xFFFF0010  # lee un caracter (ASCII) desde consola
+        self.MMIO_CONSOLE_IN_INT  = 0xFFFF0018  # lee un entero desde consola
+        self.io_ports_in = {
+            1: self._console_port_read_char,   # puerto 1: leer ASCII
+            2: self._console_port_read_int,    # puerto 2: leer entero
+        }
+
+        # Mapa de direcciones ejecutables (None => no verificar)
+        self.exec_map: Optional[set[int]] = None
     
     def reset(self):
         """Reinicia la CPU a su estado inicial"""
@@ -102,9 +124,10 @@ class CPU:
         self.accumulator = 0
         self.flags = 0
         self.registers = [0] * 16
-        self.stack_pointer = self.memory_size - 1
-        self.stack.clear()
-        self.memory = bytearray(self.memory_size)
+        self.mem.data[:] = b"\x00" * self.mem.size
+        self.memory_size = self.mem.size
+        self.memory = self.mem.data
+        self.stack_pointer = self.mem.size
         self.running = False
         self.cycle_count = 0
     
@@ -116,29 +139,28 @@ class CPU:
             program: Programa en bytes
             start_address: Direccion de inicio en memoria
         """
-        if start_address + len(program) > self.memory_size:
+        if start_address + len(program) > self.mem.size:
             raise ValueError("Programa demasiado grande para la memoria")
         
-        self.memory[start_address:start_address + len(program)] = program
+        self.mem.data[start_address:start_address + len(program)] = program
         self.pc = start_address
     
     def fetch(self) -> int:
         """
         Fase FETCH: Obtiene la instruccion de memoria
-        
-        Returns:
-            Instruccion de 64 bits
         """
         if self.pc >= self.memory_size - 7:
             raise RuntimeError("Program Counter fuera de limites")
-        
-        # Leer 8 bytes (64 bits) desde la direccion PC en little-endian
-        instruction_bytes = self.memory[self.pc:self.pc + 8]
-        instruction = struct.unpack('<Q', instruction_bytes)[0]  # Little-endian 64-bit
-        
+        if self.exec_map is not None and self.pc not in self.exec_map:
+            try:
+                next_exec = min(a for a in self.exec_map if a >= self.pc)
+                self.pc = next_exec
+            except ValueError:
+                raise RuntimeError(f"Intento de ejecutar dato/no ejecutable en 0x{self.pc:08X}")
+        # Leer instrucción de 64 bits desde Memory
+        instruction = self.mem.read_word(self.pc)
         self.ir = instruction
-        self.pc += 8  # Incrementar PC al siguiente instruccion
-        
+        self.pc += 8
         return instruction
     
     def decode(self, instruction: int) -> Dict[str, Any]:
@@ -172,7 +194,8 @@ class CPU:
             return self._execute_alu_instruction(decoded_instruction)
         
         # Instrucciones de transferencia de datos
-        elif opcode in [Opcodes.MOV, Opcodes.LOAD, Opcodes.STORE]:
+        elif opcode in [Opcodes.MOVI, Opcodes.LD, Opcodes.ST, 
+                        Opcodes.OUT, Opcodes.ADDI, Opcodes.IN, Opcodes.CP]:
             return self._execute_data_transfer(decoded_instruction)
         
         # Instrucciones de pila
@@ -181,9 +204,9 @@ class CPU:
         
         # Instrucciones de control de flujo
         elif opcode in [Opcodes.JMP, Opcodes.JZ, Opcodes.JNZ, Opcodes.JC, 
-                        Opcodes.JNC, Opcodes.CALL, Opcodes.RET]:
+                        Opcodes.JNC, Opcodes.JS, Opcodes.CALL, Opcodes.RET]:
             return self._execute_control_flow(decoded_instruction)
-        
+
         # Instrucciones de sistema
         elif opcode == Opcodes.HALT:
             return False
@@ -294,15 +317,15 @@ class CPU:
         imm32 = instruction['imm32']
         func = instruction['func']
         
-        if opcode == Opcodes.MOV:
-            # MOV puede ser MOV Rd, Rs1 (registro a registro) o MOV Rd, #imm (inmediato)
+        if opcode == Opcodes.MOVI:
+            # MOVI puede ser MOVI Rd, Rs1 (registro a registro) o MOVI Rd, #imm (inmediato)
             if func == 0:  # Inmediato
                 self.registers[rd] = imm32
             else:  # Registro a registro (func = 1)
                 self.registers[rd] = self.registers[rs1]
         
-        elif opcode == Opcodes.LOAD:
-            # LOAD Rd, Rs1 + offset o LOAD Rd, #address
+        elif opcode == Opcodes.LD:
+            # LD Rd, Rs1 + offset o LD Rd, #address
             if func == 0:  # Direccion absoluta
                 address = imm32
             else:  # Offset desde registro base
@@ -311,8 +334,8 @@ class CPU:
             value = self._read_memory_64(address)
             self.registers[rd] = value
         
-        elif opcode == Opcodes.STORE:
-            # STORE Rs1, Rd + offset o STORE Rs1, #address
+        elif opcode == Opcodes.ST:
+            # ST Rs1, Rd + offset o ST Rs1, #address
             if func == 0:  # Direccion absoluta
                 address = imm32
             else:  # Offset desde registro base
@@ -321,8 +344,109 @@ class CPU:
             value = self.registers[rs1]
             self._write_memory_64(address, value)
         
+        elif opcode == Opcodes.OUT:
+            # OUT: escribe valor de registro a MMIO (func=0) o puerto (func=1)
+            # Acepta ambas codificaciones: registro en RD (ensamblador) o RS1 (encoder manual)
+            src_reg_val = self.registers[rs1] if rs1 != 0 else self.registers[rd]
+            self._io_out(src_reg_val, imm32, func)
+
+        elif opcode == Opcodes.IN:
+            # IN Rd, imm32: lee de MMIO (func=0) o puerto (func=1) y guarda en Rd  <-- NUEVO
+            value = self._io_in(imm32, func)
+            self.registers[rd] = value & 0xFFFFFFFFFFFFFFFF
+
+        elif opcode == Opcodes.ADDI:
+            # ADDI Rd, Rs1, #imm32  => Rd = Rs1 + imm32
+            operand1 = self.registers[rs1]
+            operand2 = self._sign_extend_32(imm32)
+            result, flags = self.alu.execute(ALUOperation.ADD, operand1, operand2)
+            self.registers[rd] = result & 0xFFFFFFFFFFFFFFFF  # Mantener 64 bits
+            self.flags = flags
+
+        elif opcode == Opcodes.CP:
+            # CP Rd, Rs1  => copia registro a registro (no afecta flags)
+            self.registers[rd] = self.registers[rs1] & 0xFFFFFFFFFFFFFFFF
+
         return True
     
+    def _io_out(self, value: int, target: int, func: int):
+        """Salida a MMIO o puertos."""
+        if func == 1:
+            # salida a puerto numerico
+            handler = self.io_ports.get(target)
+            if handler:
+                handler(value)
+            else:
+                # puerto desconocido: traza simple
+                print(f"[OUT:port {target}] {value}")
+        else:
+            # salida a direccion MMIO absoluta
+            if target == self.MMIO_CONSOLE_CHAR:
+                self._console_port_write_char(value)
+            elif target == self.MMIO_CONSOLE_INT:
+                self._console_port_write_int(value)
+            else:
+                # MMIO generico: escribir como memoria (si aplica)
+                # proteccion: no escribir fuera de memoria
+                if 0 <= target <= (self.memory_size - 8):
+                    self._write_memory_64(target, value)
+                else:
+                    # direccion MMIO fuera de RAM: solo traza
+                    print(f"[OUT:mmio 0x{target:08X}] {value}")
+
+    def _io_in(self, source: int, func: int) -> int:
+        """Entrada desde MMIO o puertos. Retorna un entero de 64 bits."""
+        if func == 1:
+            # entrada desde puerto numerico
+            handler = self.io_ports_in.get(source)
+            if handler:
+                return handler()
+            print(f"[IN:port {source}] sin handler, devuelve 0")
+            return 0
+        else:
+            # entrada desde direccion MMIO absoluta
+            if source == self.MMIO_CONSOLE_IN_CHAR:
+                return self._console_port_read_char()
+            elif source == self.MMIO_CONSOLE_IN_INT:
+                return self._console_port_read_int()
+            else:
+                # MMIO generico: leer como memoria si esta en rango
+                if 0 <= source <= (self.memory_size - 8):
+                    return self._read_memory_64(source)
+                print(f"[IN:mmio 0x{source:08X}] sin handler, devuelve 0")
+                return 0
+
+    def _console_port_write_char(self, value: int):
+        """Escribe el byte menos significativo como caracter."""
+        ch = value & 0xFF
+        try:
+            print(chr(ch), end="")
+        except Exception:
+            print(f"[CONS:char] 0x{ch:02X}", end="")
+
+    def _console_port_write_int(self, value: int):
+        """Imprime el valor como entero decimal."""
+        print(int(value & 0xFFFFFFFFFFFFFFFF))
+
+    def _console_port_read_char(self) -> int:
+        """Lee un caracter de la consola y retorna su codigo ASCII (LSB)."""
+        try:
+            import sys
+            ch = sys.stdin.read(1)
+            if ch:
+                return ord(ch[0]) & 0xFF
+        except Exception:
+            pass
+        return 0
+
+    def _console_port_read_int(self) -> int:
+        """Lee un entero desde consola. Acepta decimal/hex (0x...)."""
+        try:
+            s = input()
+            return int(s, 0) & 0xFFFFFFFFFFFFFFFF
+        except Exception:
+            return 0
+
     def _execute_stack_instruction(self, instruction: Dict[str, Any]) -> bool:
         """Ejecuta instrucciones de pila (I-Type)"""
         opcode = instruction['opcode']
@@ -371,6 +495,10 @@ class CPU:
             if not self._get_flag(Flags.CARRY):
                 self.pc = imm32
         
+        elif opcode == Opcodes.JS:
+            if self._get_flag(Flags.NEGATIVE):
+                self.pc = imm32
+
         elif opcode == Opcodes.CALL:
             self._push(self.pc)  # Guardar direccion de retorno
             self.pc = imm32
@@ -388,35 +516,24 @@ class CPU:
             return value & 0xFFFFFFFF  # Mantener positivo
     
     def _read_memory_64(self, address: int) -> int:
-        """Lee un valor de 64 bits desde memoria en little-endian"""
-        if address + 7 >= self.memory_size:
-            raise RuntimeError(f"Direccion de memoria fuera de limites: {address}")
-        
-        bytes_data = self.memory[address:address + 8]
-        return struct.unpack('<Q', bytes_data)[0]
+        """Lee un valor de 64 bits desde memoria (Memory)"""
+        return self.mem.read_word(address)
     
     def _write_memory_64(self, address: int, value: int):
-        """Escribe un valor de 64 bits en memoria en little-endian"""
-        if address + 7 >= self.memory_size:
-            raise RuntimeError(f"Direccion de memoria fuera de limites: {address}")
-        
-        value = value & 0xFFFFFFFFFFFFFFFF  # Asegurar 64 bits
-        bytes_data = struct.pack('<Q', value)
-        self.memory[address:address + 8] = bytes_data
+        """Escribe un valor de 64 bits en memoria (Memory)"""
+        self.mem.write_word(address, value & 0xFFFFFFFFFFFFFFFF)
     
     def _push(self, value: int):
-        """Empuja un valor a la pila"""
+        """Empuja un valor a la pila (crecimiento hacia abajo en bloques de 8 bytes)"""
         if self.stack_pointer < 8:
             raise RuntimeError("Stack overflow")
-        
         self.stack_pointer -= 8
         self._write_memory_64(self.stack_pointer, value)
-    
+
     def _pop(self) -> int:
         """Saca un valor de la pila"""
-        if self.stack_pointer >= self.memory_size:
+        if self.stack_pointer >= self.mem.size:
             raise RuntimeError("Stack underflow")
-        
         value = self._read_memory_64(self.stack_pointer)
         self.stack_pointer += 8
         return value
@@ -565,44 +682,6 @@ class ALU:
 class InstructionDecoder:
     """Decodificador de instrucciones de 64 bits"""
     
-    def __init__(self):
-        """Inicializa el decodificador con mapeo de tipos de instruccion"""
-        # Mapeo de opcodes a tipos de instruccion
-        self.opcode_to_type = {
-            # R-Type: operaciones ALU entre registros
-            Opcodes.ADD: InstructionType.R_TYPE,
-            Opcodes.SUB: InstructionType.R_TYPE,
-            Opcodes.MUL: InstructionType.R_TYPE,
-            Opcodes.DIV: InstructionType.R_TYPE,
-            Opcodes.AND: InstructionType.R_TYPE,
-            Opcodes.OR: InstructionType.R_TYPE,
-            Opcodes.XOR: InstructionType.R_TYPE,
-            Opcodes.NOT: InstructionType.R_TYPE,
-            Opcodes.SHL: InstructionType.R_TYPE,
-            Opcodes.SHR: InstructionType.R_TYPE,
-            Opcodes.CMP: InstructionType.R_TYPE,
-            
-            # I-Type: operaciones con inmediatos y memoria
-            Opcodes.MOV: InstructionType.I_TYPE,
-            Opcodes.LOAD: InstructionType.I_TYPE,
-            Opcodes.STORE: InstructionType.I_TYPE,
-            Opcodes.PUSH: InstructionType.I_TYPE,
-            Opcodes.POP: InstructionType.I_TYPE,
-            
-            # J-Type: saltos y llamadas
-            Opcodes.JMP: InstructionType.J_TYPE,
-            Opcodes.JZ: InstructionType.J_TYPE,
-            Opcodes.JNZ: InstructionType.J_TYPE,
-            Opcodes.JC: InstructionType.J_TYPE,
-            Opcodes.JNC: InstructionType.J_TYPE,
-            Opcodes.CALL: InstructionType.J_TYPE,
-            Opcodes.RET: InstructionType.J_TYPE,
-            
-            # S-Type: sistema
-            Opcodes.HALT: InstructionType.S_TYPE,
-            Opcodes.NOP: InstructionType.S_TYPE,
-        }
-    
     def decode(self, instruction: int) -> Dict[str, Any]:
         """
         Decodifica una instruccion de 64 bits
@@ -629,7 +708,7 @@ class InstructionDecoder:
         imm32 = instruction & 0xFFFFFFFF
         
         # Determinar tipo de instruccion
-        inst_type = self.opcode_to_type.get(opcode, InstructionType.S_TYPE)
+        inst_type = opcode_to_type.get(opcode, InstructionType.S_TYPE)
         
         return {
             'opcode': opcode,
@@ -652,14 +731,14 @@ def create_sample_program() -> bytes:
     decoder = InstructionDecoder()
     instructions = []
     
-    # MOV R0, #10 (inmediato) - I-Type
+    # MOVI R0, #10 (inmediato) - I-Type
     instructions.append(decoder.encode_i_type(
-        Opcodes.MOV, rd=0, rs1=0, imm32=10, func=0  # func=0 para inmediato
+        Opcodes.MOVI, rd=0, rs1=0, imm32=10, func=0  # func=0 para inmediato
     ))
     
-    # MOV R1, #20 - I-Type
+    # MOVI R1, #20 - I-Type
     instructions.append(decoder.encode_i_type(
-        Opcodes.MOV, rd=1, rs1=0, imm32=20, func=0
+        Opcodes.MOVI, rd=1, rs1=0, imm32=20, func=0
     ))
     
     # ADD R0, R0, R1 (R0 = R0 + R1) - R-Type
@@ -667,9 +746,9 @@ def create_sample_program() -> bytes:
         Opcodes.ADD, rd=0, rs1=0, rs2=1, func=0
     ))
     
-    # MOV R2, R0 (guardar resultado) - I-Type con func=1 para registro
+    # MOVI R2, R0 (guardar resultado) - I-Type con func=1 para registro
     instructions.append(decoder.encode_i_type(
-        Opcodes.MOV, rd=2, rs1=0, imm32=0, func=1  # func=1 para registro a registro
+        Opcodes.MOVI, rd=2, rs1=0, imm32=0, func=1  # func=1 para registro a registro
     ))
     
     # HALT - S-Type
@@ -694,10 +773,10 @@ if __name__ == "__main__":
     
     print("=== PROGRAMA DE EJEMPLO CARGADO ===")
     print("Instrucciones:")
-    print("1. MOV R0, #10")
-    print("2. MOV R1, #20") 
+    print("1. MOVI R0, #10")
+    print("2. MOVI R1, #20") 
     print("3. ADD R0, R1")
-    print("4. MOV R2, R0")
+    print("4. MOVI R2, R0")
     print("5. HALT")
     print()
     
