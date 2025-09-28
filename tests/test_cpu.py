@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from cpu.cpu import (
-    CPU, ALU, InstructionDecoder, Opcodes, AddressingMode, InstructionType,
+    CPU, ALU, Decoder, Opcodes, AddressingMode, InstructionType,
     ALUOperation, Flags, create_sample_program
 )
 
@@ -21,7 +21,7 @@ class TestInstructionDecoderNewFormat(unittest.TestCase):
     """Pruebas para el decodificador"""
     
     def setUp(self):
-        self.decoder = InstructionDecoder()
+        self.decoder = Decoder()
     
     def test_encode_decode_r_type(self):
         """Prueba codificacion y decodificacion R-Type"""
@@ -142,7 +142,7 @@ class TestCPUNewFormat(unittest.TestCase):
     
     def setUp(self):
         self.cpu = CPU(memory_size=1024)
-        self.decoder = InstructionDecoder()
+        self.decoder = Decoder()
     
     def test_mov_immediate_to_register(self):
         """Prueba MOV con inmediato a registro"""
