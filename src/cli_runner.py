@@ -13,6 +13,21 @@ from src.cpu.cpu import CPU
 from src.assembler.assembler import Assembler
 from src.loader.Linker_Loader import Linker, Loader
 
+# -----------------------------
+# Path helpers (extensions)
+# -----------------------------
+
+def _ensure_ext(path: str, expected_ext: str) -> str:
+    """Append expected_ext if path has no extension."""
+    root, ext = os.path.splitext(path)
+    return path if ext else (path + expected_ext)
+
+def _normalize_input_asm(path: str) -> str:
+    return _ensure_ext(path, ".asm")
+
+def _normalize_output_img(path: str) -> str:
+    return _ensure_ext(path, ".img")
+
 
 # -----------------------------
 # Core actions
@@ -20,6 +35,8 @@ from src.loader.Linker_Loader import Linker, Loader
 
 def assemble(input_path: str, output_path: str):
     """Assemble an .asm file into a .img image"""
+    input_path = _normalize_input_asm(input_path)
+    output_path = _normalize_output_img(output_path)
     dir_name = os.path.dirname(output_path)
     if dir_name:
         os.makedirs(dir_name, exist_ok=True)
@@ -100,11 +117,11 @@ def _prompt_until_non_empty(message: str) -> str:
             return val
         print("Por favor, ingrese una ruta válida.")
 
-
-def _prompt_existing_file(message: str) -> str:
-    """Prompt until the user enters a path to an existing file."""
+def _prompt_existing_file(message: str, expected_ext: str | None = None) -> str:
+    """Prompt until the user enters a path to an existing file (auto-append ext if missing)."""
     while True:
-        path = _prompt_until_non_empty(message)
+        raw = _prompt_until_non_empty(message)
+        path = _ensure_ext(raw, expected_ext) if expected_ext else raw
         if os.path.exists(path):
             return path
         print(f"No existe el archivo: {path}")
@@ -154,18 +171,21 @@ def parse_cli_args():
 def handle_subcommands(args) -> bool:
     """Execute the given subcommand. Returns True if something was executed."""
     if args.cmd == "asm":
-        in_path = args.input or _prompt_existing_file("Ruta del archivo .asm: ")
-        out_path = args.output or _prompt_until_non_empty("Ruta de salida .img: ")
-        assemble(in_path, out_path)
+        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
+        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+        assemble(_normalize_input_asm(in_raw), _normalize_output_img(out_raw))
         return True
     if args.cmd == "run":
-        img_in = args.img or _prompt_existing_file("Ruta del archivo .img: ")
+        img_raw = args.img or _prompt_existing_file("Ruta del archivo .img (sin o con extensión): ", ".img")
+        img_in = _normalize_output_img(img_raw)
         start = None if str(args.start).lower() == "auto" else int(args.start, 0)
         run_image(img_in, start)
         return True
     if args.cmd == "asmrun":
-        in_path = args.input or _prompt_existing_file("Ruta del archivo .asm: ")
-        out_path = args.output or _prompt_until_non_empty("Ruta de salida .img: ")
+        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
+        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+        in_path = _normalize_input_asm(in_raw)
+        out_path = _normalize_output_img(out_raw)
         assemble(in_path, out_path)
         start = None if str(args.start).lower() == "auto" else int(args.start, 0)
         run_image(out_path, start)
@@ -189,21 +209,20 @@ def run_cli():
 
         try:
             if choice == "1":
-                asm_in = _prompt_existing_file("Ruta del archivo .asm: ")
-                img_out = _prompt_until_non_empty("Ruta de salida .img: ")
-                assemble(asm_in, img_out)
+                asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
+                img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+                assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
             elif choice == "2":
-                img_in = _prompt_existing_file("Ruta del archivo .img: ")
+                img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión): ", ".img")
                 start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
                 start = None if start_s.lower() == "auto" else int(start_s, 0)
-                run_image(img_in, start)
+                run_image(_normalize_output_img(img_in), start)
             elif choice == "3":
-                asm_in = _prompt_existing_file("Ruta del archivo .asm: ")
-                img_out = _prompt_until_non_empty("Ruta de salida .img: ")
+                asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
+                img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
                 start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
-                assemble(asm_in, img_out)
+                assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
                 start = None if start_s.lower() == "auto" else int(start_s, 0)
-                run_image(img_out, start)
             elif choice == "4":
                 show_format_info()
             else:
