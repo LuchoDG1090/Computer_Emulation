@@ -1,0 +1,136 @@
+from enum import IntEnum
+from typing import Tuple
+
+# Banderas de la CPU
+class Flags(IntEnum):
+    """Flags del registro de estado (8 bits)"""
+    ZERO = 0        # Bit 0: Resultado es cero
+    CARRY = 1       # Bit 1: Acarreo
+    NEGATIVE = 2    # Bit 2: Resultado negativo
+    POSITIVE = 3    # Bit 3: Resultado positivo
+    OVERFLOW = 4    # Bit 4: Desbordamiento
+    INTERRUPT = 5   # Bit 5: Interrupcion
+    # Bits 6-7: Reservados
+
+class AddressingMode(IntEnum):
+    """Modos de direccionamiento"""
+    IMMEDIATE = 0   # Inmediato
+    REGISTER = 1    # Registro
+    DIRECT = 2      # Directo
+    INDIRECT = 3    # Indirecto
+    INDEXED = 4     # Indexado
+
+
+class ALUOperation(IntEnum):
+    """Operaciones de la ALU"""
+    ADD = 0
+    SUB = 1
+    MUL = 2
+    DIV = 3
+    AND = 4
+    OR = 5
+    XOR = 6
+    NOT = 7
+    SHL = 8
+    SHR = 9
+    CMP = 10
+    INC = 11
+    DEC = 12
+    NEG = 13
+
+class ALU:
+    """Unidad Aritmetico-Logica"""
+    
+    def execute(self, operation: ALUOperation, operand1: int, operand2: int = 0) -> Tuple[int, int]:
+        """
+        Ejecuta una operacion en la ALU
+        
+        Args:
+            operation: Operacion a realizar
+            operand1: Primer operando
+            operand2: Segundo operando (opcional)
+            
+        Returns:
+            Tupla (resultado, flags)
+        """
+        flags = 0
+        
+        # Asegurar que los operandos sean de 64 bits con signo
+        operand1 = self._to_signed_64(operand1)
+        operand2 = self._to_signed_64(operand2)
+        
+        if operation == ALUOperation.ADD:
+            result = operand1 + operand2
+        elif operation == ALUOperation.SUB:
+            result = operand1 - operand2
+        elif operation == ALUOperation.MUL:
+            result = operand1 * operand2
+        elif operation == ALUOperation.DIV:
+            if operand2 == 0:
+                raise RuntimeError("Division por cero")
+            result = operand1 // operand2
+        elif operation == ALUOperation.AND:
+            result = operand1 & operand2
+        elif operation == ALUOperation.OR:
+            result = operand1 | operand2
+        elif operation == ALUOperation.XOR:
+            result = operand1 ^ operand2
+        elif operation == ALUOperation.NOT:
+            result = ~operand1
+        elif operation == ALUOperation.SHL:
+            result = operand1 << (operand2 & 63)  # Limitar shift a 63 bits
+        elif operation == ALUOperation.SHR:
+            result = operand1 >> (operand2 & 63)
+        elif operation == ALUOperation.CMP:
+            result = operand1 - operand2
+        elif operation == ALUOperation.INC:
+            result = operand1 + 1
+        elif operation == ALUOperation.DEC:
+            result = operand1 - 1
+        elif operation == ALUOperation.NEG:
+            result = -operand1
+        else:
+            raise ValueError(f"Operacion ALU no reconocida: {operation}")
+        
+        # Calcular flags
+        flags = self._calculate_flags(result, operand1, operand2, operation)
+        
+        # Convertir resultado a 64 bits sin signo
+        result = result & 0xFFFFFFFFFFFFFFFF
+        
+        return result, flags
+    
+    def _to_signed_64(self, value: int) -> int:
+        """Convierte un valor a entero con signo de 64 bits"""
+        value = value & 0xFFFFFFFFFFFFFFFF
+        if value & 0x8000000000000000:
+            return value - 0x10000000000000000
+        return value
+    
+    def _calculate_flags(self, result: int, op1: int, op2: int, operation: ALUOperation) -> int:
+        """Calcula los flags basado en el resultado y operacion"""
+        flags = 0
+        
+        # Zero flag
+        if result == 0:
+            flags |= (1 << Flags.ZERO)
+        
+        # Negative flag
+        if result < 0:
+            flags |= (1 << Flags.NEGATIVE)
+        else:
+            flags |= (1 << Flags.POSITIVE)
+        
+        # Carry flag (para operaciones aritmeticas)
+        if operation in [ALUOperation.ADD, ALUOperation.SUB]:
+            if operation == ALUOperation.ADD:
+                if (op1 > 0 and op2 > 0 and result < 0) or \
+                   (op1 < 0 and op2 < 0 and result > 0):
+                    flags |= (1 << Flags.CARRY)
+            
+        # Overflow flag
+        if operation in [ALUOperation.ADD, ALUOperation.SUB, ALUOperation.MUL]:
+            if result > 0x7FFFFFFFFFFFFFFF or result < -0x8000000000000000:
+                flags |= (1 << Flags.OVERFLOW)
+        
+        return flags

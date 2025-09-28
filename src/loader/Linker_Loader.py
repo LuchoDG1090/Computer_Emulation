@@ -1,5 +1,4 @@
-from typing import List, Tuple
-from memory.memory import Memory
+from typing import Tuple
 import os
 
 class Linker:

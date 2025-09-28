@@ -6,203 +6,108 @@ Este script permite ejecutar diferentes ejemplos y demostraciones
 del emulador de CPU
 """
 
-import sys
 import os
+import argparse
 
-# Añadir directorios al path
-current_dir = os.path.dirname(__file__)
-sys.path.append(os.path.join(current_dir, 'src'))
-sys.path.append(os.path.join(current_dir, 'examples'))
+from src.cpu.cpu import CPU
+from src.assembler.assembler import Assembler
+from src.loader.Linker_Loader import Linker, Loader
 
-from cpu.cpu import CPU, InstructionDecoder, Opcodes, InstructionType
+# -----------------------------
+# Utilidades CLI (asm/run)
+# -----------------------------
 
-# Importar funciones especificas
-def import_examples():
-    """Importa las funciones de ejemplo de forma segura"""
-    try:
-        import cpu_examples
-        return {
-            'example_basic_arithmetic': cpu_examples.example_basic_arithmetic,
-            'example_logical_operations': cpu_examples.example_logical_operations,
-            'example_conditional_jumps': cpu_examples.example_conditional_jumps,
-            'example_subroutine_call': cpu_examples.example_subroutine_call,
-            'example_memory_operations': cpu_examples.example_memory_operations,
-            'example_stack_operations': cpu_examples.example_stack_operations,
-            'run_all_examples': cpu_examples.run_all_examples
-        }
-    except ImportError as e:
-        print(f"Error importando ejemplos: {e}")
-        return {}
+def assemble(input_path: str, output_path: str):
+    """Ensambla un archivo .asm en una imagen .img"""
+    dir_name = os.path.dirname(output_path)
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
+    Assembler().assemble(input_path, output_path)
+    print(f"OK -> {output_path}")
+
+
+def load_img(cpu: CPU, path: str):
+    """Valida y carga una imagen .img en la memoria del CPU mediante el Loader.
+
+    Devuelve (min_addr, max_addr) de las direcciones escritas y carga el mapa
+    de direcciones ejecutables si existe el archivo .exec asociado.
+    """
+    # Validar formato .img
+    Linker.revisar_img(path)
+    # Cargar a memoria externa de la CPU (Memory)
+    min_addr, max_addr = Loader.leer_img(cpu.mem, path)
+    # Cargar mapa de ejecutables si existe
+    exec_path = path + ".exec"
+    if os.path.exists(exec_path):
+        exec_addrs = set()
+        with open(exec_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                exec_addrs.add(int(line, 0))
+        cpu.exec_map = exec_addrs
+    return min_addr, max_addr
+
+
+def run_image(img_path: str, start_addr: int | None = None):
+    """Crea un CPU, carga la imagen y ejecuta, con auto-inicio por .exec si aplica."""
+    cpu = CPU(memory_size=65536)
+    min_addr, max_addr = load_img(cpu, img_path)
+    # Auto-alinear PC si hay mapa de ejecutables
+    if start_addr is None:
+        if getattr(cpu, 'exec_map', None):
+            cpu.pc = min(cpu.exec_map)
+        else:
+            cpu.pc = min_addr or 0
+    else:
+        start = start_addr
+        if getattr(cpu, 'exec_map', None) and start not in cpu.exec_map:
+            # elegir la siguiente direccion ejecutable >= start; si no hay, usar la minima
+            try:
+                start = min(a for a in cpu.exec_map if a >= start)
+            except ValueError:
+                start = min(cpu.exec_map)
+        cpu.pc = start
+    if hasattr(cpu, "run"):
+        cpu.run()
+    else:
+        while True:
+            cpu.step()
+            if getattr(cpu, "halted", False):
+                break
+    print("Fin de ejecución")
 
 def print_menu():
-    """Muestra el menu de opciones disponibles"""
+    """Muestra el menú de opciones para ensamblar/ejecutar código propio"""
     print("\n" + "="*60)
-    print("    EMULADOR DE CPU EUCLID-64 - MENU PRINCIPAL")
+    print("    EMULADOR DE CPU EUCLID-64 - INTERFAZ CLI")
     print("="*60)
-    print("1. Operaciones Aritmeticas Basicas")
-    print("2. Operaciones Logicas")
-    print("3. Saltos Condicionales")
-    print("4. Llamadas a Subrutinas") 
-    print("5. Operaciones de Memoria")
-    print("6. Operaciones de Pila")
-    print("7. Ejecutar Todos los Ejemplos")
-    print("8. Crear CPU Personalizado")
-    print("9. Mostrar Informacion del Formato")
-    print("0. Salir")
+    print("1) Ensamblar (.asm -> .img)")
+    print("2) Ejecutar (.img)")
+    print("3) Ensamblar y ejecutar")
+    print("4) Información del formato de instrucciones")
+    print("0) Salir")
     print("-"*60)
 
-def run_example(choice):
-    """Ejecuta el ejemplo seleccionado"""
-    example_funcs = import_examples()
-    examples = {
-        1: ("Operaciones Aritmeticas Basicas", example_funcs.get('example_basic_arithmetic')),
-        2: ("Operaciones Logicas", example_funcs.get('example_logical_operations')),
-        3: ("Saltos Condicionales", example_funcs.get('example_conditional_jumps')),
-        4: ("Llamadas a Subrutinas", example_funcs.get('example_subroutine_call')),
-        5: ("Operaciones de Memoria", example_funcs.get('example_memory_operations')),
-        6: ("Operaciones de Pila", example_funcs.get('example_stack_operations'))
-    }
-    
-    if choice in examples:
-        name, func = examples[choice]
-        if func is None:
-            print(f"Funcion de ejemplo no encontrada para: {name}")
-            return
-        print(f"\nEjecutando: {name}")
-        print("-" * 40)
-        try:
-            func()
-            print(f"- {name} completado exitosamente")
-        except Exception as e:
-            print(f"Error en {name}: {e}")
-    else:
-        print("Opcion no valida")
 
-def run_all_examples():
-    """Ejecuta todos los ejemplos disponibles"""
-    print("\nEjecutando todos los ejemplos de instrucciones...")
-    example_funcs = import_examples()
-    
-    # Usar la funcion run_all_examples del modulo cpu_examples si esta disponible
-    if 'run_all_examples' in example_funcs and example_funcs['run_all_examples'] is not None:
-        try:
-            example_funcs['run_all_examples']()
-            return
-        except Exception as e:
-            print(f"Error ejecutando run_all_examples: {e}")
-    
-    # Fallback: ejecutar ejemplos individualmente
-    examples = [
-        ("Operaciones Aritmeticas Basicas", example_funcs.get('example_basic_arithmetic')),
-        ("Operaciones Logicas", example_funcs.get('example_logical_operations')), 
-        ("Saltos Condicionales", example_funcs.get('example_conditional_jumps')),
-        ("Llamadas a Subrutinas", example_funcs.get('example_subroutine_call')),
-        ("Operaciones de Memoria", example_funcs.get('example_memory_operations')),
-        ("Operaciones de Pila", example_funcs.get('example_stack_operations'))
-    ]
-    
-    for name, func in examples:
-        if func is None:
-            print(f"{name} - FUNCIoN NO ENCONTRADA")
-            continue
-            
-        print(f"\n{'='*50}")
-        print(f"Ejecutando: {name}")
-        print('='*50)
-        try:
-            func()
-            print(f"- {name} - EXITOSO")
-        except Exception as e:
-            print(f"- {name} - ERROR: {e}")
-    
-    print(f"\n{'='*50}")
-    print("Todos los ejemplos completados")
-    print('='*50)
+def _prompt_until_non_empty(message: str) -> str:
+    """Pide por consola hasta que el usuario ingrese una cadena no vacía."""
+    while True:
+        val = input(message).strip()
+        if val:
+            return val
+        print("Por favor, ingrese una ruta válida.")
 
-def create_custom_cpu():
-    """Permite crear y configurar un CPU personalizado"""
-    print("\nCreando CPU Personalizado")
-    print("-" * 40)
-    
-    try:
-        # Solicitar tamaño de memoria
-        memory_size = input("Tamaño de memoria (bytes, default 65536): ").strip()
-        if not memory_size:
-            memory_size = 65536
-        else:
-            memory_size = int(memory_size)
-        
-        # Crear CPU y decodificador
-        cpu = CPU(memory_size=memory_size)
-        decoder = InstructionDecoder()
-        print(f"CPU creado con {memory_size} bytes de memoria")
-        
-        # Mostrar estado inicial
-        print("\nEstado inicial del CPU:")
-        print(f"PC: 0x{cpu.pc:016X}")
-        print(f"Accumulator: 0x{cpu.accumulator:016X}")
-        print(f"Flags: {cpu.flags:08b}")
-        print(f"Stack Pointer: 0x{cpu.stack_pointer:016X}")
-        print(f"Memoria disponible: {len(cpu.memory)} bytes")
-        print(f"Registros R0-R15: todos en 0x0000000000000000")
-        
-        # Opcion de cargar programa simple
-        load_program = input("\n¿Cargar programa de ejemplo? (y/n): ").strip().lower()
-        if load_program == 'y':
-            print("\nPrograma de ejemplo: 15 + 25 = 40")
-            print("Instrucciones a ejecutar:")
-            print("1. MOV R0, #15    ; I-Type: cargar 15 en R0")
-            print("2. MOV R1, #25    ; I-Type: cargar 25 en R1") 
-            print("3. ADD R2, R0, R1 ; R-Type: R2 = R0 + R1")
-            print("4. HALT           ; S-Type: detener CPU")
-            
-            # Crear programa usando formato
-            instructions = []
-            
-            # MOV R0, #15
-            instructions.append(decoder.encode_i_type(
-                Opcodes.MOV, rd=0, rs1=0, imm32=15, func=0
-            ))
-            
-            # MOV R1, #25  
-            instructions.append(decoder.encode_i_type(
-                Opcodes.MOV, rd=1, rs1=0, imm32=25, func=0
-            ))
-            
-            # ADD R2, R0, R1
-            instructions.append(decoder.encode_r_type(
-                Opcodes.ADD, rd=2, rs1=0, rs2=1, func=0
-            ))
-            
-            # HALT
-            instructions.append(decoder.encode_s_type(Opcodes.HALT))
-            
-            # Convertir a bytes y cargar
-            import struct
-            program = bytearray()
-            for inst in instructions:
-                program.extend(struct.pack('<Q', inst))
-            
-            cpu.load_program(bytes(program))
-            print("Programa cargado exitosamente")
-            
-            # Ejecutar programa
-            execute = input("¿Ejecutar programa? (y/n): ").strip().lower()
-            if execute == 'y':
-                print("\n🏃 Ejecutando programa...")
-                try:
-                    cpu.run()
-                    print(f"Programa completado")
-                    print(f"Resultado en R2: {cpu.registers[2]} (esperado: 40)")
-                    print(f"R0: {cpu.registers[0]}, R1: {cpu.registers[1]}")
-                    print(f"Ciclos ejecutados: {cpu.cycle_count}")
-                except Exception as e:
-                    print(f"Error durante ejecucion: {e}")
-        
-    except ValueError:
-        print("Error: Tamaño de memoria debe ser un numero")
-    except Exception as e:
-        print(f"Error creando CPU: {e}")
+
+def _prompt_existing_file(message: str) -> str:
+    """Pide una ruta a archivo existente hasta que sea válida."""
+    while True:
+        path = _prompt_until_non_empty(message)
+        if os.path.exists(path):
+            return path
+        print(f"No existe el archivo: {path}")
+
 
 def show_format_info():
     """Muestra informacion sobre el formato de instrucciones"""
@@ -215,41 +120,85 @@ def show_format_info():
     input("\nPresione Enter para continuar...")
 
 def main():
-    """Funcion principal del script"""
-    print("Bienvenido al Emulador de CPU EUCLID-64")
-    print("Modulo M1 - Arquitectura Von Neumann")
-    
-    while True:
-        try:
-            print_menu()
-            choice = input("Seleccione una opcion: ").strip()
-            
-            if choice == '0':
-                print("¡Gracias por usar el emulador de CPU EUCLID-64!")
-                break
-            elif choice == '7':
-                run_all_examples()
-            elif choice == '8':
-                create_custom_cpu()
-            elif choice == '9':
-                show_format_info()
-            else:
-                try:
-                    choice_num = int(choice)
-                    if 1 <= choice_num <= 6:
-                        run_example(choice_num)
-                    else:
-                        print("Por favor seleccione una opcion valida (0-9)")
-                except ValueError:
-                    print("Por favor ingrese un numero valido")
-        
-        except KeyboardInterrupt:
-            print("\n\nPrograma interrumpido por el usuario")
-            break
-        except Exception as e:
-            print(f"Error inesperado: {e}")
-            import traceback
-            traceback.print_exc()
+    """CLI principal estilo test.py con modo interactivo sencillo.
+
+    Subcomandos disponibles:
+      - asm: Ensambla un .asm a .img
+      - run: Ejecuta una imagen .img
+      - asmrun: Ensambla y ejecuta
+
+    Si no se especifica subcomando, se ofrece un flujo interactivo para
+    seleccionar acción, archivo de entrada y salida, y PC inicial opcional.
+    """
+    parser = argparse.ArgumentParser(prog="main.py", description="Assembler/Runner CLI")
+    sub = parser.add_subparsers(dest="cmd", required=False)
+
+    p_asm = sub.add_parser("asm", help="Ensambla .asm a .img")
+    p_asm.add_argument("-i", "--input", required=False)
+    p_asm.add_argument("-o", "--output", required=False)
+
+    p_run = sub.add_parser("run", help="Ejecuta una imagen .img")
+    p_run.add_argument("-i", "--img", required=False)
+    p_run.add_argument("--start", default="auto", help="PC inicial (ej. 0x4E20 o 'auto')")
+
+    p_both = sub.add_parser("asmrun", help="Ensambla y ejecuta")
+    p_both.add_argument("-i", "--input", required=False)
+    p_both.add_argument("-o", "--output", required=False)
+    p_both.add_argument("--start", default="auto")
+
+    args, _ = parser.parse_known_args()
+
+    # Modo subcomando (no interactivo)
+    if args.cmd == "asm":
+        in_path = args.input or _prompt_existing_file("Ruta del archivo .asm: ")
+        out_path = args.output or _prompt_until_non_empty("Ruta de salida .img: ")
+        assemble(in_path, out_path)
+        return
+    if args.cmd == "run":
+        img_in = args.img or _prompt_existing_file("Ruta del archivo .img: ")
+        start = None if str(args.start).lower() == "auto" else int(args.start, 0)
+        run_image(img_in, start)
+        return
+    if args.cmd == "asmrun":
+        in_path = args.input or _prompt_existing_file("Ruta del archivo .asm: ")
+        out_path = args.output or _prompt_until_non_empty("Ruta de salida .img: ")
+        assemble(in_path, out_path)
+        start = None if str(args.start).lower() == "auto" else int(args.start, 0)
+        run_image(out_path, start)
+        return
+
+    # Modo interactivo sencillo
+    print_menu()
+    choice = input("Seleccione una opción: ").strip()
+
+    if choice == "0":
+        return
+
+    try:
+        if choice == "1":
+            asm_in = _prompt_existing_file("Ruta del archivo .asm: ")
+            img_out = _prompt_until_non_empty("Ruta de salida .img: ")
+            assemble(asm_in, img_out)
+        elif choice == "2":
+            img_in = _prompt_existing_file("Ruta del archivo .img: ")
+            start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
+            start = None if start_s.lower() == "auto" else int(start_s, 0)
+            run_image(img_in, start)
+        elif choice == "3":
+            asm_in = _prompt_existing_file("Ruta del archivo .asm: ")
+            img_out = _prompt_until_non_empty("Ruta de salida .img: ")
+            start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
+            assemble(asm_in, img_out)
+            start = None if start_s.lower() == "auto" else int(start_s, 0)
+            run_image(img_out, start)
+        elif choice == "4":
+            show_format_info()
+        else:
+            print("Opción no válida")
+    except KeyboardInterrupt:
+        print("\nInterrumpido por el usuario")
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
