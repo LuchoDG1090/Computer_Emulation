@@ -1,0 +1,14 @@
+{
+    "exit()": {
+        "Info" : "Salir de la cli que emula la máquina"
+    },
+    "Info()": {
+        "Info": "Obetenr información de la maquina que se está emulando"
+    },
+    "help()": {
+        "Info": "Obtener ayuda general de las instrucciones del computador y de la sintaxis de la cli (command line interface)"
+    },
+    "clear()":{
+        "Info": "Limpiar la terminal de comandos"
+    }
+}

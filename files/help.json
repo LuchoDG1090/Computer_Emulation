@@ -1,0 +1,205 @@
+{
+    "ADD": {
+        "Info": "Suma los valores de dos registros y guarda el resultado en otro registro",
+        "Example": "ADD RD,R1,R2",
+        "Opcode": "0x10",
+        "Type": "R-type",
+        "Params": ["RD", "R1", "R2"]
+    },
+    "SUB" : {
+        "Info": "Resta los valores de dos registros y guarda el resultado en otro registro",
+        "Example": "SUB RD,R1,R2",
+        "Opcode": "0x11",
+        "Type": "R-type",
+        "Params": ["RD", "R1", "R2"]
+    },
+    "MUL" : {
+        "Info": "Multiplica los valores de dos registros y guarda la parte baja del producto en un registro destino",
+        "Example": "MUL RD,R1,R2",
+        "Opcode": "0x12",
+        "Type": "R-type",
+        "Params": ["R1", "R2", "RD"]
+    }, 
+    "DIV" : {
+        "Info": "Desarrolla la división de dos registros y guarda el resultado en un registro destino",
+        "Example": "DIV RD,R1,R2",
+        "Opcode": "0x13",
+        "Type": "R-type",
+        "Params": ["RD", "R1", "R2"]
+    },
+    "AND" : {
+        "Info": "Realiza la operación AND bit a bit entre dos registros y guarda el resultado en un registro destino",
+        "Example": "AND RD,R1,R2",
+        "Opcode": "0x14",
+        "Type": "R-type",
+        "Params": ["RD", "R1", "R2"]
+    },
+    "OR" : {
+        "Info": "Realiza la operación OR bit a bit entre dos registros y guarda el resultado en un registro destino",
+        "Example": "OR RD,R1,R2",
+        "Opcode": "0x15",
+        "Type": "R-type",
+        "Params": ["RD", "R1", "R2"]
+    },
+    "XOR" : {
+        "Info": "Realiza la operación XOR bit a bit entre dos registros y guarda el resultado en un registro destino",
+        "Example": "XOR RD,R1,R2",
+        "Opcode": "0x16",
+        "Type": "R-type",
+        "Params": ["RD", "R1", "R2"]
+    },
+    "NOT" : {
+        "Info": "Realiza la operación NOT bit a bit entre dos registros y guarda el resultado en un registro destino",
+        "Example": "NOT RD,R1,R2",
+        "Opcode": "0x17",
+        "Type": "R-type",
+        "Params": ["RD", "R1", "R2"]
+    },
+    "SHL" : {
+        "Info": "Desplaza lógicamente a la izquierda un shift amount de bits (SHIFT/SHAMT) el valor en un registro",
+        "Example": "SHL RD,SHIFT",
+        "Opcode": "0x18",
+        "Type": "R-type",
+        "Params": ["RD","SHIFT"]
+    },
+    "SHR" : {
+        "Info": "Desplaza lógicamente a la derecha a un shift amount de bits (SHIFT/SHAMT) el valor en un registro",
+        "Example": "SHR RD,SHIFT",
+        "Opcode": "0x19",
+        "Type": "R-type",
+        "Params": ["RD","SHIFT"]
+    },
+    "SAR" : {
+        "Info": "Desplaza aritméticamente a la derecha un valor dado preservando el signo",
+        "Example": "SAR RD,SHIFT",
+        "Opcode": "0x1A",
+        "Type": "R-type",
+        "Params": ["RD","SHIFT"]
+    },
+    "ADDI": {
+        "Info": "Suma un inmediato al valor de un regsirto y guarda en un registro de destino",
+        "Example": "SUBI RD,R1,IMM32",
+        "Opcode": "0x20",
+        "Type": "I-type",
+        "Params": ["RD", "R1", "IMM32"]
+    },
+    "SUBI" : {
+        "Info": "Resta un inmediato al valor de un registro y guarda en un registro de destino",
+        "Example": "SUBI RD,R1,IMM32",
+        "Opcode": "0x21",
+        "Type": "I-type",
+        "Params": ["RD", "R1", "IMM32"]
+    },
+    "MOVI" : {
+        "Info": "Carga un inmediato de 32 bits (Sign-extended) en el registro destino",
+        "Example": "MOVI, RD, IMM32",
+        "Opcode": "0x22",
+        "Type": "I-type",
+        "Params": ["RD", "IMM32"]
+    },
+    "LD" : {
+        "Info": "Carga una palabra de 64 bits desde memoria en el registro destino (usando base + offset)",
+        "Example": "LD RD, [RS1 + IMM32]",
+        "Opcode": "0x23",
+        "Type": "I-type",
+        "Params": ["RD", "IMM32", "RS1"]
+    },
+    "ST" : {
+        "Info": "Almacena la palabra de 64 bits del registro fuente en memoria con la dirección base + offset",
+        "Example": "ST RS2, [RS1 + IMM32]",
+        "Opcode": "0x24",
+        "Type": "I-type",
+        "Params": ["RS1", "IMM32", "RS2"]
+    },
+    "LDB" : {
+        "Info": "Carga un byte desde memoria, lo extiende y lo escribe en RD",
+        "Example": "LDB RD, [RS1 + IMM32]",
+        "Opcode": "0x25",
+        "Type": "I-type",
+        "Params": ["RD", "IMM32", "RS1"]
+    },
+    "STB" : {
+        "Info": "Almacena el byte menos significativo del registro fuente en la dirección indicada",
+        "Example": "STB RS2, [RS1 + IMM32]",
+        "Opcode": "0x26",
+        "Type": "I-type",
+        "Params": ["RS2", "RS1", "IMM32"]
+    },
+    "LDABS" : {
+        "Info": "Carga una palabra de 64 bits desde la dirección absoluta especificada por IMM32",
+        "Example": "LDABS RD, [IMM32]",
+        "Opcode": "0x27",
+        "Type": "I-type",
+        "Params": ["RD", "IMM32"]
+    },
+    "STABS" : {
+        "Info": "Escribe una palabra de 64 bits desde el registro indicado en una dirección de memoria absoluta",
+        "Example": "STABS RS1, [IMM32]",
+        "Opcode": "0x28",
+        "Type": "I-type",
+        "Params": ["RS1", "IMM32"]
+    },
+    "CMP" : {
+        "Info": "Compara dos registros actualizando las banderas sin escribir los resultados en un registro.",
+        "Example": "CMP RS1, RS2",
+        "Opcode": "0x30",
+        "Type": "A-type",
+        "Params": ["RS1", "RS2"]
+    },
+    "CMPI" : {
+        "Info": "Compara un registro con un inmediato y actualiza las banderas",
+        "Example": "CMPI RS1, IMM32",
+        "Opcode": "0x31",
+        "Type": "I-type",
+        "Params": ["RS1", "IMM32"]
+    },
+    "TEST" : {
+        "Info": "Realiza la operación AND entre dos registros para probar bits y actualiza Z/M sin modificar registros",
+        "Example": "TEST RS1, RS2",
+        "Opcode": "0x32",
+        "Type": "R-type",
+        "Params": ["RS1", "RS2"]
+    },
+    "RDFLAGS" : {
+        "Info": "Copia el contenido del registro de banderas al registro destino en formato entero",
+        "Example": "RDFLAGS RD",
+        "Opcode": "0x33",
+        "Type": "I-type",
+        "Params": ["RD"]
+    },
+    "WRFLAGS" : {
+        "Info": "Escribe el registro de banderas con los bits ofrecidos en RS (Operación privilegiada)",
+        "Example": "WRFLAGS RS",
+        "Opcode": "0x34",
+        "Type": "I-type",
+        "Params": ["RS"]
+    },
+    "JMP" : {
+        "Info": "Cambia el contador de programa a la dirección absoluta por IMM32",
+        "Example": "JMP IMM32",
+        "Opcode": "0x40",
+        "Type": "J-type",
+        "Params": ["IMM32"]
+    },
+    "JZ" : {
+        "Info": "Si la bandera zero está activa, salta a la dirección indicada de lo contrario continua",
+        "Example": "JZ IMM32",
+        "Opcode": "0x41",
+        "Type": "J-type",
+        "Params": ["IMM32"]
+    },
+    "JNZ" : {
+        "Info": "Salta a la dirección indicada si zero está desactivada",
+        "Example": "JNZ IMM32",
+        "Opcode": "0x42",
+        "Type": "J-type",
+        "Params": ["IMM32"]
+    },
+    "JC" : {
+        "Info": "Salta a la dirección indicada si la bandera carry está activada",
+        "Example": "JC IMM32",
+        "Opcode": "0x43",
+        "Type": "J-type",
+        "Params": []
+    }
+}

@@ -8,10 +8,12 @@ Linker/Loader, and run them with optional auto-start via the .exec map.
 
 import os
 import argparse
+import math
 
 from src.cpu.cpu import CPU
 from src.assembler.assembler import Assembler
 from src.loader.Linker_Loader import Linker, Loader
+from src.user_interface.cli import messages, help_module, color
 
 # -----------------------------
 # Path helpers (extensions)
@@ -198,37 +200,59 @@ def run_cli():
     args = parse_cli_args()
     if handle_subcommands(args):
         return
+    # messages.Messages().print_general_info()
+    # messages.Messages().print_instruction_info()
+    menu = messages.Messages()
+    menu.print_general_info()
+    menu.create_menu()
 
     # Interactive loop: run as many times as needed until exit
     while True:
-        print_menu()
-        choice = input("Seleccione una opción: ").strip()
-
-        if choice == "0":
-            break
-
+        menu.print_menu()
         try:
-            if choice == "1":
-                asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
-                img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
-                assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
-            elif choice == "2":
-                img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión): ", ".img")
-                start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
-                start = None if start_s.lower() == "auto" else int(start_s, 0)
-                run_image(_normalize_output_img(img_in), start)
-            elif choice == "3":
-                asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
-                img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
-                start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
-                assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
-                start = None if start_s.lower() == "auto" else int(start_s, 0)
-            elif choice == "4":
-                show_format_info()
-            else:
-                print("Opción no válida")
+            choice = input(">>").strip()
         except KeyboardInterrupt:
-            print("\nInterrumpido por el usuario")
+            messages.Messages().print_exit_msg()
+            continue
+        except EOFError:
+            messages.Messages().print_exit_msg()
+            continue
+
+        if choice == "clear()":
+            print(color.Color.RESET_ALL)
+        elif choice == "1":
+            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
+            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+            assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
+        elif choice == "2":
+            img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión): ", ".img")
+            start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
+            start = None if start_s.lower() == "auto" else int(start_s, 0)
+            run_image(_normalize_output_img(img_in), start)
+        elif choice == "3":
+            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
+            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+            start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
+            assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
+            start = None if start_s.lower() == "auto" else int(start_s, 0)
+        elif choice == "4":
+            val = math.inf
+            menu.create_help_menu()
+            while val not in range(1,6):
+                menu.print_help_menu()
+                val = int(input(">>").strip())
+            if val == 1:
+                help_module.Help().get_cli_help()
+            elif val == 2:
+                help_module.Help().get_machine_help()
+            elif val == 3:
+                help_module.Help().get_machine_help_verbose()
+            elif val == 4:
+                help_module.Help().formato_instrucciones()
+            elif val == 5:
+                pass
+        elif choice == "exit()":
+            print(color.Color.ROJO)
+            print("Adios.")
+            print(color.Color.RESET_COLOR)
             break
-        except Exception as e:
-            print(f"Error: {e}")
