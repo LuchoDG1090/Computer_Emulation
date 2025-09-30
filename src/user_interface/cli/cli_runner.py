@@ -14,6 +14,7 @@ from src.cpu.cpu import CPU
 from src.assembler.assembler import Assembler
 from src.loader.Linker_Loader import Linker, Loader
 from src.user_interface.cli import messages, help_module, color
+import src.user_interface.logging.logger as logger
 
 # -----------------------------
 # Path helpers (extensions)
@@ -197,14 +198,14 @@ def handle_subcommands(args) -> bool:
 
 def run_cli():
     """Entry point for the application: subcommands or interactive loop."""
+    logger_handler = logger.configurar_logger()
     args = parse_cli_args()
     if handle_subcommands(args):
         return
-    # messages.Messages().print_general_info()
-    # messages.Messages().print_instruction_info()
     menu = messages.Messages()
     menu.print_general_info()
     menu.create_menu()
+    logger_handler.info("CLI iniciada")
 
     # Interactive loop: run as many times as needed until exit
     while True:
@@ -212,35 +213,58 @@ def run_cli():
         try:
             choice = input(">>").strip()
         except KeyboardInterrupt:
+            logger_handler.exception("El usuario intentó finalizar de forma abrupta y equivocada la consola")
             messages.Messages().print_exit_msg()
             continue
         except EOFError:
+            logger_handler.exception("El usuario ingresó una entrada no valida")
             messages.Messages().print_exit_msg()
             continue
 
         if choice == "clear()":
+            logger_handler.info("Borrado de la consola")
             print(color.Color.RESET_ALL)
         elif choice == "1":
+            logger_handler.info("inicio de procedimiento de ensamblado")
             asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
             img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
             assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
         elif choice == "2":
+            logger_handler.info("Ejecución de archivo .img")
             img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión): ", ".img")
             start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
             start = None if start_s.lower() == "auto" else int(start_s, 0)
             run_image(_normalize_output_img(img_in), start)
         elif choice == "3":
+            logger_handler.info("Ensamblar y ejecutar")
             asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
             img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
             start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
             assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
             start = None if start_s.lower() == "auto" else int(start_s, 0)
         elif choice == "4":
+            logger_handler.info("Ingreso al módulo de ayuda")
             val = math.inf
             menu.create_help_menu()
             while val not in range(1,6):
                 menu.print_help_menu()
-                val = int(input(">>").strip())
+                try:
+                    val = int(input(">>").strip())
+                except ValueError:
+                    logger_handler.exception("Valor ingresado equivocado")
+                    print(color.Color.ROJO)
+                    print("Entrada equivocada")
+                    print(color.Color.RESET_COLOR)
+                except EOFError:
+                    logger_handler.exception("El usuario ingresó una entrada no valida")
+                    print(color.Color.ROJO)
+                    print("Entrada equivocada")
+                    print(color.Color.RESET_COLOR)
+                except KeyboardInterrupt:
+                    logger_handler.exception("El usuario intentó finalizar de forma abrupta y equivocada la consola")
+                    print(color.Color.ROJO)
+                    print("Entrada equivocada")
+                    print(color.Color.RESET_COLOR)
             if val == 1:
                 help_module.Help().get_cli_help()
             elif val == 2:
@@ -252,7 +276,13 @@ def run_cli():
             elif val == 5:
                 pass
         elif choice == "exit()":
+            logger_handler.info("CLI finalizada")
             print(color.Color.ROJO)
             print("Adios.")
             print(color.Color.RESET_COLOR)
             break
+        else:
+            logger_handler.error("CLI finalizada")
+            print(color.Color.ROJO)
+            print("Entrada equivocada")
+            print(color.Color.RESET_COLOR)
