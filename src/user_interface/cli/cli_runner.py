@@ -196,7 +196,6 @@ def handle_subcommands(args) -> bool:
         if start_arg.lower() == "auto":
             start = None
         else:
-            # Allow user to cancel when prompted interactively later
             try:
                 start = int(start_arg, 0)
             except Exception:
@@ -249,20 +248,34 @@ def run_cli():
             print(color.Color.RESET_ALL)
         elif choice == "1":
             logger_handler.info("inicio de procedimiento de ensamblado")
-            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
-            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+            if asm_in is None:
+                continue
+            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+            if img_out is None:
+                continue
             assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
         elif choice == "2":
             logger_handler.info("Ejecución de archivo .img")
-            img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión): ", ".img")
-            start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
+            img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ", ".img", allow_cancel=True)
+            if img_in is None:
+                continue
+            start_s = input("PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: ").strip() or "auto"
+            if start_s.lower() in ("back", "menu", "cancel", "0"):
+                continue
             start = None if start_s.lower() == "auto" else int(start_s, 0)
             run_image(_normalize_output_img(img_in), start)
         elif choice == "3":
             logger_handler.info("Ensamblar y ejecutar")
-            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
-            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
-            start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
+            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+            if asm_in is None:
+                continue
+            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+            if img_out is None:
+                continue
+            start_s = input("PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: ").strip() or "auto"
+            if start_s.lower() in ("back", "menu", "cancel", "0"):
+                continue
             assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
             start = None if start_s.lower() == "auto" else int(start_s, 0)
             run_image(_normalize_output_img(img_out), start)
@@ -273,7 +286,11 @@ def run_cli():
             while val not in range(1,6):
                 menu.print_help_menu()
                 try:
-                    val = int(input(">>").strip())
+                    raw = input(">>").strip().lower()
+                    if raw in ("back", "menu", "cancel", "0"):
+                        val = 5  # volver
+                        break
+                    val = int(raw)
                 except ValueError:
                     logger_handler.exception("Valor ingresado equivocado")
                     print(color.Color.ROJO)
