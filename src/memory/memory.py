@@ -1,7 +1,9 @@
 # src/memory/memory.py
 import struct
 from typing import Optional
+import src.user_interface.logging.logger as logger
 
+logger_handler = logger.configurar_logger()
 
 class Memory:
 
@@ -17,7 +19,7 @@ class Memory:
             self.size = size_bytes
         else:
             self.size = 1024 * 1024  # default = 1 MiB
-
+        logger_handler.info(f"Inicialización de memoria ram con tamaño {self.size}")
         self.data = bytearray(self.size)
 
     # ---------------------------

@@ -201,5 +201,145 @@
         "Opcode": "0x43",
         "Type": "J-type",
         "Params": []
+    },
+    "JNC": {
+        "Info": "Salta si la bandera carry está desactivada",
+        "Example": "JNC IMM32",
+        "Opcode": "0x44",
+        "Type": "J-type",
+        "Params": ["IMM32"]
+    },
+    "JS": {
+        "Info": "Salta si la bandera negativa indica que la operación aritmético lógica arrojó un número negativo",
+        "Example": "JS IMM32",
+        "Opcode": "0x45",
+        "Type": "J-type",
+        "Params": ["IMM32"]
+    },
+    "CALL": {
+        "Info": "Guarda la dirección de retorno en R14 y salta a la subrutina indicada",
+        "Example": "CALL IMM32",
+        "Opcode": "0x46",
+        "Type": "J-type",
+        "Params": ["IMM32"]
+    },
+    "RET": {
+        "Info": "Retorno de subrutina cargando el contador del programa desde R14",
+        "Example": "RET",
+        "Opcode": "0x47",
+        "Type": "S-type",
+        "Params": []
+    },
+    "BR": {
+        "Info": "Realiza salto indirecto utilizando la dirección almacenada en un registro",
+        "Example": "BR RS1",
+        "Opcode": "0x48",
+        "Type": "R-type",
+        "Params": ["RS1"]
+    },
+    "PUSH": {
+        "Info": "Decrementa el puntero de pila y salva la palabra de 64bits del registro en memoria",
+        "Example": "PUSH RS1",
+        "Opcode": "0x50",
+        "Type": "S-type",
+        "Params": ["RS1"]
+    },
+    "POP": {
+        "Info": "Recupera la palabra superior de la pila en el registro destino y ajusta el puntero de la pila",
+        "Example": "POP RD",
+        "Opcode": "0x51",
+        "Type": "S-type",
+        "Params": ["RD"]
+    },
+    "ENTER": {
+        "Info": "Reserva en la pila un marco de tamaño IMM32 y decremento del SP",
+        "Example": "ENTER IMM32",
+        "Opcode": "0x52",
+        "Type": "S-type",
+        "Params": ["IMM32"]
+    },
+    "LEAVE": {
+        "Info": "Libera el marco de pila sumando IMM332 al puntero de la pila",
+        "Example": "LEAVE IMM32",
+        "Opcode": "0x53",
+        "Type": "S-type",
+        "Params": ["IMM32"]
+    },
+    "IN": {
+        "Info": "Lee desde una dirección MMIO o puerto y coloca el dato en el registro de destino",
+        "Example": "In RD, IMM32",
+        "Opcode": "0x60",
+        "Type": "I-type",
+        "Params": ["RD", "IMM32"]
+    },
+    "OUT": {
+        "Info": "Escribe el valor del registro en una dirección MMIO o puerto",
+        "Example": "OUT RS1, IMM32",
+        "Opcode": "0x61",
+        "Type": "I-type",
+        "Params": ["RS1", "IMM32"]
+    },
+    "TRAP": {
+        "Info": "Invoca un servicio de sistema o excepción software pasando el número de servicio",
+        "Example": "TRAP IMM8",
+        "Opcode": "0x62",
+        "Type": "I-type/S-type",
+        "Params": ["IMM8"]
+    },
+    "INT_ENABLE": {
+        "Info": "Habilita el procesamientode interrupciones alterando el flag register",
+        "Example": "INT_ENABLE",
+        "Opcode": "0x63",
+        "Type": "S-type",
+        "Params": []
+    },
+    "INT_DISABLE": {
+        "Info": "Deshabilita las interrupciones al alterar el flag register",
+        "Example": "INT_DISABLE",
+        "Opcode": "0x64",
+        "Type": "S-type",
+        "Params": []
+    },
+    "IRET": {
+        "Info": "Finaliza el servicio de manejo de interrupciones regresando el contexto (flags y program counter) desde pila",
+        "Example": "IRET",
+        "Opcode": "0x65",
+        "Type": "S-type",
+        "Params": []
+    },
+    "NOP": {
+        "Info": "No reliza operación y avanza a la siguiente instrucción al leer el contador de programa",
+        "Example": "NOP",
+        "Opcode": "0x70",
+        "Type": "S-type",
+        "Params": []
+    },
+    "HALT": {
+        "Info": "Detiene la ejecución del procesador hasta reinicio o intervención externa",
+        "Example": "HALT",
+        "Opcode": "0x71",
+        "Type": "S-type",
+        "Params": []
+    },
+    "CACHEFLUSH": {
+        "Info": "Vacía completamente el contenido de la memoria caché escribiendo de vuelta a memoria principal tosas las lineas modificadas",
+        "Example": "CACHEFLUSH",
+        "Opcode": "0x72",
+        "Type": "S-type",
+        "Params": []
+    },
+    "MEMBARRIER": {
+        "Info": "Garantiza el orden de las operaciones de memoria",
+        "Example": "MEMBARRIER",
+        "Opcode": "0x73",
+        "Type": "S-type",
+        "Params": []
+    },
+    "CRC": {
+        "Info": "Calcula el CRC sobre un cloque de parametros y lo almacena en un registro destnino indicado",
+        "Example": "CRC RD, RS1, RS2",
+        "Opcode": "0x90",
+        "Type": "R-type",
+        "Params": ["RD", "RS1", "RS2"]
     }
 }

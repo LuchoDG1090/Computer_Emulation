@@ -1,5 +1,8 @@
 from enum import IntEnum
 from typing import Tuple
+import src.user_interface.logging.logger as logger
+
+logger_handler = logger.configurar_logger()
 
 # Banderas de la CPU
 class Flags(IntEnum):
@@ -61,39 +64,55 @@ class ALU:
         
         if operation == ALUOperation.ADD:
             result = operand1 + operand2
+            logger_handler.info(f"Desarrollo de la operación suma entre: {operand1} y {operand2} con resultado {result}")
         elif operation == ALUOperation.SUB:
             result = operand1 - operand2
+            logger_handler.info(f"Desarrollo de la operación resta entre {operand1} y {operand2} con resultado {result}")
         elif operation == ALUOperation.MUL:
             result = operand1 * operand2
+            logger_handler.info(f"Desarrollo de la operación multiplicación entre {operand1} y {operand2} con resultado {result}")
         elif operation == ALUOperation.DIV:
             if operand2 == 0:
+                logger_handler.error("Se intentó desarrollar una división por cero")
                 raise RuntimeError("Division por cero")
             result = operand1 // operand2
+            logger_handler.info(f"Desarrollo de la operación división entre {operand1} y {operand2} con resultado {result}")
         elif operation == ALUOperation.AND:
             result = operand1 & operand2
+            logger_handler.info(f"Desarrollo de la operación AND entre {operand1} y {operand2} con resultado {result}")
         elif operation == ALUOperation.OR:
             result = operand1 | operand2
+            logger_handler.info(f"Desarrollo de la operación OR entre {operand1} y {operand2} con resultado {result}")
         elif operation == ALUOperation.XOR:
             result = operand1 ^ operand2
+            logger_handler.info(f"Desarrollo de la operación XOR - or exclusivo entre {operand1} y {operand2} con resultado {result}")
         elif operation == ALUOperation.NOT:
             result = ~operand1
+            logger_handler.info(f"Desarrollo de la operación negación para {operand1}")
         elif operation == ALUOperation.SHL:
             result = operand1 << (operand2 & 63)  # Limitar shift a 63 bits
+            logger_handler.info(f"Desarrollo de la operación shift left para {operand1}")
         elif operation == ALUOperation.SHR:
             result = operand1 >> (operand2 & 63)
+            logger_handler.info(f"Desarrollo de la operación shift right para {operand1}")
         elif operation == ALUOperation.CMP:
             result = operand1 - operand2
+            logger_handler.info(f"Desarrollo de la operación comparación para {operand1} y {operand2}")
         elif operation == ALUOperation.INC:
             result = operand1 + 1
+            logger_handler.info(f"Desarrollo de la operación incremento para {operand1}")
         elif operation == ALUOperation.DEC:
             result = operand1 - 1
+            logger_handler.info(f"Desarrollo de la operación decremento para {operand1}")
         elif operation == ALUOperation.NEG:
             result = -operand1
         else:
+            logger_handler.error(f"Operación de ALU no reconocida: {operation}")
             raise ValueError(f"Operacion ALU no reconocida: {operation}")
         
         # Calcular flags
         flags = self._calculate_flags(result, operand1, operand2, operation)
+        logger_handler.info(f"Estado de la ALU por medio del flag register: {flags}")
         
         # Convertir resultado a 64 bits sin signo
         result = result & 0xFFFFFFFFFFFFFFFF

@@ -17,6 +17,8 @@ from src.loader.Linker_Loader import Linker, Loader
 from src.user_interface.cli import messages, help_module, color
 import src.user_interface.logging.logger as logger
 
+logger_handler = logger.configurar_logger()
+
 # -----------------------------
 # Path helpers (extensions)
 # -----------------------------
@@ -24,6 +26,7 @@ import src.user_interface.logging.logger as logger
 def _ensure_ext(path: str, expected_ext: str) -> str:
     """Append expected_ext if path has no extension."""
     root, ext = os.path.splitext(path)
+    logger_handler.info(f"Asegurandose que el archivo {path} sea de extensión {expected_ext}")
     return path if ext else (path + expected_ext)
 
 def _normalize_input_asm(path: str) -> str:
@@ -39,6 +42,7 @@ def _normalize_output_img(path: str) -> str:
 
 def assemble(input_path: str, output_path: str):
     """Assemble an .asm file into a .img image"""
+    logger_handler.info(f"Proceso de ensamblado de {input_path} hacia {output_path}")
     input_path = _normalize_input_asm(input_path)
     output_path = _normalize_output_img(output_path)
     dir_name = os.path.dirname(output_path)
@@ -54,6 +58,7 @@ def load_img(cpu: CPU, path: str):
     Returns (min_addr, max_addr) of written addresses and sets cpu.exec_map if
     a .exec sidecar file exists.
     """
+    logger_handler.info("validando y cargando la umagen a a memoria por medio del cargador")
     Linker.revisar_img(path)
     min_addr, max_addr = Loader.leer_img(cpu.mem, path)
     exec_path = path + ".exec"
@@ -71,6 +76,7 @@ def load_img(cpu: CPU, path: str):
 
 def run_image(img_path: str, start_addr: int | None = None):
     """Create a CPU, load the image, and run. Auto-start using .exec if present."""
+    logger_handler.info("Ejecución de una imagen")
     cpu = CPU(memory_size=65536)
     min_addr, _ = load_img(cpu, img_path)
     if start_addr is None:
@@ -116,7 +122,18 @@ def print_menu():
 def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optional[str]:
     """Prompt until the user enters a non-empty value; returns None if canceled."""
     while True:
-        val = input(message).strip()
+        try:
+            val = input(message).strip()
+        except KeyboardInterrupt:
+            print(color.Color.ROJO)
+            logger_handler.exception("Entrada dada por el usuario no es valida, surgimiento de una excepción")
+            print("Entrada equivocada")
+            print(color.Color.RESET_COLOR)
+        except EOFError:
+            print(color.Color.ROJO)
+            logger_handler.exception("Entrada dada por el usuario no es valida, surgimiento de una excepción")
+            print("Entrada equivocada")
+            print(color.Color.RESET_COLOR)
         if allow_cancel and val.lower() in ("back", "menu", "cancel", "0"):
             return None
         if val:
@@ -133,23 +150,6 @@ def _prompt_existing_file(message: str, expected_ext: str | None = None, allow_c
         if os.path.exists(path):
             return path
         print(f"No existe el archivo: {path}")
-
-
-def show_format_info():
-    """Print information about the instruction format."""
-    print("\n" + "="*60)
-    print("INFORMACION DEL FORMATO DE INSTRUCCIONES")
-    print("="*60)
-    print(
-        "[63-56] Opcode (8 bits)\n"
-        "[55-52] RD - Registro destino (4 bits)\n"
-        "[51-48] RS1 - Registro fuente 1 (4 bits)\n"
-        "[47-44] RS2 - Registro fuente 2 (4 bits)\n"
-        "[43-32] FUNC - Campo de funcion o modificador (12 bits)\n"
-        "[31-0]  IMM32 - Campo inmediato/direccion (32 bits)"
-    )
-    input("\nPresione Enter para continuar...")
-
 
 # -----------------------------
 # CLI parsing and dispatch
@@ -221,7 +221,6 @@ def handle_subcommands(args) -> bool:
 
 def run_cli():
     """Entry point for the application: subcommands or interactive loop."""
-    logger_handler = logger.configurar_logger()
     args = parse_cli_args()
     if handle_subcommands(args):
         return

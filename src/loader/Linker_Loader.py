@@ -1,6 +1,10 @@
 from typing import Tuple
 import os
 
+import src.user_interface.logging.logger as logger
+
+logger_handler = logger.configurar_logger()
+
 class Linker:
     """Es el encargado de revisar un archivo .img recibido por parte del modulo anterior, 
     donde una tiene el nombre de la instrucción y la otra una lista de enteros
@@ -13,9 +17,11 @@ class Linker:
         Retorna True si todo está bien, o lanza ValueError con el error.
         """
         if not os.path.exists(path):
+            logger_handler.error("El archivo indicado no existe")
             raise FileNotFoundError(f"No existe el archivo {path}")
 
         with open(path, "r") as f:
+            logger_handler.info("Apertura del archivo .img para el procesamiento por parte del enlazador-cargador")
             for linea_no, raw in enumerate(f, 1):
                 # quitar comentarios y espacios
                 linea = raw.split("#", 1)[0].strip()
@@ -60,8 +66,10 @@ class Loader:
             instruccion = instruccion[2:]
         instruccion = instruccion.strip(',;')
         if instruccion == '':
+            logger_handler.error("Error con la instrucción, esta se encuentra vacía")
             raise ValueError("Instrucción vacía")
         if len(instruccion) > 16:
+            logger_handler.error("La longitud de la instrucción supera el valor máximo estandarizado")
             raise ValueError(f"La instrucción es demasiado larga")
         return int(instruccion,16) & 0xFFFFFFFFFFFFFFFF
 
@@ -88,6 +96,7 @@ class Loader:
                     der = der.strip()
                     if izq == '':
                         if dir_sig is None:
+                            logger_handler.error(f"No se brindó una dirección para la instrucción en la linea: {linea_no}")
                             raise ValueError(f"No se brindó una dirección para la instrucción en la linea {linea_no}")
                         dir = dir_sig
                     else:
