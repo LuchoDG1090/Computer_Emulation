@@ -106,19 +106,6 @@ def run_image(img_path: str, start_addr: int | None = None):
 # UI helpers
 # -----------------------------
 
-def print_menu():
-    """Display the CLI menu for assembling/running user code"""
-    print("\n" + "="*60)
-    print("    EMULADOR DE CPU EUCLID-64 - INTERFAZ CLI")
-    print("="*60)
-    print("1) Ensamblar (.asm -> .img)")
-    print("2) Ejecutar (.img)")
-    print("3) Ensamblar y ejecutar")
-    print("4) Información del formato de instrucciones")
-    print("0) Salir")
-    print("-"*60)
-
-
 def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optional[str]:
     """Prompt until the user enters a non-empty value; returns None if canceled."""
     while True:
