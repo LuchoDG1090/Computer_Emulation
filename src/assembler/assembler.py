@@ -46,6 +46,25 @@ class Assembler:
                 nodes.append({'addr': self.loc, 'tokens': tokens})
                 continue
 
+            # Manejo especial de DW/RESW para ajustar 'loc' por el tamaño real
+            if head == 'DW':
+                # cantidad de valores en esta línea (tokens después de 'DW')
+                count_vals = max(0, len(tokens) - 1)
+                nodes.append({'addr': self.loc, 'tokens': tokens})
+                self.loc += self.word_size * count_vals
+                continue
+
+            if head == 'RESW':
+                if len(tokens) != 2:
+                    raise ValueError("RESW requiere un argumento (cantidad)")
+                try:
+                    count = self._parse_int(tokens[1])
+                except Exception as e:
+                    raise ValueError(f"RESW argumento inválido: {tokens[1]}") from e
+                nodes.append({'addr': self.loc, 'tokens': tokens})
+                self.loc += self.word_size * count
+                continue
+
             # Instrucción normal: registra dirección actual y tokens
             nodes.append({'addr': self.loc, 'tokens': tokens})
             self.loc += self.word_size
@@ -91,7 +110,7 @@ class Assembler:
 
             if len(tokens) == 4:  # 3 operandos
                 rd = self.encoder.reg_to_num(tokens[1])
-                # Soportar I-Type con 3 operandos para ADDI
+                # Soportar I-Type con 3 operandos para ADDI/ST/LD (base+offset)
                 if mnemonic == "ADDI":
                     rs1 = self.encoder.reg_to_num(tokens[2])
                     imm_tok = tokens[3].rstrip(',')
@@ -104,6 +123,26 @@ class Assembler:
                     imm_tok = tokens[3].rstrip(',')
                     imm32 = self._parse_int(imm_tok)
                     word = self.encoder.i_type(opcode, rd=rb, rs1=rs_src, imm32=imm32, func=1)
+                elif mnemonic == "LD":
+                    # LD Rd, Rb, imm -> func=1 (addr = Rb + signext(imm))
+                    rb = self.encoder.reg_to_num(tokens[2])      # base
+                    imm_tok = tokens[3].rstrip(',')
+                    imm32 = self._parse_int(imm_tok)
+                    word = self.encoder.i_type(opcode, rd=rd, rs1=rb, imm32=imm32, func=1)
+                elif mnemonic == "IN":
+                    # IN Rd, Rb, count -> func=subop(parse-line) + sep=' '
+                    rb = self.encoder.reg_to_num(tokens[2])
+                    imm_tok = tokens[3].rstrip(',')
+                    imm32 = self._parse_int(imm_tok)
+                    func_val = (1 << 1) | (32 << 4)
+                    word = self.encoder.i_type(opcode, rd=rd, rs1=rb, imm32=imm32, func=func_val)
+                elif mnemonic == "OUT":
+                    # OUT Rsrc, imm, func  -> I-Type con func personalizado
+                    imm_tok = tokens[2].rstrip(',')
+                    imm32 = self._parse_int(imm_tok)
+                    func_tok = tokens[3].rstrip(',')
+                    func_val = self._parse_int(func_tok)
+                    word = self.encoder.i_type(opcode, rd=rd, rs1=0, imm32=imm32, func=func_val)
                 else:
                     # R-Type clásico: ADD/SUB/MUL/...
                     rs1 = self.encoder.reg_to_num(tokens[2])
