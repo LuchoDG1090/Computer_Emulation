@@ -9,6 +9,7 @@ Linker/Loader, and run them with optional auto-start via the .exec map.
 import os
 import argparse
 import math
+from typing import Optional
 
 from src.cpu.cpu import CPU
 from src.assembler.assembler import Assembler
@@ -112,18 +113,22 @@ def print_menu():
     print("-"*60)
 
 
-def _prompt_until_non_empty(message: str) -> str:
-    """Prompt until the user enters a non-empty value."""
+def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optional[str]:
+    """Prompt until the user enters a non-empty value; returns None if canceled."""
     while True:
         val = input(message).strip()
+        if allow_cancel and val.lower() in ("back", "menu", "cancel", "0"):
+            return None
         if val:
             return val
         print("Por favor, ingrese una ruta válida.")
 
-def _prompt_existing_file(message: str, expected_ext: str | None = None) -> str:
-    """Prompt until the user enters a path to an existing file (auto-append ext if missing)."""
+def _prompt_existing_file(message: str, expected_ext: str | None = None, allow_cancel: bool = False) -> Optional[str]:
+    """Prompt until the user enters a path to an existing file; returns None if canceled."""
     while True:
-        raw = _prompt_until_non_empty(message)
+        raw = _prompt_until_non_empty(message, allow_cancel=allow_cancel)
+        if raw is None:
+            return None
         path = _ensure_ext(raw, expected_ext) if expected_ext else raw
         if os.path.exists(path):
             return path
@@ -174,19 +179,37 @@ def parse_cli_args():
 def handle_subcommands(args) -> bool:
     """Execute the given subcommand. Returns True if something was executed."""
     if args.cmd == "asm":
-        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
-        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+        if in_raw is None:
+            return False
+        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+        if out_raw is None:
+            return False
         assemble(_normalize_input_asm(in_raw), _normalize_output_img(out_raw))
         return True
     if args.cmd == "run":
-        img_raw = args.img or _prompt_existing_file("Ruta del archivo .img (sin o con extensión): ", ".img")
+        img_raw = args.img or _prompt_existing_file("Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ", ".img", allow_cancel=True)
+        if img_raw is None:
+            return False
         img_in = _normalize_output_img(img_raw)
-        start = None if str(args.start).lower() == "auto" else int(args.start, 0)
+        start_arg = str(args.start)
+        if start_arg.lower() == "auto":
+            start = None
+        else:
+            # Allow user to cancel when prompted interactively later
+            try:
+                start = int(start_arg, 0)
+            except Exception:
+                start = None
         run_image(img_in, start)
         return True
     if args.cmd == "asmrun":
-        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión): ", ".asm")
-        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión): ")
+        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+        if in_raw is None:
+            return False
+        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+        if out_raw is None:
+            return False
         in_path = _normalize_input_asm(in_raw)
         out_path = _normalize_output_img(out_raw)
         assemble(in_path, out_path)
@@ -242,6 +265,7 @@ def run_cli():
             start_s = input("PC inicial (hex como 0x4E20 o 'auto') [auto]: ").strip() or "auto"
             assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
             start = None if start_s.lower() == "auto" else int(start_s, 0)
+            run_image(_normalize_output_img(img_out), start)
         elif choice == "4":
             logger_handler.info("Ingreso al módulo de ayuda")
             val = math.inf

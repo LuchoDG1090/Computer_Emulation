@@ -230,7 +230,6 @@ class CPU:
         rd = instruction['rd']
         rs1 = instruction['rs1']
         rs2 = instruction['rs2']
-        func = instruction['func']
         
         # Obtener valores de los registros fuente
         operand1 = self.registers[rs1]
@@ -312,9 +311,33 @@ class CPU:
             self._io_out(src_reg_val, imm32, func)
 
         elif opcode == Opcodes.IN:
-            # IN Rd, imm32: lee de MMIO (func=0) o puerto (func=1) y guarda en Rd  <-- NUEVO
-            value = self._io_in(imm32, func)
-            self.registers[rd] = value & 0xFFFFFFFFFFFFFFFF
+            # IN Rd, ...
+            # Extended subop: parse a line of integers into memory
+            subop = (func >> 1) & 0x7
+            sep_chr = (func >> 4) & 0xFF
+            if subop == 1:
+                base = self.registers[rs1]
+                count = imm32 & 0xFFFFFFFF
+                try:
+                    line = input()
+                except Exception:
+                    line = ""
+                # Default separator: ASCII from func (e.g., space=32). Fallback to whitespace split.
+                parts = line.split(chr(sep_chr)) if sep_chr else line.split()
+                for i in range(min(count, len(parts))):
+                    try:
+                        val = int(parts[i], 0)
+                    except Exception:
+                        val = 0
+                    addr = base + i * 8
+                    if 0 <= addr <= (self.memory_size - 8):
+                        self._write_memory_64(addr, val)
+                # Return number of parsed items in Rd
+                self.registers[rd] = min(count, len(parts))
+            else:
+                # IN Rd, imm32: lee de MMIO (func=0) o puerto (func=1)
+                value = self._io_in(imm32, func)
+                self.registers[rd] = value & 0xFFFFFFFFFFFFFFFF
 
         elif opcode == Opcodes.ADDI:
             # ADDI Rd, Rs1, #imm32  => Rd = Rs1 + imm32
@@ -332,7 +355,42 @@ class CPU:
     
     def _io_out(self, value: int, target: int, func: int):
         """Salida a MMIO o puertos."""
-        if func == 1:
+        # Decode extended OUT sub-operations using FUNC12 bits
+        # Layout:
+        #   bit 0   : 0 = MMIO mode (default), 1 = PORT mode
+        #   bits 3:1: subop (0 = normal), 1 = print int array with separator
+        #   bits 11:4: separator ASCII (0..255)
+        mode_port = func & 1
+        subop = (func >> 1) & 0x7
+        sep_chr = (func >> 4) & 0xFF
+
+        # Extended sub-operation: print array of integers with separator
+        if subop == 1:
+            base_addr = value            # base pointer to array of 64-bit words
+            count = target & 0xFFFFFFFF  # number of elements to print
+            # Clamp count to a reasonable upper bound to avoid runaway
+            if count < 0:
+                count = 0
+            if count > 1_000_000:
+                count = 1_000_000
+            for i in range(count):
+                addr = base_addr + i * 8
+                if not (0 <= addr <= (self.memory_size - 8)):
+                    break
+                val = self._read_memory_64(addr)
+                # print integer without newline
+                self._print_int_no_newline(val)
+                # print separator between numbers (not after last)
+                if i != count - 1 and sep_chr:
+                    self._console_port_write_char(sep_chr)
+            return
+
+        # Extended sub-operation: print single integer without newline
+        if subop == 2:
+            self._print_int_no_newline(value)
+            return
+
+        if mode_port == 1:
             # salida a puerto numerico
             handler = self.io_ports.get(target)
             if handler:
@@ -389,6 +447,16 @@ class CPU:
         """Imprime el valor como entero decimal."""
         print(int(value & 0xFFFFFFFFFFFFFFFF))
 
+    def _print_int_no_newline(self, value: int):
+        """Imprime el entero sin salto de línea (para salidas formateadas)."""
+        try:
+            print(int(value & 0xFFFFFFFFFFFFFFFF), end="")
+        except Exception:
+            # Fallback textual
+            s = str(int(value & 0xFFFFFFFFFFFFFFFF))
+            for ch in s:
+                self._console_port_write_char(ord(ch))
+
     def _console_port_read_char(self) -> int:
         """Lee un caracter de la consola y retorna su codigo ASCII (LSB)."""
         try:
@@ -435,7 +503,6 @@ class CPU:
         """Ejecuta instrucciones de control de flujo (J-Type)"""
         opcode = instruction['opcode']
         imm32 = instruction['imm32']  # Direccion de salto
-        func = instruction['func']
         
         if opcode == Opcodes.JMP:
             self.pc = imm32
