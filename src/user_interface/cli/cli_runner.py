@@ -74,7 +74,7 @@ def load_img(cpu: CPU, path: str):
     return min_addr, max_addr
 
 
-def run_image(img_path: str, start_addr: int | None = None):
+def run_image(img_path: str, start_addr: int | None = None, step: bool = False):
     """Create a CPU, load the image, and run. Auto-start using .exec if present."""
     logger_handler.info("Ejecución de una imagen")
     cpu = CPU(memory_size=65536)
@@ -92,13 +92,10 @@ def run_image(img_path: str, start_addr: int | None = None):
             except ValueError:
                 start = min(cpu.exec_map)
         cpu.pc = start
-    if hasattr(cpu, "run"):
+    if step and hasattr(cpu, "run"):
+        cpu.run_cycles()
+    elif hasattr(cpu, "run"):
         cpu.run()
-    else:
-        while True:
-            cpu.step()
-            if getattr(cpu, "halted", False):
-                break
     print("Fin de ejecución")
 
 
@@ -110,7 +107,9 @@ def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optiona
     """Prompt until the user enters a non-empty value; returns None if canceled."""
     while True:
         try:
+            print("back para regresar")
             val = input(message).strip()
+            if val == "back": return
         except KeyboardInterrupt:
             print(color.Color.ROJO)
             logger_handler.exception("Entrada dada por el usuario no es valida, surgimiento de una excepción")
@@ -121,11 +120,12 @@ def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optiona
             logger_handler.exception("Entrada dada por el usuario no es valida, surgimiento de una excepción")
             print("Entrada equivocada")
             print(color.Color.RESET_COLOR)
-        if allow_cancel and val.lower() in ("back", "menu", "cancel", "0"):
-            return None
-        if val:
-            return val
-        print("Por favor, ingrese una ruta válida.")
+        else:
+            if allow_cancel and val.lower() in ("back", "menu", "cancel", "0"):
+                return None
+            if val:
+                return val
+            print("Por favor, ingrese una ruta válida.")
 
 def _prompt_existing_file(message: str, expected_ext: str | None = None, allow_cancel: bool = False) -> Optional[str]:
     """Prompt until the user enters a path to an existing file; returns None if canceled."""
@@ -302,6 +302,17 @@ def run_cli():
                 help_module.Help().formato_instrucciones()
             elif val == 5:
                 pass
+        elif choice == '5':
+            print("Ejecución por steps")
+            logger_handler.info("Ejecución de archivo .img por pasos")    
+            img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ", ".img", allow_cancel=True)
+            if img_in is None:
+                continue
+            start_s = input("PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: ").strip() or "auto"
+            if start_s.lower() in ("back", "menu", "cancel", "0"):
+                continue
+            start = None if start_s.lower() == "auto" else int(start_s, 0)
+            run_image(_normalize_output_img(img_in), start, True)
         elif choice == "exit()":
             logger_handler.info("CLI finalizada")
             print(color.Color.ROJO)

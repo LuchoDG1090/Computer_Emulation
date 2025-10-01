@@ -30,6 +30,10 @@ EEEEEEEEEEEEEEEEEEEEEE    uuuuuuuu  uuuu    cccccccccccccccclllllllliiiiiiii   d
 |p|e|ñ|a|t|e|c|h| |l|a|b|s|
 +-+-+-+-+-+-+-+-+ +-+-+-+-+
                         """.center(self.columns)
+        
+    @staticmethod
+    def get_terminal_size():
+        return shutil.get_terminal_size()
     
     def delete_scr(self):
         print(Color.RESET_ALL)
@@ -105,6 +109,7 @@ EEEEEEEEEEEEEEEEEEEEEE    uuuuuuuu  uuuu    cccccccccccccccclllllllliiiiiiii   d
             ["2", "Ejecutar (.img)"],
             ["3", "Ensamblar y ejecutar"],
             ["4", "Ayuda"],
+            ["5", "Ejecutar (.img) instrucción por instrucción"],
             ["exit()", "Salir"]]
         )
     

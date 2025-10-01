@@ -15,6 +15,12 @@ from src.isa.isa import Opcodes
 from src.memory.memory import Memory
 from src.cpu.core import ALU, ALUOperation, Flags
 from src.cpu.decoder import Decoder
+import src.user_interface.logging.logger as logger
+from src.user_interface.cli import messages
+from src.user_interface.cli.table_formater import Table
+from src.user_interface.cli import color
+
+logger_handler = logger.configurar_logger()
 
 class CPU:
     """
@@ -124,6 +130,15 @@ class CPU:
         self.pc += 8
         return instruction
     
+    def __get_cpu_status(self):
+        logger_handler.info("Se ha solicitado el estado actual de los registros del pc")
+        return {
+            "program counter / instruction pointer": str(self.pc),
+            "instruction register": str(self.ir),
+            "flag register(bin)": str(bin(self.flags)),
+            "falg register(dec)": str(self.flags)
+        }
+    
     def decode(self, instruction: int) -> Dict[str, Any]:
         """
         Fase DECODE: Decodifica la instruccion
@@ -212,8 +227,7 @@ class CPU:
         cycles = 0
         
         while self.running:
-            if max_cycles and cycles >= max_cycles:
-                break
+            if max_cycles and cycles >= max_cycles: break
             
             should_continue = self.step()
             if not should_continue:
@@ -222,6 +236,47 @@ class CPU:
             
             cycles += 1
         
+        print(f"CPU detenida despues de {cycles} ciclos")
+    
+    def run_cycles(self, max_cycles: int = None):
+        self.running = True
+        cycles = 0
+
+        while self.running:
+            if max_cycles and cycles >= max_cycles: break
+            try:
+                step = input("Para ejecutar la siguiente instrucción ingrese step, para salir ingrese q >>").strip().lower()
+                if step not in ("q", "step"): raise EOFError
+            except KeyboardInterrupt:
+                print("\n")
+                print(color.Color.ROJO)
+                print("Para salir ingrese q")
+                print(color.Color.RESET_COLOR)
+                logger_handler.exception("Para salir el usuario debe ingresar q, no secuencias de escape")
+            except EOFError:
+                print("\n")
+                print(color.Color.ROJO)
+                print("Entrada de usuario no es correcta")
+                print(color.Color.RESET_COLOR)
+                logger_handler.exception("El valor ingresado por el usuario no es correcto")
+            else:
+                if step == "step":
+                    should_continue = self.step()
+                    estado_cpu = self.__get_cpu_status()
+                    col, row = messages.Messages.get_terminal_size()
+                    tabla_estado = Table(col, row, "Estado de la máquina")
+                    tabla_estado.add_encabezado(["registro", "Valor"])
+                    for k,v in estado_cpu.items():
+                        tabla_estado.add_fila([k, v])
+                    tabla_estado.print_table()
+                    if not should_continue:
+                        self.running = False
+                        break
+                elif step == "q":
+                    self.running = False
+                    break
+
+                cycles += 1
         print(f"CPU detenida despues de {cycles} ciclos")
     
     def _execute_alu_instruction(self, instruction: Dict[str, Any]) -> bool:
