@@ -16,6 +16,7 @@ from src.memory.memory import Memory
 from src.cpu.core import ALU, ALUOperation, Flags
 from src.cpu.decoder import Decoder
 import src.user_interface.logging.logger as logger
+from src.isa import isa
 from src.user_interface.cli import messages
 from src.user_interface.cli.table_formater import Table
 from src.user_interface.cli import color
@@ -138,6 +139,12 @@ class CPU:
             "flag register(bin)": str(bin(self.flags)),
             "falg register(dec)": str(self.flags)
         }
+
+    def __get_instruction_info(self):
+        info = self.__decoded_info
+        info['opcode'] = hex(info['opcode'])
+        info['instruccion decodificada [ISA]'] = isa.Opcodes(int(info['opcode'], 16)).name
+        return self.__decoded_info
     
     def decode(self, instruction: int) -> Dict[str, Any]:
         """
@@ -205,6 +212,7 @@ class CPU:
             
             # Fase DECODE
             decoded = self.decode(instruction)
+            self.__decoded_info = decoded
             
             # Fase EXECUTE
             should_continue = self.execute(decoded)
@@ -269,6 +277,15 @@ class CPU:
                     for k,v in estado_cpu.items():
                         tabla_estado.add_fila([k, v])
                     tabla_estado.print_table()
+
+                    informacion_instruccion = self.__get_instruction_info()
+                    tabla_instruccion = Table(col, row, "Información de la instrucción")
+                    tabla_instruccion.add_encabezado(["Campo", "Valor"])
+                    for k,v in informacion_instruccion.items():
+                        tabla_instruccion.add_fila([k, str(v)])
+                    
+                    tabla_instruccion.print_table()
+
                     if not should_continue:
                         self.running = False
                         break
