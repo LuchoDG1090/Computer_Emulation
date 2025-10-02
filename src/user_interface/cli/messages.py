@@ -110,6 +110,7 @@ EEEEEEEEEEEEEEEEEEEEEE    uuuuuuuu  uuuu    cccccccccccccccclllllllliiiiiiii   d
             ["3", "Ensamblar y ejecutar"],
             ["4", "Ayuda"],
             ["5", "Ejecutar (.img) instrucción por instrucción"],
+            ["6", "Editor de memoria (leer/escribir/exec y ejecutar)"],
             ["exit()", "Salir"]]
         )
     

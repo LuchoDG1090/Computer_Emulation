@@ -11,6 +11,8 @@ Implementacion de CPU que sigue la arquitectura Von Neumann con:
 """
 
 from typing import Dict, List, Optional, Any
+import os
+import datetime
 from src.isa.isa import Opcodes
 from src.memory.memory import Memory
 from src.cpu.core import ALU, ALUOperation, Flags
@@ -82,6 +84,12 @@ class CPU:
 
         # Mapa de direcciones ejecutables (None => no verificar)
         self.exec_map: Optional[set[int]] = None
+        # Segmentos cargados: lista de tuplas (inicio, fin_inclusivo, nombre)
+        self.segments: list[tuple[int, int, str]] = []
+        # Nombre de programa actual (ruta .img), si aplica
+        self.current_program: Optional[str] = None
+        # Conjunto de direcciones base de palabra (8 bytes) ocupadas por programas cargados
+        self.occupied_words: set[int] = set()
     
     def reset(self):
         """Reinicia la CPU a su estado inicial"""
@@ -235,7 +243,8 @@ class CPU:
         cycles = 0
         
         while self.running:
-            if max_cycles and cycles >= max_cycles: break
+            if max_cycles and cycles >= max_cycles:
+                break
             
             should_continue = self.step()
             if not should_continue:
@@ -251,10 +260,12 @@ class CPU:
         cycles = 0
 
         while self.running:
-            if max_cycles and cycles >= max_cycles: break
+            if max_cycles and cycles >= max_cycles:
+                break
             try:
                 step = input("Para ejecutar la siguiente instrucción ingrese step, para salir ingrese q >>").strip().lower()
-                if step not in ("q", "step"): raise EOFError
+                if step not in ("q", "step"):
+                    raise EOFError
             except KeyboardInterrupt:
                 print("\n")
                 print(color.Color.ROJO)
@@ -617,11 +628,54 @@ class CPU:
     
     def _read_memory_64(self, address: int) -> int:
         """Lee un valor de 64 bits desde memoria (Memory)"""
-        return self.mem.read_word(address)
+        try:
+            return self.mem.read_word(address)
+        except ValueError as e:
+            raise RuntimeError(f"Segmentation fault (read) @ 0x{address:08X}: {e}")
     
     def _write_memory_64(self, address: int, value: int):
         """Escribe un valor de 64 bits en memoria (Memory)"""
-        self.mem.write_word(address, value & 0xFFFFFFFFFFFFFFFF)
+        try:
+            self.mem.write_word(address, value & 0xFFFFFFFFFFFFFFFF)
+        except ValueError as e:
+            raise RuntimeError(f"Segmentation fault (write) @ 0x{address:08X}: {e}")
+
+    def dump_core(self, directory: str = "logs") -> tuple[str, str]:
+        """Genera un core dump: memoria completa (.bin) y metadatos de CPU (.txt).
+        Retorna (ruta_bin, ruta_txt).
+        """
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except Exception:
+            directory = "."
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        base = f"core_{ts}"
+        bin_path = os.path.join(directory, base + ".bin")
+        txt_path = os.path.join(directory, base + ".txt")
+        # memoria
+        try:
+            with open(bin_path, "wb") as f:
+                f.write(self.mem.data)
+        except Exception:
+            bin_path = ""
+        # metadatos
+        try:
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write("EUCLID-64 core dump\n")
+                f.write(f"program: {self.current_program or ''}\n")
+                f.write(f"pc=0x{self.pc:016X} ir=0x{self.ir:016X} flags=0b{self.flags:08b} sp=0x{self.stack_pointer:016X}\n")
+                f.write("registers:" + ",".join(f"R{i}=0x{v:016X}" for i, v in enumerate(self.registers)) + "\n")
+                f.write(f"cycles={self.cycle_count} running={self.running}\n")
+                # segmentos
+                f.write("segments:\n")
+                for start, end, name in self.segments:
+                    f.write(f"  0x{start:08X}-0x{end:08X} {name}\n")
+                # exec map tamaño
+                n_exec = len(self.exec_map) if self.exec_map else 0
+                f.write(f"exec_map_count={n_exec}\n")
+        except Exception:
+            txt_path = ""
+        return bin_path, txt_path
     
     def _push(self, value: int):
         """Empuja un valor a la pila (crecimiento hacia abajo en bloques de 8 bytes)"""
