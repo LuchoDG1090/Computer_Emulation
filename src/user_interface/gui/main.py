@@ -2,13 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import customtkinter as ctk
-from components import top_menu
+from components import top_menu, main_func
 
 class Routes:
     LOGO_PATH = r"resources\logo_sin_fondo.png"
     HOME_PATH = r"resources\home.png"
     HELP_PATH = r"resources\help.png"
     INFO_PATH = r"resources\information.png"
+    COMPILE_ICON_PATH = r'resources\compilador.png'
+    UPLOAD_ICON_PATH = r'resources\upload.png'
+    ASSEMBLE_ICON_PATH = r'resources\assemble.png'
+    RELOC_ICON_PATH = r'resources\enlazar-cargar.png'
 
 
 class MainFrame(ctk.CTk):
@@ -25,11 +29,6 @@ class MainFrame(ctk.CTk):
         self.rowconfigure(1, weight=9)
         self.columnconfigure(0, weight=1)
 
-        # # Top Menu
-        # self.top_menu = ctk.CTkFrame(self, fg_color="#1a1a1a")
-        # self.top_menu.grid(row=0, column=0, sticky="nsew")
-        # self.top_menu.columnconfigure(0, weight=1)
-
         title_section = top_menu.TopMenuTitleOptions(
             self,
             self.__return_percentage_relation(self.height, 10),
@@ -41,16 +40,19 @@ class MainFrame(ctk.CTk):
             image_width = self.__return_percentage_relation(self.height, 10),
             image_height = self.__return_percentage_relation(self.height, 10)
         )
-
         title_section.grid(row=0, column=0, sticky="nsew")
 
+        main_functionality_frame = main_func.MainFunctionalityMenu(
+            self,
+            self.__return_percentage_relation(self.height, 90),
+            self.width,
+            compile_icon_path = Routes.COMPILE_ICON_PATH,
+            upload_icon_path = Routes.UPLOAD_ICON_PATH,
+            assemble_icon_path = Routes.ASSEMBLE_ICON_PATH,
+            reloc_icon_path = Routes.RELOC_ICON_PATH
+        )
+        main_functionality_frame.grid(row = 1, column = 0, sticky = 'nsew')
 
-        main_content = ctk.CTkFrame(self, fg_color="transparent")
-        main_content.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
-        
-
-        
-    
     def __return_percentage_relation(self, dimension, percentage):
         return (dimension * percentage) / 100
 
