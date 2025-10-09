@@ -1,25 +1,25 @@
 import customtkinter as ctk
 
-class GeneralPurposeRegisterFrame(ctk.CTkFrame):
-    def __init__(self, parent, fg_color = '#0C1826'):
+class FlagRegisterFrame(ctk.CTkFrame):
+    def __init__(self, parent, fg_color = '#0c1826'):
         super().__init__(parent, fg_color = fg_color)
 
         self.columnconfigure(0, weight = 1)
         self.rowconfigure(0, weight = 0)
         self.rowconfigure(1, weight = 1)
-    
+
         self.__build_text()
         self.__build_table()
 
     def __build_text(self):
-        text = ctk.CTkLabel(
+        title = ctk.CTkLabel(
             self,
-            text = 'Registros de propósito general',
+            text = 'Flag register',
             font=("Comic Sans MS", 14),
             text_color="white"
         )
-        text.grid(row = 0, column = 0)
-    
+        title.grid(row = 0, column = 0)
+
     def __build_table(self):
         scrollable_frame = ctk.CTkScrollableFrame(
             self
@@ -30,3 +30,4 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
         for j, header in enumerate(headers):
             lbl = ctk.CTkLabel(scrollable_frame, text=header, fg_color="#2b2b2b", corner_radius=4)
             lbl.grid(row=0, column=j, sticky="nsew", padx=5, pady=5)
+        

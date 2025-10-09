@@ -7,7 +7,7 @@ Fecha: 07/10/2025
 Versión: 1.0
 """
 import customtkinter as ctk
-from components import high_level_code, assembly, general_purpose_regs, reloc, ram, buttons_actions, input, salida
+from components import high_level_code, assembly, general_purpose_regs, reloc, ram, buttons_actions, input, salida, control_unit, flag_register
 
 class MainFunctionalityMenu(ctk.CTkFrame):
     def __init__(self, parent, height, width, **kwargs):
@@ -90,28 +90,40 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             fg_color = 'transparent'
         )
         
-        frame_third_column.rowconfigure(0, weight = 1)
-        frame_third_column.rowconfigure(1, weight = 1)
-        frame_third_column.rowconfigure(2, weight = 1)
-        frame_third_column.rowconfigure(3, weight = 1)
-        frame_third_column.rowconfigure(4, weight = 1)
+        frame_third_column.rowconfigure(0, weight = 5)
+        frame_third_column.rowconfigure(1, weight = 5)
+        frame_third_column.rowconfigure(2, weight = 5)
+        frame_third_column.rowconfigure(3, weight = 5)
+        frame_third_column.rowconfigure(4, weight = 0)
+        frame_third_column.grid_propagate(False)
         frame_third_column.columnconfigure(0, weight = 1)
 
         salida_frame = salida.SalidaFrame(
             frame_third_column
         )
-        salida_frame.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
+
+        unidad_de_control_frame = control_unit.ControlUnitFrame(
+            frame_third_column
+        )
+
+        flag_register_frame = flag_register.FlagRegisterFrame(
+            frame_third_column
+        )
 
         gen_purpose_regs = general_purpose_regs.GeneralPurposeRegisterFrame(
             frame_third_column
         )
-        gen_purpose_regs.grid(column = 0, row = 3, sticky = 'nsew', pady = 12)
 
         botones_acciones = buttons_actions.BotonesAcciones(
             frame_third_column,
             imagen_siguiente = self.siguiente_icon_path,
             reiniciar_imagen = self.reiniciar_icon_path
         )
-        botones_acciones.grid(column = 0, row = 4, sticky = 'nsew', pady = 12)
+
+        salida_frame.grid(              column = 0, row = 0, sticky = 'ew', pady = 12)
+        unidad_de_control_frame.grid(   column = 0, row = 1, sticky = 'ew', pady = 12)
+        flag_register_frame.grid(       column = 0, row = 2, sticky = 'ew', pady = 12)
+        gen_purpose_regs.grid(          column = 0, row = 3, sticky = 'ew', pady = 12)
+        botones_acciones.grid(          column = 0, row = 4, sticky = 'ew', pady = 12)
 
         frame_third_column.grid(column = 2, row = 0, sticky = 'nsew', padx = (10,10), pady = (10,10))

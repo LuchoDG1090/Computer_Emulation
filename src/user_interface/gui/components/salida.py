@@ -5,8 +5,9 @@ class SalidaFrame(ctk.CTkFrame):
         super().__init__(parent, fg_color = fg_color)
 
         self.columnconfigure(0, weight = 1)
-        self.rowconfigure(0, weight = 1)
+        self.rowconfigure(0, weight = 0)
         self.rowconfigure(1, weight = 1)
+        self.grid_propagate(False)
 
         self.__build_text()
         self.__build_output_frame()
@@ -25,4 +26,4 @@ class SalidaFrame(ctk.CTkFrame):
             self,
             fg_color = '#2b2b2b'
         )
-        output_frame.grid(column = 0, row = 1, sticky = 'nsew', pady = 5)
+        output_frame.grid(column = 0, row = 1, sticky = 'ew', pady = 5, padx = 5)

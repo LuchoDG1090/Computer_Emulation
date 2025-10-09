@@ -5,7 +5,7 @@ class ControlUnitFrame(ctk.CTkFrame):
         super().__init__(parent, fg_color = fg_color)
 
         self.columnconfigure(0, weight = 1)
-        self.rowconfigure(0, weight = 1)
+        self.rowconfigure(0, weight = 0)
         self.rowconfigure(1, weight = 1)
 
         self.__build_text()
@@ -24,7 +24,7 @@ class ControlUnitFrame(ctk.CTkFrame):
         scrollable_frame_cu = ctk.CTkScrollableFrame(
             self
         )
-        scrollable_frame_cu.grid(column = 0, row = 1, sticky = 'nsew')
+        scrollable_frame_cu.grid(column = 0, row = 1, sticky = 'nsew', padx = 5, pady = 5)
         headers = ['registro', 'valor']
         for j, header in enumerate(headers):
             lbl = ctk.CTkLabel(scrollable_frame_cu, text = header, fg_color="#2b2b2b", corner_radius=4)
