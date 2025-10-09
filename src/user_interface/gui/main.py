@@ -13,6 +13,8 @@ class Routes:
     UPLOAD_ICON_PATH = r'resources\upload.png'
     ASSEMBLE_ICON_PATH = r'resources\assemble.png'
     RELOC_ICON_PATH = r'resources\enlazar-cargar.png'
+    SIGUIENTE_ICON_PATH = r'resources\next.png'
+    REINICIAR_ICON_PATH = r'resources\restart.png'
 
 
 class MainFrame(ctk.CTk):
@@ -49,7 +51,9 @@ class MainFrame(ctk.CTk):
             compile_icon_path = Routes.COMPILE_ICON_PATH,
             upload_icon_path = Routes.UPLOAD_ICON_PATH,
             assemble_icon_path = Routes.ASSEMBLE_ICON_PATH,
-            reloc_icon_path = Routes.RELOC_ICON_PATH
+            reloc_icon_path = Routes.RELOC_ICON_PATH,
+            siguiente_icon_path = Routes.SIGUIENTE_ICON_PATH,
+            reiniciar_icon_path = Routes.REINICIAR_ICON_PATH
         )
         main_functionality_frame.grid(row = 1, column = 0, sticky = 'nsew')
 

@@ -26,7 +26,8 @@ class RelocCodeFrame(ctk.CTkFrame):
 
     def __build_entry_text(self):
         text_entry = ctk.CTkTextbox(
-            self
+            self,
+            fg_color = '#2b2b2b'
         )
         text_entry.grid(row = 1, column = 0, sticky = 'nsew', padx = 12)
 

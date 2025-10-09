@@ -7,7 +7,7 @@ Fecha: 07/10/2025
 Versión: 1.0
 """
 import customtkinter as ctk
-from components import high_level_code, assembly, general_purpose_regs, reloc
+from components import high_level_code, assembly, general_purpose_regs, reloc, ram, buttons_actions, input, salida
 
 class MainFunctionalityMenu(ctk.CTkFrame):
     def __init__(self, parent, height, width, **kwargs):
@@ -21,6 +21,8 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.upload_icon_path = kwargs.get('upload_icon_path', '')
         self.assemble_icon_path = kwargs.get('assemble_icon_path', '')
         self.reloc_icon_path = kwargs.get('reloc_icon_path', '')
+        self.siguiente_icon_path = kwargs.get('siguiente_icon_path', '')
+        self.reiniciar_icon_path = kwargs.get('reiniciar_icon_path', '')
 
         self.__build_first_column()
         self.__build_second_column()
@@ -67,7 +69,20 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             reloc_icon = self.reloc_icon_path
         )
         reloc_code.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
+
+        ram_memory = ram.DinamicRandomAccessMemory(
+            frame_second_column
+        )
+        ram_memory.grid(column = 0, row = 1, sticky = 'nsew', pady = 12)
+
+        input_frame = input.userInputBox(
+            frame_second_column
+        )
+        input_frame.grid(column = 0, row = 2, sticky = 'nsew', pady = 12)
+
+
         frame_second_column.grid(column = 1, row = 0, sticky = 'nsew', padx = (10, 10), pady = (10, 10))
+
 
     def __build_third_column(self):
         frame_third_column = ctk.CTkFrame(
@@ -78,12 +93,25 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         frame_third_column.rowconfigure(0, weight = 1)
         frame_third_column.rowconfigure(1, weight = 1)
         frame_third_column.rowconfigure(2, weight = 1)
+        frame_third_column.rowconfigure(3, weight = 1)
+        frame_third_column.rowconfigure(4, weight = 1)
         frame_third_column.columnconfigure(0, weight = 1)
+
+        salida_frame = salida.SalidaFrame(
+            frame_third_column
+        )
+        salida_frame.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
 
         gen_purpose_regs = general_purpose_regs.GeneralPurposeRegisterFrame(
             frame_third_column
         )
+        gen_purpose_regs.grid(column = 0, row = 3, sticky = 'nsew', pady = 12)
 
-        gen_purpose_regs.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
+        botones_acciones = buttons_actions.BotonesAcciones(
+            frame_third_column,
+            imagen_siguiente = self.siguiente_icon_path,
+            reiniciar_imagen = self.reiniciar_icon_path
+        )
+        botones_acciones.grid(column = 0, row = 4, sticky = 'nsew', pady = 12)
 
         frame_third_column.grid(column = 2, row = 0, sticky = 'nsew', padx = (10,10), pady = (10,10))
