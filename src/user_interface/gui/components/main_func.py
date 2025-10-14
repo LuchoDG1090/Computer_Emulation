@@ -7,7 +7,7 @@ Fecha: 07/10/2025
 Versión: 1.0
 """
 import customtkinter as ctk
-from components import high_level_code, assembly, general_purpose_regs, reloc, ram, buttons_actions, input, salida, control_unit, flag_register
+from src.user_interface.gui.components import high_level_code, assembly, general_purpose_regs, reloc, ram, buttons_actions, input, salida, control_unit, flag_register
 
 class MainFunctionalityMenu(ctk.CTkFrame):
     def __init__(self, parent, height, width, **kwargs):
@@ -23,9 +23,10 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.reloc_icon_path = kwargs.get('reloc_icon_path', '')
         self.siguiente_icon_path = kwargs.get('siguiente_icon_path', '')
         self.reiniciar_icon_path = kwargs.get('reiniciar_icon_path', '')
+        self.clean_iconpath = kwargs.get('clean_icon_path', '')
 
-        self.__build_first_column()
         self.__build_second_column()
+        self.__build_first_column()
         self.__build_third_column()
     
     def __build_first_column(self):
@@ -41,47 +42,50 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         high_level_code_section = high_level_code.HighLevelCodeFrame(
             frame_first_column,
             compile_icon = self.compile_icon_path,
-            upload_icon = self.upload_icon_path
+            upload_icon = self.upload_icon_path,
+            clean_icon = self.clean_iconpath
         )
         high_level_code_section.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
 
         assembly_frame = assembly.AssemblyCodeFrame(
             frame_first_column,
             upload_icon = self.upload_icon_path,
-            assemble_icon = self.assemble_icon_path
+            assemble_icon = self.assemble_icon_path,
+            clean_icon = self.clean_iconpath,
+            funcion_set = self.reloc_code.set_text
         )
         assembly_frame.grid(column = 0, row = 1, sticky = 'nsew', pady = 12)
 
         frame_first_column.grid(column = 0, row = 0, sticky = 'nsew', padx = (10, 10), pady = (10,10))
     
     def __build_second_column(self):
-        frame_second_column = ctk.CTkFrame(
+        self.frame_second_column = ctk.CTkFrame(
             self,
             fg_color = 'transparent'
         )
-        frame_second_column.rowconfigure(0, weight = 1)
-        frame_second_column.rowconfigure(1, weight = 1)
-        frame_second_column.rowconfigure(2, weight = 1)
-        frame_second_column.columnconfigure(0, weight = 1)
+        self.frame_second_column.rowconfigure(0, weight = 1)
+        self.frame_second_column.rowconfigure(1, weight = 1)
+        self.frame_second_column.rowconfigure(2, weight = 1)
+        self.frame_second_column.columnconfigure(0, weight = 1)
 
-        reloc_code = reloc.RelocCodeFrame(
-            frame_second_column,
+        self.reloc_code = reloc.RelocCodeFrame(
+            self.frame_second_column,
             reloc_icon = self.reloc_icon_path
         )
-        reloc_code.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
+        self.reloc_code.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
 
-        ram_memory = ram.DinamicRandomAccessMemory(
-            frame_second_column
+        self.ram_memory = ram.DinamicRandomAccessMemory(
+            self.frame_second_column
         )
-        ram_memory.grid(column = 0, row = 1, sticky = 'nsew', pady = 12)
+        self.ram_memory.grid(column = 0, row = 1, sticky = 'nsew', pady = 12)
 
-        input_frame = input.userInputBox(
-            frame_second_column
+        self.input_frame = input.userInputBox(
+            self.frame_second_column
         )
-        input_frame.grid(column = 0, row = 2, sticky = 'nsew', pady = 12)
+        self.input_frame.grid(column = 0, row = 2, sticky = 'nsew', pady = 12)
 
 
-        frame_second_column.grid(column = 1, row = 0, sticky = 'nsew', padx = (10, 10), pady = (10, 10))
+        self.frame_second_column.grid(column = 1, row = 0, sticky = 'nsew', padx = (10, 10), pady = (10, 10))
 
 
     def __build_third_column(self):

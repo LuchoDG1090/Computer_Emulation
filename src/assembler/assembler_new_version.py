@@ -7,18 +7,18 @@ class Assembler:
         self.loc = 0                  # contador de ubicación actual
         self.symbols = {}             # tabla de símbolos (etiqueta -> dirección)
 
-    def assemble(self, asm_file, output_img):
-        # PASADA 1: recolectar símbolos y nodos (dirección + tokens)
-        self.loc = 0
+    
+    
+    def __load_from_file(self, path: str):
+        with open(path, 'r', encoding = 'utf-8') as f:
+            return f.readlines()
+    
+    def __process_instructions(self, lines: list) -> list:
         self.symbols.clear()
-        nodes = []  # cada nodo: {'addr': int, 'tokens': list[str]}
-
-        with open(asm_file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-            print(lines)
+        nodes = []
 
         for raw in lines:
-            tokens = self.parse_line(raw)
+            tokens = self.__parse_line(raw)
             if not tokens:
                 continue
 
@@ -39,7 +39,7 @@ class Assembler:
             if head == 'ORG':
                 if len(tokens) < 2:
                     raise ValueError("ORG requiere una dirección")
-                self.loc = self._parse_int(tokens[1])
+                self.loc = self.__parse_int(tokens[1])
                 continue
 
             if head == 'EXEC_FROM':
@@ -59,7 +59,7 @@ class Assembler:
                 if len(tokens) != 2:
                     raise ValueError("RESW requiere un argumento (cantidad)")
                 try:
-                    count = self._parse_int(tokens[1])
+                    count = self.__parse_int(tokens[1])
                 except Exception as e:
                     raise ValueError(f"RESW argumento inválido: {tokens[1]}") from e
                 nodes.append({'addr': self.loc, 'tokens': tokens})
@@ -69,20 +69,21 @@ class Assembler:
             # Instrucción normal: registra dirección actual y tokens
             nodes.append({'addr': self.loc, 'tokens': tokens})
             self.loc += self.word_size
+        return nodes
 
-        # PASADA 2: resolver símbolos y emitir palabras codificadas
+    def __resolve(self, nodes):
         emitted = []
         exec_addrs: list[int] = []      # direcciones de instrucciones (8-byte aligned)
         exec_from_addr: int | None = None  # inicio de rango continuo (opcional)
         for n in nodes:
-            resolved = self._resolve_tokens(n['tokens'])
+            resolved = self.__resolve_tokens(n['tokens'])
             tokens = resolved
             mnemonic = tokens[0].upper()
 
             # --- Directiva EXEC_FROM (opcional) ---
             if mnemonic == "EXEC_FROM":
                 if len(tokens) == 2:
-                    exec_from_addr = self._parse_int(tokens[1])
+                    exec_from_addr = self.__parse_int(tokens[1])
                 else:
                     exec_from_addr = n['addr']  # desde la posición actual
                 continue
@@ -91,7 +92,7 @@ class Assembler:
             if mnemonic == "DW":
                 for val_tok in tokens[1:]:
                     val_tok = val_tok.rstrip(',')
-                    word = self._parse_int(val_tok)
+                    word = self.__parse_int(val_tok)
                     emitted.append((n['addr'], word))
                     n['addr'] += self.word_size
                 continue
@@ -100,7 +101,7 @@ class Assembler:
             if mnemonic == "RESW":
                 if len(tokens) != 2:
                     raise ValueError("RESW requiere un argumento (cantidad)")
-                count = self._parse_int(tokens[1])
+                count = self.__parse_int(tokens[1])
                 for _ in range(count):
                     emitted.append((n['addr'], 0))
                     n['addr'] += self.word_size
@@ -115,34 +116,34 @@ class Assembler:
                 if mnemonic == "ADDI":
                     rs1 = self.encoder.reg_to_num(tokens[2])
                     imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
+                    imm32 = self.__parse_int(imm_tok)
                     word = self.encoder.i_type(opcode, rd, rs1, imm32, func=0)
                 elif mnemonic == "ST":
                     # ST Rs, Rb, imm  -> func=1 (addr = Rb + signext(imm))
                     rs_src = self.encoder.reg_to_num(tokens[1])  # fuente
                     rb = self.encoder.reg_to_num(tokens[2])      # base
                     imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
+                    imm32 = self.__parse_int(imm_tok)
                     word = self.encoder.i_type(opcode, rd=rb, rs1=rs_src, imm32=imm32, func=1)
                 elif mnemonic == "LD":
                     # LD Rd, Rb, imm -> func=1 (addr = Rb + signext(imm))
                     rb = self.encoder.reg_to_num(tokens[2])      # base
                     imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
+                    imm32 = self.__parse_int(imm_tok)
                     word = self.encoder.i_type(opcode, rd=rd, rs1=rb, imm32=imm32, func=1)
                 elif mnemonic == "IN":
                     # IN Rd, Rb, count -> func=subop(parse-line) + sep=' '
                     rb = self.encoder.reg_to_num(tokens[2])
                     imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
+                    imm32 = self.__parse_int(imm_tok)
                     func_val = (1 << 1) | (32 << 4)
                     word = self.encoder.i_type(opcode, rd=rd, rs1=rb, imm32=imm32, func=func_val)
                 elif mnemonic == "OUT":
                     # OUT Rsrc, imm, func  -> I-Type con func personalizado
                     imm_tok = tokens[2].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
+                    imm32 = self.__parse_int(imm_tok)
                     func_tok = tokens[3].rstrip(',')
-                    func_val = self._parse_int(func_tok)
+                    func_val = self.__parse_int(func_tok)
                     word = self.encoder.i_type(opcode, rd=rd, rs1=0, imm32=imm32, func=func_val)
                 else:
                     # R-Type clásico: ADD/SUB/MUL/...
@@ -162,17 +163,17 @@ class Assembler:
                     imm_tok = tokens[2].rstrip(',')
                     if imm_tok.startswith('[') and imm_tok.endswith(']'):
                         imm_tok = imm_tok[1:-1]
-                    imm32 = self._parse_int(imm_tok)
+                    imm32 = self.__parse_int(imm_tok)
                     word = self.encoder.i_type(opcode, rd=0, rs1=rs_src, imm32=imm32, func=0)
                 else:
                     imm_tok = tokens[2].rstrip(',')
                     if imm_tok.startswith('[') and imm_tok.endswith(']'):
                         imm_tok = imm_tok[1:-1]
-                    imm32 = self._parse_int(imm_tok)
+                    imm32 = self.__parse_int(imm_tok)
                     word = self.encoder.i_type(opcode, rd, 0, imm32)
 
             elif len(tokens) == 2:  # Ej: JMP loop
-                imm32 = self._parse_int(tokens[1])
+                imm32 = self.__parse_int(tokens[1])
                 word = self.encoder.j_type(opcode, imm32)
 
             else:
@@ -181,36 +182,17 @@ class Assembler:
             emitted.append((n['addr'], word))
             # Marcar esta dirección como ejecutable (es una instrucción)
             exec_addrs.append(n['addr'])
-
-        # Si se marcó EXEC_FROM, completar un rango continuo desde allí hasta la última instrucción
+        
         if exec_from_addr is not None and exec_addrs:
             last_code_addr = max(exec_addrs)
             a = exec_from_addr & ~0x7  # alinear a 8
             b = last_code_addr
             for addr in range(a, b + self.word_size, self.word_size):
                 exec_addrs.append(addr)
+        
+        return emitted
 
-        self.write_img(emitted, output_img)
-        self.write_exec_map(exec_addrs, output_img + ".exec")
-
-    def write_img(self, pairs: list[tuple[int, int]], output_path: str):
-        """
-        Genera un archivo .img con pares direccion: valor_hex (64 bits).
-        Respeta las direcciones decididas por ORG.
-        """
-        with open(output_path, "w", encoding="utf-8") as f:
-            for addr, word in sorted(pairs, key=lambda x: x[0]):
-                f.write(f"0x{addr:08X}: 0x{word:016X}\n")
-
-    def write_exec_map(self, exec_addrs: list[int], path: str):
-        """Emite un archivo .exec con una direccion ejecutable por linea."""
-        addrs = sorted(set(exec_addrs))
-        with open(path, "w", encoding="utf-8") as f:
-            for addr in addrs:
-                f.write(f"0x{addr:08X}\n")
-
-
-    def parse_line(self, line: str):
+    def __parse_line(self, line: str):
         # quita comentarios '#' y espacios extra
         line = line.split('#', 1)[0].strip()
         if not line:
@@ -218,13 +200,16 @@ class Assembler:
         # tokens por espacio; operandos con coma se mantienen (p.ej. "R1,")
         return line.split()
 
-    def _parse_int(self, tok: str) -> int:
+    def __parse_int(self, tok: str) -> int:
         t = tok.strip()
         if t.lower().startswith('0x'):
             return int(t, 16)
         return int(t, 10)
 
-    def _resolve_tokens(self, tokens: list[str]) -> list[str]:
+
+    
+
+    def __resolve_tokens(self, tokens: list[str]) -> list[str]:
         """
         Sustituye etiquetas por literales hex. Maneja LABEL y [LABEL].
         Conserva comas si el token las trae (p.ej., "R1,").
@@ -251,3 +236,41 @@ class Assembler:
                 resolved += ','
             out.append(resolved)
         return out
+
+    def __write_img(self, pairs: list[tuple[int, int]], output_path: str):
+        """
+        Genera un archivo .img con pares direccion: valor_hex (64 bits).
+        Respeta las direcciones decididas por ORG.
+        """
+        with open(output_path, "w", encoding="utf-8") as f:
+            for addr, word in sorted(pairs, key=lambda x: x[0]):
+                f.write(f"0x{addr:08X}: 0x{word:016X}\n")
+
+    def __write_exec_map(self, exec_addrs: list[int], path: str):
+        """Emite un archivo .exec con una direccion ejecutable por linea."""
+        addrs = sorted(set(exec_addrs))
+        with open(path, "w", encoding="utf-8") as f:
+            for addr in addrs:
+                f.write(f"0x{addr:08X}\n")
+    
+    def __format_img(self, pairs: list[tuple[int, int]]):
+        formated = ''
+        for addr, word in sorted(pairs, key=lambda x: x[0]):
+                formated += f"0x{addr:08X}: 0x{word:016X}\n"
+        return formated
+    
+    def assemble(self, asm_file: str = None, out_file: str = None, lines = None):
+        if not asm_file and not lines:
+            raise RuntimeError("Error en los argumentos de entrada")
+        if asm_file and lines:
+            raise RuntimeError("No se pueden tener dos fuentes de entrada")
+        if asm_file:
+            lines = self.__load_from_file(asm_file)
+        nodos = self.__process_instructions(lines)
+        instrucciones = self.__resolve(nodos)
+
+        if out_file:
+            self.__write_img(instrucciones, out_file)
+            self.__write_exec_map(instrucciones, out_file + ".exec")
+        
+        return self.__format_img(instrucciones)

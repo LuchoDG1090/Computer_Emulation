@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from PIL import Image
+from src.user_interface.gui.func import assembly as func
 
 class AssemblyCodeFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color = '#0C1826', **kwargs):
@@ -11,6 +12,8 @@ class AssemblyCodeFrame(ctk.CTkFrame):
         self.rowconfigure(2, weight=1)
         self.upload_icon = kwargs.get('upload_icon', '')
         self.assemble_icon = kwargs.get('assemble_icon', '')
+        self.clean_icon = kwargs.get('clean_icon', '')
+        self.funcion_set_reloc = kwargs.get('funcion_set', '')
 
         self.__build_text()
         self.__build_entry_text()
@@ -27,11 +30,11 @@ class AssemblyCodeFrame(ctk.CTkFrame):
         text.grid(row = 0, column = 0)
 
     def __build_entry_text(self):
-        text_entry = ctk.CTkTextbox(
+        self.text_entry = ctk.CTkTextbox(
             self,
             fg_color = '#2b2b2b'
         )
-        text_entry.grid(row = 1, column = 0, sticky = 'nsew', padx = 12)
+        self.text_entry.grid(row = 1, column = 0, sticky = 'nsew', padx = 12)
 
     def __build_buttons(self):
         button_frame = ctk.CTkFrame(
@@ -41,6 +44,7 @@ class AssemblyCodeFrame(ctk.CTkFrame):
 
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
+        button_frame.columnconfigure(2, weight=1)
         button_frame.rowconfigure(0, weight=1)
 
         assemble_image = ctk.CTkImage(
@@ -50,13 +54,14 @@ class AssemblyCodeFrame(ctk.CTkFrame):
         )
         boton_ensamblar = ctk.CTkButton(
             button_frame, 
-            text='Compilar',
+            text='Ensamblar',
             image = assemble_image,
             compound='right',
             fg_color='#4C44AC',
             text_color='white',
             corner_radius=50,
             font=("Comic Sans MS", 16, "bold"),
+            command = lambda: func.assemble(self.text_entry, self.funcion_set_reloc)
         )
         boton_ensamblar.grid(row = 0, column = 0)
 
@@ -65,7 +70,7 @@ class AssemblyCodeFrame(ctk.CTkFrame):
             dark_image = Image.open(self.upload_icon),
             size = (40, 40)
         )
-        boton_compilar = ctk.CTkButton(
+        boton_subir = ctk.CTkButton(
             button_frame, 
             text='Subir',
             image = upload_image,
@@ -74,8 +79,27 @@ class AssemblyCodeFrame(ctk.CTkFrame):
             text_color='white',
             corner_radius=50,
             font=("Comic Sans MS", 16, "bold"),
+            command = lambda: func.load_content(self.text_entry)
         )
-        boton_compilar.grid(row = 0, column = 1)
+        boton_subir.grid(row = 0, column = 1)
+
+        clean_image = ctk.CTkImage(
+            light_image=Image.open(self.clean_icon),
+            dark_image = Image.open(self.clean_icon),
+            size = (40, 40)
+        )
+        boton_limpiar = ctk.CTkButton(
+            button_frame,
+            text = 'Limpiar',
+            image = clean_image,
+            compound= 'right',
+            fg_color='#4C44AC',
+            text_color='white',
+            corner_radius=50,
+            font=("Comic Sans MS", 16, "bold"),
+            command = lambda: func.clean_content(self.text_entry)
+        )
+        boton_limpiar.grid(row = 0, column = 2)
 
         button_frame.grid(column = 0, row = 2, sticky = 'nsew', padx = 30)
 

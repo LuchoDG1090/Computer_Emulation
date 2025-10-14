@@ -25,11 +25,11 @@ class RelocCodeFrame(ctk.CTkFrame):
         text.grid(row = 0, column = 0)
 
     def __build_entry_text(self):
-        text_entry = ctk.CTkTextbox(
+        self.text_entry = ctk.CTkTextbox(
             self,
             fg_color = '#2b2b2b'
         )
-        text_entry.grid(row = 1, column = 0, sticky = 'nsew', padx = 12)
+        self.text_entry.grid(row = 1, column = 0, sticky = 'nsew', padx = 12)
 
     def __build_buttons(self):
         button_frame = ctk.CTkFrame(
@@ -59,3 +59,6 @@ class RelocCodeFrame(ctk.CTkFrame):
 
 
         button_frame.grid(column = 0, row = 2, sticky = 'nsew', padx = 30)
+    
+    def set_text(self, text):
+        self.text_entry.insert("1.0", text)
