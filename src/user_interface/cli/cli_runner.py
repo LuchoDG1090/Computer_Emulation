@@ -6,17 +6,17 @@ to assemble .asm files into .img images, load them into the CPU via the
 Linker/Loader, and run them with optional auto-start via the .exec map.
 """
 
-import os
 import argparse
 import math
+import os
 from typing import Optional
 
-from src.cpu.cpu import CPU
-from src.assembler.assembler import Assembler
-from src.loader.Linker_Loader import Linker, Loader
-from src.user_interface.cli import messages, help_module, color
-from src.user_interface.cli.table_formater import Table
 import src.user_interface.logging.logger as logger
+from src.assembler.assembler import Assembler
+from src.cpu.cpu import CPU
+from src.memory.Linker_Loader import Linker, Loader
+from src.user_interface.cli import color, help_module, messages
+from src.user_interface.cli.table_formater import Table
 
 logger_handler = logger.configurar_logger()
 
@@ -24,14 +24,19 @@ logger_handler = logger.configurar_logger()
 # Path helpers (extensions)
 # -----------------------------
 
+
 def _ensure_ext(path: str, expected_ext: str) -> str:
     """Append expected_ext if path has no extension."""
     root, ext = os.path.splitext(path)
-    logger_handler.info(f"Asegurandose que el archivo {path} sea de extensión {expected_ext}")
+    logger_handler.info(
+        f"Asegurandose que el archivo {path} sea de extensión {expected_ext}"
+    )
     return path if ext else (path + expected_ext)
+
 
 def _normalize_input_asm(path: str) -> str:
     return _ensure_ext(path, ".asm")
+
 
 def _normalize_output_img(path: str) -> str:
     return _ensure_ext(path, ".img")
@@ -40,6 +45,7 @@ def _normalize_output_img(path: str) -> str:
 # -----------------------------
 # Image helpers (non-destructive peek)
 # -----------------------------
+
 
 def _peek_img_range(path: str) -> tuple[int, int]:
     """Parse a .img file and return (min_addr, max_addr) without writing memory.
@@ -50,28 +56,32 @@ def _peek_img_range(path: str) -> tuple[int, int]:
     dir_sig = None
     min_dir = None
     max_dir = None
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         for linea_no, instruccion in enumerate(f, 1):
-            linea = instruccion.split('#', 1)[0].strip()
-            if linea == '':
+            linea = instruccion.split("#", 1)[0].strip()
+            if linea == "":
                 continue
-            if ':' in linea:
-                izq, der = linea.split(':', 1)
+            if ":" in linea:
+                izq, der = linea.split(":", 1)
                 izq = izq.strip()
                 der = der.strip()
-                if izq == '':
+                if izq == "":
                     if dir_sig is None:
-                        raise ValueError(f"No se brindó una dirección para la instrucción en la linea {linea_no}")
+                        raise ValueError(
+                            f"No se brindó una dirección para la instrucción en la linea {linea_no}"
+                        )
                     dir = dir_sig
                 else:
                     dir = int(izq, 0)
                     dir_sig = dir
-                words = [w.strip() for w in der.split(',') if w.strip() != '']
+                words = [w.strip() for w in der.split(",") if w.strip() != ""]
             else:
                 if dir_sig is None:
-                    raise ValueError(f"No se brindó una dirección explicita para la instrucción en la linea {linea_no}")
+                    raise ValueError(
+                        f"No se brindó una dirección explicita para la instrucción en la linea {linea_no}"
+                    )
                 dir = dir_sig
-                words = [w.strip() for w in linea.split(',') if w.strip() != '']
+                words = [w.strip() for w in linea.split(",") if w.strip() != ""]
             for _ in words:
                 if min_dir is None or dir < min_dir:
                     min_dir = dir
@@ -79,7 +89,11 @@ def _peek_img_range(path: str) -> tuple[int, int]:
                     max_dir = dir
                 dir += 8
                 dir_sig = dir
-    return (min_dir if min_dir is not None else 0, max_dir if max_dir is not None else -1)
+    return (
+        min_dir if min_dir is not None else 0,
+        max_dir if max_dir is not None else -1,
+    )
+
 
 def _peek_img_word_addrs(path: str) -> set[int]:
     """Parse a .img file and return the set of word-aligned addresses it would occupy."""
@@ -87,28 +101,32 @@ def _peek_img_word_addrs(path: str) -> set[int]:
         raise FileNotFoundError(f"No existe el documento {path}")
     dir_sig = None
     occupied: set[int] = set()
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         for linea_no, instruccion in enumerate(f, 1):
-            linea = instruccion.split('#', 1)[0].strip()
-            if linea == '':
+            linea = instruccion.split("#", 1)[0].strip()
+            if linea == "":
                 continue
-            if ':' in linea:
-                izq, der = linea.split(':', 1)
+            if ":" in linea:
+                izq, der = linea.split(":", 1)
                 izq = izq.strip()
                 der = der.strip()
-                if izq == '':
+                if izq == "":
                     if dir_sig is None:
-                        raise ValueError(f"No se brindó una dirección para la instrucción en la linea {linea_no}")
+                        raise ValueError(
+                            f"No se brindó una dirección para la instrucción en la linea {linea_no}"
+                        )
                     dir = dir_sig
                 else:
                     dir = int(izq, 0)
                     dir_sig = dir
-                words = [w.strip() for w in der.split(',') if w.strip() != '']
+                words = [w.strip() for w in der.split(",") if w.strip() != ""]
             else:
                 if dir_sig is None:
-                    raise ValueError(f"No se brindó una dirección explicita para la instrucción en la linea {linea_no}")
+                    raise ValueError(
+                        f"No se brindó una dirección explicita para la instrucción en la linea {linea_no}"
+                    )
                 dir = dir_sig
-                words = [w.strip() for w in linea.split(',') if w.strip() != '']
+                words = [w.strip() for w in linea.split(",") if w.strip() != ""]
             for _ in words:
                 occupied.add(dir)
                 dir += 8
@@ -120,6 +138,7 @@ def _peek_img_word_addrs(path: str) -> set[int]:
 # Parsing helpers
 # -----------------------------
 
+
 def _prompt_int(message: str, allow_cancel: bool = True) -> Optional[int]:
     """Solicita un entero en decimal o hex (0x..). Retorna None si se cancela."""
     while True:
@@ -130,13 +149,16 @@ def _prompt_int(message: str, allow_cancel: bool = True) -> Optional[int]:
             return int(s, 0)
         except ValueError:
             print(color.Color.ROJO)
-            print("Valor inválido. Use decimal o hex (ej. 0x1000) o 'back' para volver.")
+            print(
+                "Valor inválido. Use decimal o hex (ej. 0x1000) o 'back' para volver."
+            )
             print(color.Color.RESET_COLOR)
 
 
 # -----------------------------
 # Core actions
 # -----------------------------
+
 
 def assemble(input_path: str, output_path: str):
     """Assemble an .asm file into a .img image"""
@@ -156,7 +178,9 @@ def load_img(cpu: CPU, path: str):
     Returns (min_addr, max_addr) of written addresses and sets cpu.exec_map if
     a .exec sidecar file exists.
     """
-    logger_handler.info("validando y cargando la umagen a a memoria por medio del cargador")
+    logger_handler.info(
+        "validando y cargando la umagen a a memoria por medio del cargador"
+    )
     Linker.revisar_img(path)
     min_addr, max_addr = Loader.leer_img(cpu.mem, path)
     # Registrar palabras ocupadas por este img
@@ -185,8 +209,8 @@ def load_img(cpu: CPU, path: str):
         cpu.exec_map = exec_addrs
     # Auto-guardar el exec_map cargado (si hay direcciones)
     try:
-        if getattr(cpu, 'exec_map', None) and len(cpu.exec_map) > 0:
-            with open(exec_path, 'w', encoding='utf-8') as f:
+        if getattr(cpu, "exec_map", None) and len(cpu.exec_map) > 0:
+            with open(exec_path, "w", encoding="utf-8") as f:
                 for a in sorted(cpu.exec_map):
                     f.write(hex(a) + "\n")
     except Exception:
@@ -200,13 +224,13 @@ def run_image(img_path: str, start_addr: int | None = None, step: bool = False):
     cpu = CPU(memory_size=65536)
     min_addr, _ = load_img(cpu, img_path)
     if start_addr is None:
-        if getattr(cpu, 'exec_map', None):
+        if getattr(cpu, "exec_map", None):
             cpu.pc = min(cpu.exec_map)
         else:
             cpu.pc = min_addr or 0
     else:
         start = start_addr
-        if getattr(cpu, 'exec_map', None) and start not in cpu.exec_map:
+        if getattr(cpu, "exec_map", None) and start not in cpu.exec_map:
             try:
                 start = min(a for a in cpu.exec_map if a >= start)
             except ValueError:
@@ -235,6 +259,7 @@ def run_image(img_path: str, start_addr: int | None = None, step: bool = False):
 # UI helpers
 # -----------------------------
 
+
 def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optional[str]:
     """Prompt until the user enters a non-empty value; returns None if canceled."""
     while True:
@@ -245,12 +270,16 @@ def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optiona
                 return None if allow_cancel else "back"
         except KeyboardInterrupt:
             print(color.Color.ROJO)
-            logger_handler.exception("Entrada dada por el usuario no es valida, surgimiento de una excepción")
+            logger_handler.exception(
+                "Entrada dada por el usuario no es valida, surgimiento de una excepción"
+            )
             print("Entrada equivocada")
             print(color.Color.RESET_COLOR)
         except EOFError:
             print(color.Color.ROJO)
-            logger_handler.exception("Entrada dada por el usuario no es valida, surgimiento de una excepción")
+            logger_handler.exception(
+                "Entrada dada por el usuario no es valida, surgimiento de una excepción"
+            )
             print("Entrada equivocada")
             print(color.Color.RESET_COLOR)
         else:
@@ -260,7 +289,10 @@ def _prompt_until_non_empty(message: str, allow_cancel: bool = False) -> Optiona
                 return val
             print("Por favor, ingrese una ruta válida.")
 
-def _prompt_existing_file(message: str, expected_ext: str | None = None, allow_cancel: bool = False) -> Optional[str]:
+
+def _prompt_existing_file(
+    message: str, expected_ext: str | None = None, allow_cancel: bool = False
+) -> Optional[str]:
     """Prompt until the user enters a path to an existing file; returns None if canceled."""
     while True:
         raw = _prompt_until_non_empty(message, allow_cancel=allow_cancel)
@@ -271,7 +303,10 @@ def _prompt_existing_file(message: str, expected_ext: str | None = None, allow_c
             return path
         print(f"No existe el archivo: {path}")
 
-def _prompt_yes_no(message: str, default: Optional[bool] = None, allow_cancel: bool = True) -> Optional[bool]:
+
+def _prompt_yes_no(
+    message: str, default: Optional[bool] = None, allow_cancel: bool = True
+) -> Optional[bool]:
     """Prompt for yes/no. Returns True/False, or None if canceled.
     - Accepts: s/si/y/yes for yes, n/no for no.
     - If input is empty and default is not None, returns default.
@@ -303,9 +338,11 @@ def _prompt_yes_no(message: str, default: Optional[bool] = None, allow_cancel: b
             return False
         print("Responda 's'/'n' o presione Enter para el valor por defecto.")
 
+
 # -----------------------------
 # CLI parsing and dispatch
 # -----------------------------
+
 
 def parse_cli_args():
     parser = argparse.ArgumentParser(prog="main.py", description="Assembler/Runner CLI")
@@ -317,7 +354,9 @@ def parse_cli_args():
 
     p_run = sub.add_parser("run", help="Ejecuta una imagen .img")
     p_run.add_argument("-i", "--img", required=False)
-    p_run.add_argument("--start", default="auto", help="PC inicial (ej. 0x4E20 o 'auto')")
+    p_run.add_argument(
+        "--start", default="auto", help="PC inicial (ej. 0x4E20 o 'auto')"
+    )
 
     p_both = sub.add_parser("asmrun", help="Ensambla y ejecuta")
     p_both.add_argument("-i", "--input", required=False)
@@ -325,7 +364,9 @@ def parse_cli_args():
     p_both.add_argument("--start", default="auto")
 
     # Editor de memoria interactivo
-    sub.add_parser("mem", help="Editor de memoria interactivo (leer/escribir/exec y ejecutar)")
+    sub.add_parser(
+        "mem", help="Editor de memoria interactivo (leer/escribir/exec y ejecutar)"
+    )
 
     args, _ = parser.parse_known_args()
     return args
@@ -334,16 +375,27 @@ def parse_cli_args():
 def handle_subcommands(args) -> bool:
     """Execute the given subcommand. Returns True if something was executed."""
     if args.cmd == "asm":
-        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+        in_raw = args.input or _prompt_existing_file(
+            "Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ",
+            ".asm",
+            allow_cancel=True,
+        )
         if in_raw is None:
             return False
-        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+        out_raw = args.output or _prompt_until_non_empty(
+            "Ruta de salida .img (sin o con extensión) (o 'back' para volver): ",
+            allow_cancel=True,
+        )
         if out_raw is None:
             return False
         assemble(_normalize_input_asm(in_raw), _normalize_output_img(out_raw))
         return True
     if args.cmd == "run":
-        img_raw = args.img or _prompt_existing_file("Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ", ".img", allow_cancel=True)
+        img_raw = args.img or _prompt_existing_file(
+            "Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ",
+            ".img",
+            allow_cancel=True,
+        )
         if img_raw is None:
             return False
         img_in = _normalize_output_img(img_raw)
@@ -358,10 +410,17 @@ def handle_subcommands(args) -> bool:
         run_image(img_in, start)
         return True
     if args.cmd == "asmrun":
-        in_raw = args.input or _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+        in_raw = args.input or _prompt_existing_file(
+            "Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ",
+            ".asm",
+            allow_cancel=True,
+        )
         if in_raw is None:
             return False
-        out_raw = args.output or _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+        out_raw = args.output or _prompt_until_non_empty(
+            "Ruta de salida .img (sin o con extensión) (o 'back' para volver): ",
+            allow_cancel=True,
+        )
         if out_raw is None:
             return False
         in_path = _normalize_input_asm(in_raw)
@@ -392,7 +451,9 @@ def run_cli():
         try:
             choice = input(">>").strip()
         except KeyboardInterrupt:
-            logger_handler.exception("El usuario intentó finalizar de forma abrupta y equivocada la consola")
+            logger_handler.exception(
+                "El usuario intentó finalizar de forma abrupta y equivocada la consola"
+            )
             messages.Messages().print_exit_msg()
             continue
         except EOFError:
@@ -405,32 +466,60 @@ def run_cli():
             print(color.Color.RESET_ALL)
         elif choice == "1":
             logger_handler.info("inicio de procedimiento de ensamblado")
-            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+            asm_in = _prompt_existing_file(
+                "Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ",
+                ".asm",
+                allow_cancel=True,
+            )
             if asm_in is None:
                 continue
-            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+            img_out = _prompt_until_non_empty(
+                "Ruta de salida .img (sin o con extensión) (o 'back' para volver): ",
+                allow_cancel=True,
+            )
             if img_out is None:
                 continue
             assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
         elif choice == "2":
             logger_handler.info("Ejecución de archivo .img")
-            img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ", ".img", allow_cancel=True)
+            img_in = _prompt_existing_file(
+                "Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ",
+                ".img",
+                allow_cancel=True,
+            )
             if img_in is None:
                 continue
-            start_s = input("PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: ").strip() or "auto"
+            start_s = (
+                input(
+                    "PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: "
+                ).strip()
+                or "auto"
+            )
             if start_s.lower() in ("back", "menu", "cancel", "0"):
                 continue
             start = None if start_s.lower() == "auto" else int(start_s, 0)
             run_image(_normalize_output_img(img_in), start)
         elif choice == "3":
             logger_handler.info("Ensamblar y ejecutar")
-            asm_in = _prompt_existing_file("Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ", ".asm", allow_cancel=True)
+            asm_in = _prompt_existing_file(
+                "Ruta del archivo .asm (sin o con extensión) (o 'back' para volver): ",
+                ".asm",
+                allow_cancel=True,
+            )
             if asm_in is None:
                 continue
-            img_out = _prompt_until_non_empty("Ruta de salida .img (sin o con extensión) (o 'back' para volver): ", allow_cancel=True)
+            img_out = _prompt_until_non_empty(
+                "Ruta de salida .img (sin o con extensión) (o 'back' para volver): ",
+                allow_cancel=True,
+            )
             if img_out is None:
                 continue
-            start_s = input("PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: ").strip() or "auto"
+            start_s = (
+                input(
+                    "PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: "
+                ).strip()
+                or "auto"
+            )
             if start_s.lower() in ("back", "menu", "cancel", "0"):
                 continue
             assemble(_normalize_input_asm(asm_in), _normalize_output_img(img_out))
@@ -440,7 +529,7 @@ def run_cli():
             logger_handler.info("Ingreso al módulo de ayuda")
             val = math.inf
             menu.create_help_menu()
-            while val not in range(1,6):
+            while val not in range(1, 6):
                 menu.print_help_menu()
                 try:
                     raw = input(">>").strip().lower()
@@ -459,7 +548,9 @@ def run_cli():
                     print("Entrada equivocada")
                     print(color.Color.RESET_COLOR)
                 except KeyboardInterrupt:
-                    logger_handler.exception("El usuario intentó finalizar de forma abrupta y equivocada la consola")
+                    logger_handler.exception(
+                        "El usuario intentó finalizar de forma abrupta y equivocada la consola"
+                    )
                     print(color.Color.ROJO)
                     print("Entrada equivocada")
                     print(color.Color.RESET_COLOR)
@@ -473,13 +564,22 @@ def run_cli():
                 help_module.Help().formato_instrucciones()
             elif val == 5:
                 pass
-        elif choice == '5':
+        elif choice == "5":
             print("Ejecución por steps")
-            logger_handler.info("Ejecución de archivo .img por pasos")    
-            img_in = _prompt_existing_file("Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ", ".img", allow_cancel=True)
+            logger_handler.info("Ejecución de archivo .img por pasos")
+            img_in = _prompt_existing_file(
+                "Ruta del archivo .img (sin o con extensión) (o 'back' para volver): ",
+                ".img",
+                allow_cancel=True,
+            )
             if img_in is None:
                 continue
-            start_s = input("PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: ").strip() or "auto"
+            start_s = (
+                input(
+                    "PC inicial (hex como 0x4E20 o 'auto') (o 'back' para volver) [auto]: "
+                ).strip()
+                or "auto"
+            )
             if start_s.lower() in ("back", "menu", "cancel", "0"):
                 continue
             start = None if start_s.lower() == "auto" else int(start_s, 0)
@@ -503,59 +603,62 @@ def run_cli():
 # Memory editor
 # -----------------------------
 
+
 def run_memory_editor():
     """Editor interactivo de memoria: leer/escribir bits/bytes/palabras, gestionar exec_map y ejecutar."""
     logger_handler.info("Editor de memoria iniciado")
     cpu = CPU(memory_size=65536)
     # Inicializar mapa de ejecución si no existe
-    if not hasattr(cpu, 'exec_map') or cpu.exec_map is None:
+    if not hasattr(cpu, "exec_map") or cpu.exec_map is None:
         cpu.exec_map = set()
 
     # Construye menú con el mismo formato de la CLI principal
     msg = messages.Messages()
-    mem_menu = Table(
-        msg.columns,
-        msg.rows,
-        "Editor de memoria"
-    )
+    mem_menu = Table(msg.columns, msg.rows, "Editor de memoria")
     mem_menu.add_encabezado(["Opción", "Acción"])
-    mem_menu.add_filas([
-        ["1", "Cargar imagen (.img/.exec)"],
-        ["2", "Ver memoria"],
-        ["3", "Escribir memoria"],
-        ["4", "Exec map"],
-        ["5", "CPU (PC/Ejecutar)"],
-        ["6", "Exportar/Importar"],
-        ["9", "Volver"],
-    ])
+    mem_menu.add_filas(
+        [
+            ["1", "Cargar imagen (.img/.exec)"],
+            ["2", "Ver memoria"],
+            ["3", "Escribir memoria"],
+            ["4", "Exec map"],
+            ["5", "CPU (PC/Ejecutar)"],
+            ["6", "Exportar/Importar"],
+            ["9", "Volver"],
+        ]
+    )
 
     # Submenús organizados
     def submenu_ver():
-        view_menu = Table(messages.Messages().columns, messages.Messages().rows, "Memoria - Ver")
+        view_menu = Table(
+            messages.Messages().columns, messages.Messages().rows, "Memoria - Ver"
+        )
         view_menu.add_encabezado(["Opción", "Acción"])
-        view_menu.add_filas([
-            ["1", "Leer byte"],
-            ["2", "Leer palabra 64-bit"],
-            ["3", "Leer bit"],
-            ["4", "Hexdump (rango)"],
-            ["5", "Hexdump (memoria completa)"],
-            ["9", "Volver"],
-        ])
+        view_menu.add_filas(
+            [
+                ["1", "Leer byte"],
+                ["2", "Leer palabra 64-bit"],
+                ["3", "Leer bit"],
+                ["4", "Hexdump (rango)"],
+                ["5", "Hexdump (memoria completa)"],
+                ["9", "Volver"],
+            ]
+        )
 
         def _hexdump(start: int, length: int, cols: int = 16):
             end = min(start + length, cpu.mem.size)
             data = cpu.mem.data[start:end]
             for off in range(0, len(data), cols):
-                chunk = data[off:off+cols]
-                hexs = ' '.join(f"{b:02X}" for b in chunk)
-                ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
-                print(f"{start+off:08X}: {hexs:<{cols*3}}  |{ascii_part}|")
+                chunk = data[off : off + cols]
+                hexs = " ".join(f"{b:02X}" for b in chunk)
+                ascii_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+                print(f"{start + off:08X}: {hexs:<{cols * 3}}  |{ascii_part}|")
 
         while True:
             print(color.Color.CYAN)
             view_menu.print_table()
             print(color.Color.RESET_COLOR)
-            sub = (input("ver>> ").strip())
+            sub = input("ver>> ").strip()
             if sub in ("9", "back", "menu"):
                 break
             if sub == "1":
@@ -609,30 +712,40 @@ def run_memory_editor():
                     print(f"Error: {e}")
                     print(color.Color.RESET_COLOR)
             elif sub == "5":
-                resp = (_prompt_until_non_empty("Esto imprimirá mucha información. ¿Continuar? [s/N]: ", allow_cancel=True) or "n").lower()
-                if resp.startswith('s'):
+                resp = (
+                    _prompt_until_non_empty(
+                        "Esto imprimirá mucha información. ¿Continuar? [s/N]: ",
+                        allow_cancel=True,
+                    )
+                    or "n"
+                ).lower()
+                if resp.startswith("s"):
                     _hexdump(0, cpu.mem.size)
             else:
                 print("Opción inválida")
 
     def submenu_escribir():
-        write_menu = Table(messages.Messages().columns, messages.Messages().rows, "Memoria - Escribir")
+        write_menu = Table(
+            messages.Messages().columns, messages.Messages().rows, "Memoria - Escribir"
+        )
         write_menu.add_encabezado(["Opción", "Acción"])
-        write_menu.add_filas([
-            ["1", "Escribir bit"],
-            ["2", "Escribir byte"],
-            ["3", "Escribir palabra 64-bit"],
-            ["4", "Pegar hex"],
-            ["5", "Rellenar (byte)"],
-            ["6", "Rellenar (palabra 64-bit)"],
-            ["7", "Cargar desde archivo"],
-            ["9", "Volver"],
-        ])
+        write_menu.add_filas(
+            [
+                ["1", "Escribir bit"],
+                ["2", "Escribir byte"],
+                ["3", "Escribir palabra 64-bit"],
+                ["4", "Pegar hex"],
+                ["5", "Rellenar (byte)"],
+                ["6", "Rellenar (palabra 64-bit)"],
+                ["7", "Cargar desde archivo"],
+                ["9", "Volver"],
+            ]
+        )
         while True:
             print(color.Color.CYAN)
             write_menu.print_table()
             print(color.Color.RESET_COLOR)
-            sub = (input("escribir>> ").strip())
+            sub = input("escribir>> ").strip()
             if sub in ("9", "back", "menu"):
                 break
             if sub == "1":
@@ -646,7 +759,7 @@ def run_memory_editor():
                 if val is None:
                     continue
                 try:
-                    if bit < 0 or bit > 7 or val not in (0,1):
+                    if bit < 0 or bit > 7 or val not in (0, 1):
                         raise ValueError("Bit debe estar entre 0-7 y valor 0/1")
                     cpu.mem.write_bit(addr, bit, val)
                     print("OK: bit escrito")
@@ -686,18 +799,20 @@ def run_memory_editor():
                 base = _prompt_int("Dirección base (byte): ")
                 if base is None:
                     continue
-                hx = _prompt_until_non_empty("Hex (ej. DE AD BE EF o deadbeef): ", allow_cancel=True)
+                hx = _prompt_until_non_empty(
+                    "Hex (ej. DE AD BE EF o deadbeef): ", allow_cancel=True
+                )
                 if hx is None:
                     continue
-                norm = hx.replace(' ', '').replace('_', '')
-                norm = norm.replace('0x', '').replace('0X', '')
+                norm = hx.replace(" ", "").replace("_", "")
+                norm = norm.replace("0x", "").replace("0X", "")
                 if len(norm) % 2 != 0:
                     print("Hex inválido: longitud impar")
                     continue
                 try:
                     data = bytes.fromhex(norm)
                     cpu.mem._check_addr(base, len(data))
-                    cpu.mem.data[base:base+len(data)] = data
+                    cpu.mem.data[base : base + len(data)] = data
                     print(f"OK: {len(data)} bytes escritos en 0x{base:X}")
                 except Exception as e:
                     print(color.Color.ROJO)
@@ -716,7 +831,7 @@ def run_memory_editor():
                 try:
                     val_b = bytes([val & 0xFF])
                     cpu.mem._check_addr(start, max(0, length))
-                    cpu.mem.data[start:start+length] = val_b * length
+                    cpu.mem.data[start : start + length] = val_b * length
                     print("OK: rango rellenado")
                 except Exception as e:
                     print(color.Color.ROJO)
@@ -735,8 +850,8 @@ def run_memory_editor():
                 try:
                     nbytes = max(0, count) * 8
                     cpu.mem._check_addr(start, nbytes)
-                    pattern = (word_val & 0xFFFFFFFFFFFFFFFF).to_bytes(8, 'little')
-                    cpu.mem.data[start:start+nbytes] = pattern * max(0, count)
+                    pattern = (word_val & 0xFFFFFFFFFFFFFFFF).to_bytes(8, "little")
+                    cpu.mem.data[start : start + nbytes] = pattern * max(0, count)
                     print("OK: rango rellenado con palabras")
                 except Exception as e:
                     print(color.Color.ROJO)
@@ -746,15 +861,17 @@ def run_memory_editor():
                 base = _prompt_int("Dirección base (byte): ")
                 if base is None:
                     continue
-                path = _prompt_until_non_empty("Ruta del archivo origen: ", allow_cancel=True)
+                path = _prompt_until_non_empty(
+                    "Ruta del archivo origen: ", allow_cancel=True
+                )
                 if path is None or not os.path.exists(path):
                     print("Ruta inválida")
                     continue
                 try:
-                    with open(path, 'rb') as f:
+                    with open(path, "rb") as f:
                         data = f.read()
                     cpu.mem._check_addr(base, len(data))
-                    cpu.mem.data[base:base+len(data)] = data
+                    cpu.mem.data[base : base + len(data)] = data
                     print(f"OK: {len(data)} bytes escritos en 0x{base:X}")
                 except Exception as e:
                     print(color.Color.ROJO)
@@ -764,20 +881,24 @@ def run_memory_editor():
                 print("Opción inválida")
 
     def submenu_exec():
-        exec_menu = Table(messages.Messages().columns, messages.Messages().rows, "Exec map")
+        exec_menu = Table(
+            messages.Messages().columns, messages.Messages().rows, "Exec map"
+        )
         exec_menu.add_encabezado(["Opción", "Acción"])
-        exec_menu.add_filas([
-            ["1", "Añadir dirección"],
-            ["2", "Añadir rango"],
-            ["3", "Limpiar"],
-            ["4", "Mostrar"],
-            ["9", "Volver"],
-        ])
+        exec_menu.add_filas(
+            [
+                ["1", "Añadir dirección"],
+                ["2", "Añadir rango"],
+                ["3", "Limpiar"],
+                ["4", "Mostrar"],
+                ["9", "Volver"],
+            ]
+        )
         while True:
             print(color.Color.CYAN)
             exec_menu.print_table()
             print(color.Color.RESET_COLOR)
-            sub = (input("exec>> ").strip())
+            sub = input("exec>> ").strip()
             if sub in ("9", "back", "menu"):
                 break
             if sub == "1":
@@ -796,7 +917,7 @@ def run_memory_editor():
                 if fin < start:
                     print("Rango inválido")
                 else:
-                    for a in range(start, fin+1, 8):
+                    for a in range(start, fin + 1, 8):
                         cpu.exec_map.add(a)
                     print("OK: rango añadido a exec_map (paso 8)")
             elif sub == "3":
@@ -811,17 +932,19 @@ def run_memory_editor():
     def submenu_cpu():
         cpu_menu = Table(messages.Messages().columns, messages.Messages().rows, "CPU")
         cpu_menu.add_encabezado(["Opción", "Acción"])
-        cpu_menu.add_filas([
-            ["1", "Establecer PC"],
-            ["2", "Ejecutar (run)"],
-            ["3", "Ejecutar N ciclos (step)"],
-            ["9", "Volver"],
-        ])
+        cpu_menu.add_filas(
+            [
+                ["1", "Establecer PC"],
+                ["2", "Ejecutar (run)"],
+                ["3", "Ejecutar N ciclos (step)"],
+                ["9", "Volver"],
+            ]
+        )
         while True:
             print(color.Color.CYAN)
             cpu_menu.print_table()
             print(color.Color.RESET_COLOR)
-            sub = (input("cpu>> ").strip())
+            sub = input("cpu>> ").strip()
             if sub in ("9", "back", "menu"):
                 break
             if sub == "1":
@@ -866,21 +989,25 @@ def run_memory_editor():
                 print("Opción inválida")
 
     def submenu_export():
-        exp_menu = Table(messages.Messages().columns, messages.Messages().rows, "Exportar/Importar")
+        exp_menu = Table(
+            messages.Messages().columns, messages.Messages().rows, "Exportar/Importar"
+        )
         exp_menu.add_encabezado(["Opción", "Acción"])
-        exp_menu.add_filas([
-            ["1", "Volcar rango (.bin)"],
-            ["2", "Volcar memoria completa (.bin)"],
-            ["3", "Guardar exec_map (.exec)"],
-            ["4", "Cargar exec_map (.exec)"],
-            ["5", "Cargar exec asociado al .img"],
-            ["9", "Volver"],
-        ])
+        exp_menu.add_filas(
+            [
+                ["1", "Volcar rango (.bin)"],
+                ["2", "Volcar memoria completa (.bin)"],
+                ["3", "Guardar exec_map (.exec)"],
+                ["4", "Cargar exec_map (.exec)"],
+                ["5", "Cargar exec asociado al .img"],
+                ["9", "Volver"],
+            ]
+        )
         while True:
             print(color.Color.CYAN)
             exp_menu.print_table()
             print(color.Color.RESET_COLOR)
-            sub = (input("export>> ").strip())
+            sub = input("export>> ").strip()
             if sub in ("9", "back", "menu"):
                 break
             if sub == "1":
@@ -890,24 +1017,28 @@ def run_memory_editor():
                 length = _prompt_int("Longitud (bytes): ")
                 if length is None:
                     continue
-                out_path = _prompt_until_non_empty("Ruta de salida (.bin): ", allow_cancel=True)
+                out_path = _prompt_until_non_empty(
+                    "Ruta de salida (.bin): ", allow_cancel=True
+                )
                 if out_path is None:
                     continue
                 try:
                     cpu.mem._check_addr(start, max(0, length))
-                    with open(out_path, 'wb') as f:
-                        f.write(cpu.mem.data[start:start+length])
+                    with open(out_path, "wb") as f:
+                        f.write(cpu.mem.data[start : start + length])
                     print("OK: rango volcado")
                 except Exception as e:
                     print(color.Color.ROJO)
                     print(f"Error: {e}")
                     print(color.Color.RESET_COLOR)
             elif sub == "2":
-                out_path = _prompt_until_non_empty("Ruta de salida (.bin): ", allow_cancel=True)
+                out_path = _prompt_until_non_empty(
+                    "Ruta de salida (.bin): ", allow_cancel=True
+                )
                 if out_path is None:
                     continue
                 try:
-                    with open(out_path, 'wb') as f:
+                    with open(out_path, "wb") as f:
                         f.write(cpu.mem.data)
                     print("OK: memoria completa volcada")
                 except Exception as e:
@@ -915,11 +1046,13 @@ def run_memory_editor():
                     print(f"Error: {e}")
                     print(color.Color.RESET_COLOR)
             elif sub == "3":
-                out_path = _prompt_until_non_empty("Ruta de salida (.exec): ", allow_cancel=True)
+                out_path = _prompt_until_non_empty(
+                    "Ruta de salida (.exec): ", allow_cancel=True
+                )
                 if out_path is None:
                     continue
                 try:
-                    with open(out_path, 'w', encoding='utf-8') as f:
+                    with open(out_path, "w", encoding="utf-8") as f:
                         for a in sorted(cpu.exec_map):
                             f.write(hex(a) + "\n")
                     print("OK: exec_map guardado")
@@ -928,13 +1061,15 @@ def run_memory_editor():
                     print(f"Error: {e}")
                     print(color.Color.RESET_COLOR)
             elif sub == "4":
-                in_path = _prompt_until_non_empty("Ruta del archivo (.exec): ", allow_cancel=True)
+                in_path = _prompt_until_non_empty(
+                    "Ruta del archivo (.exec): ", allow_cancel=True
+                )
                 if in_path is None or not os.path.exists(in_path):
                     print("Ruta inválida")
                     continue
                 try:
                     newmap = set()
-                    with open(in_path, 'r', encoding='utf-8') as f:
+                    with open(in_path, "r", encoding="utf-8") as f:
                         for line in f:
                             line = line.strip()
                             if not line:
@@ -948,7 +1083,7 @@ def run_memory_editor():
                     print(color.Color.RESET_COLOR)
             elif sub == "5":
                 # Cargar el .exec asociado al último .img cargado
-                if not getattr(cpu, 'current_program', None):
+                if not getattr(cpu, "current_program", None):
                     print("No hay imagen actual. Primero cargue un .img.")
                     continue
                 assoc = cpu.current_program + ".exec"
@@ -957,7 +1092,7 @@ def run_memory_editor():
                     continue
                 try:
                     newmap = set()
-                    with open(assoc, 'r', encoding='utf-8') as f:
+                    with open(assoc, "r", encoding="utf-8") as f:
                         for line in f:
                             line = line.strip()
                             if not line:
@@ -983,7 +1118,11 @@ def run_memory_editor():
             break
         elif cmd == "1":
             # Cargar imagen y exec_map
-            img = _prompt_existing_file("Ruta del archivo .img (o 'back' para volver): ", ".img", allow_cancel=True)
+            img = _prompt_existing_file(
+                "Ruta del archivo .img (o 'back' para volver): ",
+                ".img",
+                allow_cancel=True,
+            )
             if img is None:
                 continue
             exec_present = os.path.exists(img + ".exec")
@@ -993,7 +1132,9 @@ def run_memory_editor():
                 # Precise occupied word addresses for the new image
                 new_words = _peek_img_word_addrs(img)
                 # Check precise collision with previously occupied words
-                conflict_words = new_words.intersection(getattr(cpu, 'occupied_words', set()))
+                conflict_words = new_words.intersection(
+                    getattr(cpu, "occupied_words", set())
+                )
                 has_collision = len(conflict_words) > 0
                 if has_collision:
                     # Show a compact preview of collisions
@@ -1001,12 +1142,22 @@ def run_memory_editor():
                     print(color.Color.ROJO)
                     if cpu.segments:
                         # Report against first overlapping segment for context
-                        print("Colisión de segmentos detectada (direcciones de palabra ya ocupadas)")
-                    print(f"Ejemplos de colisión en: {[f'0x{a:08X}' for a in preview]} (total {len(conflict_words)})")
-                    print("Sugerencia: cargue en una dirección diferente o cambie el .img")
+                        print(
+                            "Colisión de segmentos detectada (direcciones de palabra ya ocupadas)"
+                        )
+                    print(
+                        f"Ejemplos de colisión en: {[f'0x{a:08X}' for a in preview]} (total {len(conflict_words)})"
+                    )
+                    print(
+                        "Sugerencia: cargue en una dirección diferente o cambie el .img"
+                    )
                     print(color.Color.RESET_COLOR)
                 if has_collision:
-                    resp = _prompt_yes_no("Colisión detectada. ¿Cargar de todos modos? [s/N]: ", default=False, allow_cancel=True)
+                    resp = _prompt_yes_no(
+                        "Colisión detectada. ¿Cargar de todos modos? [s/N]: ",
+                        default=False,
+                        allow_cancel=True,
+                    )
                     if resp is not True:
                         continue
                 # Cargar (destructivo) y registrar segmento
@@ -1017,12 +1168,18 @@ def run_memory_editor():
                 print(f"Imagen cargada en memoria: rango [{min_a}, {max_a}]")
                 if exec_present:
                     print(f"Exec map cargado: {len(cpu.exec_map)} direcciones")
-                    resp = _prompt_yes_no("¿Establecer PC al primer ejecutable? [s/N]: ", default=False, allow_cancel=True)
+                    resp = _prompt_yes_no(
+                        "¿Establecer PC al primer ejecutable? [s/N]: ",
+                        default=False,
+                        allow_cancel=True,
+                    )
                     if resp is True:
                         cpu.pc = min(cpu.exec_map)
                         print(f"PC = 0x{cpu.pc:X}")
                 else:
-                    print("No se encontró archivo .exec. Puede definir exec_map con la opción 5.")
+                    print(
+                        "No se encontró archivo .exec. Puede definir exec_map con la opción 5."
+                    )
             except Exception as e:
                 print(color.Color.ROJO)
                 print(f"Error al cargar imagen: {e}")

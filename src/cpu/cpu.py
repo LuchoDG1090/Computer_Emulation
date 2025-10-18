@@ -10,65 +10,68 @@ Implementacion de CPU que sigue la arquitectura Von Neumann con:
 
 """
 
-from typing import Dict, List, Optional, Any
-import os
 import datetime
-from src.isa.isa import Opcodes
-from src.memory.memory import Memory
+import os
+from typing import Any, Dict, List, Optional
+
+import src.user_interface.logging.logger as logger
+from src.cpu import isa
 from src.cpu.core import ALU, ALUOperation, Flags
 from src.cpu.decoder import Decoder
-import src.user_interface.logging.logger as logger
-from src.isa import isa
-from src.user_interface.cli import messages
+from src.cpu.isa import Opcodes
+from src.memory.memory import Memory
+from src.user_interface.cli import color, messages
 from src.user_interface.cli.table_formater import Table
-from src.user_interface.cli import color
 
 logger_handler = logger.configurar_logger()
+
 
 class CPU:
     """
     Clase principal de la CPU que implementa una arquitectura Von Neumann de 64 bits
     """
-    
+
     def __init__(self, memory_size: int = 65536, memory: Optional[Memory] = None):
         """
         Inicializa la CPU con los registros y componentes necesarios
-        
+
         Args:
             memory_size: Tamaño de la memoria en bytes (por defecto 64KB)
         """
         # Registros principales
-        self.pc: int = 0                    # Program Counter (64 bits)
-        self.ir: int = 0                    # Instruction Register (64 bits)
-        self.mar: int = 0                   # Memory Address Register
-        self.mdr: int = 0                   # Memory Data Register
-        self.accumulator: int = 0           # Acumulador
-        self.flags: int = 0                 # Flag Register (8 bits)
-        
+        self.pc: int = 0  # Program Counter (64 bits)
+        self.ir: int = 0  # Instruction Register (64 bits)
+        self.mar: int = 0  # Memory Address Register
+        self.mdr: int = 0  # Memory Data Register
+        self.accumulator: int = 0  # Acumulador
+        self.flags: int = 0  # Flag Register (8 bits)
+
         # Registros de proposito general (R0-R15)
         self.registers: List[int] = [0] * 16
-        
+
         # Memoria principal (usar Memory externo)
-        self.mem: Memory = memory if memory is not None else Memory(size_bytes=memory_size)
+        self.mem: Memory = (
+            memory if memory is not None else Memory(size_bytes=memory_size)
+        )
         self.memory_size: int = self.mem.size
-        
+
         # Compatibilidad: exponer el buffer como 'memory'
         self.memory: bytearray = self.mem.data
-        
+
         # Pila y stack pointer (iniciar en el tope de memoria)
         self.stack_pointer: int = self.mem.size
-        
+
         # Estado de la CPU
         self.running: bool = False
         self.cycle_count: int = 0
-        
+
         # Inicializar componentes
         self.alu = ALU()
         self.decoder = Decoder()
 
         # Salidas MMIO simples
         self.MMIO_CONSOLE_CHAR = 0xFFFF0000  # escribe byte (ASCII) a consola
-        self.MMIO_CONSOLE_INT  = 0xFFFF0008  # imprime entero en consola
+        self.MMIO_CONSOLE_INT = 0xFFFF0008  # imprime entero en consola
         self.io_ports = {
             1: self._console_port_write_char,
             2: self._console_port_write_int,
@@ -76,10 +79,10 @@ class CPU:
 
         # Puertos de entrada
         self.MMIO_CONSOLE_IN_CHAR = 0xFFFF0010  # lee un caracter (ASCII) desde consola
-        self.MMIO_CONSOLE_IN_INT  = 0xFFFF0018  # lee un entero desde consola
+        self.MMIO_CONSOLE_IN_INT = 0xFFFF0018  # lee un entero desde consola
         self.io_ports_in = {
-            1: self._console_port_read_char,   # puerto 1: leer ASCII
-            2: self._console_port_read_int,    # puerto 2: leer entero
+            1: self._console_port_read_char,  # puerto 1: leer ASCII
+            2: self._console_port_read_int,  # puerto 2: leer entero
         }
 
         # Mapa de direcciones ejecutables (None => no verificar)
@@ -90,7 +93,7 @@ class CPU:
         self.current_program: Optional[str] = None
         # Conjunto de direcciones base de palabra (8 bytes) ocupadas por programas cargados
         self.occupied_words: set[int] = set()
-    
+
     def reset(self):
         """Reinicia la CPU a su estado inicial"""
         self.pc = 0
@@ -106,21 +109,21 @@ class CPU:
         self.stack_pointer = self.mem.size
         self.running = False
         self.cycle_count = 0
-    
+
     def load_program(self, program: bytes, start_address: int = 0):
         """
         Carga un programa en memoria
-        
+
         Args:
             program: Programa en bytes
             start_address: Direccion de inicio en memoria
         """
         if start_address + len(program) > self.mem.size:
             raise ValueError("Programa demasiado grande para la memoria")
-        
-        self.mem.data[start_address:start_address + len(program)] = program
+
+        self.mem.data[start_address : start_address + len(program)] = program
         self.pc = start_address
-    
+
     def fetch(self) -> int:
         """
         Fase FETCH: Obtiene la instruccion de memoria
@@ -132,70 +135,99 @@ class CPU:
                 next_exec = min(a for a in self.exec_map if a >= self.pc)
                 self.pc = next_exec
             except ValueError:
-                raise RuntimeError(f"Intento de ejecutar dato/no ejecutable en 0x{self.pc:08X}")
+                raise RuntimeError(
+                    f"Intento de ejecutar dato/no ejecutable en 0x{self.pc:08X}"
+                )
         # Leer instrucción de 64 bits desde Memory
         instruction = self.mem.read_word(self.pc)
         self.ir = instruction
         self.pc += 8
         return instruction
-    
+
     def __get_cpu_status(self):
         logger_handler.info("Se ha solicitado el estado actual de los registros del pc")
         return {
             "program counter / instruction pointer": str(self.pc),
             "instruction register": str(self.ir),
             "flag register(bin)": str(bin(self.flags)),
-            "falg register(dec)": str(self.flags)
+            "falg register(dec)": str(self.flags),
         }
 
     def __get_instruction_info(self):
         info = self.__decoded_info
-        info['opcode'] = hex(info['opcode'])
-        info['instruccion decodificada [ISA]'] = isa.Opcodes(int(info['opcode'], 16)).name
+        info["opcode"] = hex(info["opcode"])
+        info["instruccion decodificada [ISA]"] = isa.Opcodes(
+            int(info["opcode"], 16)
+        ).name
         return self.__decoded_info
-    
+
     def decode(self, instruction: int) -> Dict[str, Any]:
         """
         Fase DECODE: Decodifica la instruccion
-        
+
         Args:
             instruction: Instruccion de 64 bits
-            
+
         Returns:
             Diccionario con los campos decodificados
         """
         return self.decoder.decode(instruction)
-    
+
     def execute(self, decoded_instruction: Dict[str, Any]) -> bool:
         """
         Fase EXECUTE: Ejecuta la instruccion decodificada
-        
+
         Args:
             decoded_instruction: Instruccion decodificada
-            
+
         Returns:
             True si la CPU debe continuar ejecutando, False si debe detenerse
         """
-        opcode = decoded_instruction['opcode']
-        
+        opcode = decoded_instruction["opcode"]
+
         # Instrucciones ALU
-        if opcode in [Opcodes.ADD, Opcodes.SUB, Opcodes.MUL, Opcodes.DIV,
-                      Opcodes.AND, Opcodes.OR, Opcodes.XOR, Opcodes.NOT,
-                      Opcodes.SHL, Opcodes.SHR, Opcodes.CMP]:
+        if opcode in [
+            Opcodes.ADD,
+            Opcodes.SUB,
+            Opcodes.MUL,
+            Opcodes.DIV,
+            Opcodes.AND,
+            Opcodes.OR,
+            Opcodes.XOR,
+            Opcodes.NOT,
+            Opcodes.SHL,
+            Opcodes.SHR,
+            Opcodes.CMP,
+        ]:
             return self._execute_alu_instruction(decoded_instruction)
-        
+
         # Instrucciones de transferencia de datos
-        elif opcode in [Opcodes.MOVI, Opcodes.LD, Opcodes.ST, 
-                        Opcodes.OUT, Opcodes.ADDI, Opcodes.IN, Opcodes.CP]:
+        elif opcode in [
+            Opcodes.MOVI,
+            Opcodes.LD,
+            Opcodes.ST,
+            Opcodes.OUT,
+            Opcodes.ADDI,
+            Opcodes.IN,
+            Opcodes.CP,
+        ]:
             return self._execute_data_transfer(decoded_instruction)
-        
+
         # Instrucciones de pila
         elif opcode in [Opcodes.PUSH, Opcodes.POP]:
             return self._execute_stack_instruction(decoded_instruction)
-        
+
         # Instrucciones de control de flujo
-        elif opcode in [Opcodes.JMP, Opcodes.JZ, Opcodes.JNZ, Opcodes.JC, 
-                        Opcodes.JNC, Opcodes.JS, Opcodes.CALL, Opcodes.RET]:
+        elif opcode in [
+            Opcodes.JMP,
+            Opcodes.JZ,
+            Opcodes.JNZ,
+            Opcodes.JC,
+            Opcodes.JNC,
+            Opcodes.JS,
+            Opcodes.CALL,
+            Opcodes.RET,
+        ]:
             return self._execute_control_flow(decoded_instruction)
 
         # Instrucciones de sistema
@@ -203,58 +235,58 @@ class CPU:
             return False
         elif opcode == Opcodes.NOP:
             return True
-        
+
         else:
             raise RuntimeError(f"Opcode no reconocido: {opcode}")
-    
+
     def step(self) -> bool:
         """
         Ejecuta un ciclo completo de la CPU (fetch-decode-execute)
-        
+
         Returns:
             True si la CPU debe continuar, False si debe detenerse
         """
         try:
             # Fase FETCH
             instruction = self.fetch()
-            
+
             # Fase DECODE
             decoded = self.decode(instruction)
             self.__decoded_info = decoded
-            
+
             # Fase EXECUTE
             should_continue = self.execute(decoded)
-            
+
             self.cycle_count += 1
             return should_continue
-        
+
         except Exception as e:
             print(f"Error en ciclo CPU: {e}")
             return False
-    
+
     def run(self, max_cycles: int = None):
         """
         Ejecuta la CPU hasta que se detenga o alcance el maximo de ciclos
-        
+
         Args:
             max_cycles: Maximo numero de ciclos a ejecutar (None = sin limite)
         """
         self.running = True
         cycles = 0
-        
+
         while self.running:
             if max_cycles and cycles >= max_cycles:
                 break
-            
+
             should_continue = self.step()
             if not should_continue:
                 self.running = False
                 break
-            
+
             cycles += 1
-        
+
         print(f"CPU detenida despues de {cycles} ciclos")
-    
+
     def run_cycles(self, max_cycles: int = None):
         self.running = True
         cycles = 0
@@ -263,7 +295,13 @@ class CPU:
             if max_cycles and cycles >= max_cycles:
                 break
             try:
-                step = input("Para ejecutar la siguiente instrucción ingrese step, para salir ingrese q >>").strip().lower()
+                step = (
+                    input(
+                        "Para ejecutar la siguiente instrucción ingrese step, para salir ingrese q >>"
+                    )
+                    .strip()
+                    .lower()
+                )
                 if step not in ("q", "step"):
                     raise EOFError
             except KeyboardInterrupt:
@@ -271,13 +309,17 @@ class CPU:
                 print(color.Color.ROJO)
                 print("Para salir ingrese q")
                 print(color.Color.RESET_COLOR)
-                logger_handler.exception("Para salir el usuario debe ingresar q, no secuencias de escape")
+                logger_handler.exception(
+                    "Para salir el usuario debe ingresar q, no secuencias de escape"
+                )
             except EOFError:
                 print("\n")
                 print(color.Color.ROJO)
                 print("Entrada de usuario no es correcta")
                 print(color.Color.RESET_COLOR)
-                logger_handler.exception("El valor ingresado por el usuario no es correcto")
+                logger_handler.exception(
+                    "El valor ingresado por el usuario no es correcto"
+                )
             else:
                 if step == "step":
                     should_continue = self.step()
@@ -285,16 +327,16 @@ class CPU:
                     col, row = messages.Messages.get_terminal_size()
                     tabla_estado = Table(col, row, "Estado de la máquina")
                     tabla_estado.add_encabezado(["registro", "Valor"])
-                    for k,v in estado_cpu.items():
+                    for k, v in estado_cpu.items():
                         tabla_estado.add_fila([k, v])
                     tabla_estado.print_table()
 
                     informacion_instruccion = self.__get_instruction_info()
                     tabla_instruccion = Table(col, row, "Información de la instrucción")
                     tabla_instruccion.add_encabezado(["Campo", "Valor"])
-                    for k,v in informacion_instruccion.items():
+                    for k, v in informacion_instruccion.items():
                         tabla_instruccion.add_fila([k, str(v)])
-                    
+
                     tabla_instruccion.print_table()
 
                     if not should_continue:
@@ -306,25 +348,34 @@ class CPU:
 
                 cycles += 1
         print(f"CPU detenida despues de {cycles} ciclos")
-    
+
     def _execute_alu_instruction(self, instruction: Dict[str, Any]) -> bool:
         """Ejecuta instrucciones de la ALU (R-Type)"""
-        opcode = instruction['opcode']
-        rd = instruction['rd']
-        rs1 = instruction['rs1']
-        rs2 = instruction['rs2']
-        
+        opcode = instruction["opcode"]
+        rd = instruction["rd"]
+        rs1 = instruction["rs1"]
+        rs2 = instruction["rs2"]
+
         # Obtener valores de los registros fuente
         operand1 = self.registers[rs1]
-        
+
         # Para operaciones que requieren dos operandos
-        if opcode in [Opcodes.ADD, Opcodes.SUB, Opcodes.MUL, Opcodes.DIV, 
-                      Opcodes.AND, Opcodes.OR, Opcodes.XOR, Opcodes.SHL, 
-                      Opcodes.SHR, Opcodes.CMP]:
+        if opcode in [
+            Opcodes.ADD,
+            Opcodes.SUB,
+            Opcodes.MUL,
+            Opcodes.DIV,
+            Opcodes.AND,
+            Opcodes.OR,
+            Opcodes.XOR,
+            Opcodes.SHL,
+            Opcodes.SHR,
+            Opcodes.CMP,
+        ]:
             operand2 = self.registers[rs2]
         else:  # NOT solo requiere un operando
             operand2 = 0
-        
+
         # Mapear opcode a operacion ALU
         alu_op_map = {
             Opcodes.ADD: ALUOperation.ADD,
@@ -339,54 +390,54 @@ class CPU:
             Opcodes.SHR: ALUOperation.SHR,
             Opcodes.CMP: ALUOperation.CMP,
         }
-        
+
         alu_operation = alu_op_map[opcode]
         result, flags = self.alu.execute(alu_operation, operand1, operand2)
-        
+
         # Actualizar flags
         self.flags = flags
-        
+
         # Almacenar resultado en registro destino (excepto para CMP)
         if opcode != Opcodes.CMP:
             self.registers[rd] = result & 0xFFFFFFFFFFFFFFFF  # Mantener 64 bits
-        
+
         return True
-    
+
     def _execute_data_transfer(self, instruction: Dict[str, Any]) -> bool:
         """Ejecuta instrucciones de transferencia de datos (I-Type)"""
-        opcode = instruction['opcode']
-        rd = instruction['rd']
-        rs1 = instruction['rs1']
-        imm32 = instruction['imm32']
-        func = instruction['func']
-        
+        opcode = instruction["opcode"]
+        rd = instruction["rd"]
+        rs1 = instruction["rs1"]
+        imm32 = instruction["imm32"]
+        func = instruction["func"]
+
         if opcode == Opcodes.MOVI:
             # MOVI puede ser MOVI Rd, Rs1 (registro a registro) o MOVI Rd, #imm (inmediato)
             if func == 0:  # Inmediato
                 self.registers[rd] = imm32
             else:  # Registro a registro (func = 1)
                 self.registers[rd] = self.registers[rs1]
-        
+
         elif opcode == Opcodes.LD:
             # LD Rd, Rs1 + offset o LD Rd, #address
             if func == 0:  # Direccion absoluta
                 address = imm32
             else:  # Offset desde registro base
                 address = self.registers[rs1] + self._sign_extend_32(imm32)
-            
+
             value = self._read_memory_64(address)
             self.registers[rd] = value
-        
+
         elif opcode == Opcodes.ST:
             # ST Rs1, Rd + offset o ST Rs1, #address
             if func == 0:  # Direccion absoluta
                 address = imm32
             else:  # Offset desde registro base
                 address = self.registers[rd] + self._sign_extend_32(imm32)
-            
+
             value = self.registers[rs1]
             self._write_memory_64(address, value)
-        
+
         elif opcode == Opcodes.OUT:
             # OUT: escribe valor de registro a MMIO (func=0) o puerto (func=1)
             # Acepta ambas codificaciones: registro en RD (ensamblador) o RS1 (encoder manual)
@@ -435,7 +486,7 @@ class CPU:
             self.registers[rd] = self.registers[rs1] & 0xFFFFFFFFFFFFFFFF
 
         return True
-    
+
     def _io_out(self, value: int, target: int, func: int):
         """Salida a MMIO o puertos."""
         # Decode extended OUT sub-operations using FUNC12 bits
@@ -449,7 +500,7 @@ class CPU:
 
         # Extended sub-operation: print array of integers with separator
         if subop == 1:
-            base_addr = value            # base pointer to array of 64-bit words
+            base_addr = value  # base pointer to array of 64-bit words
             count = target & 0xFFFFFFFF  # number of elements to print
             # Clamp count to a reasonable upper bound to avoid runaway
             if count < 0:
@@ -544,6 +595,7 @@ class CPU:
         """Lee un caracter de la consola y retorna su codigo ASCII (LSB)."""
         try:
             import sys
+
             ch = sys.stdin.read(1)
             if ch:
                 return ord(ch[0]) & 0xFF
@@ -561,12 +613,12 @@ class CPU:
 
     def _execute_stack_instruction(self, instruction: Dict[str, Any]) -> bool:
         """Ejecuta instrucciones de pila (I-Type)"""
-        opcode = instruction['opcode']
-        rd = instruction['rd']
-        rs1 = instruction['rs1']
-        imm32 = instruction['imm32']
-        func = instruction['func']
-        
+        opcode = instruction["opcode"]
+        rd = instruction["rd"]
+        rs1 = instruction["rs1"]
+        imm32 = instruction["imm32"]
+        func = instruction["func"]
+
         if opcode == Opcodes.PUSH:
             # PUSH Rs1 (registro) o PUSH #imm (inmediato)
             if func == 0:  # Inmediato
@@ -574,38 +626,38 @@ class CPU:
             else:  # Registro
                 value = self.registers[rs1]
             self._push(value)
-        
+
         elif opcode == Opcodes.POP:
             # POP Rd (siempre a registro)
             value = self._pop()
             self.registers[rd] = value
-        
+
         return True
-    
+
     def _execute_control_flow(self, instruction: Dict[str, Any]) -> bool:
         """Ejecuta instrucciones de control de flujo (J-Type)"""
-        opcode = instruction['opcode']
-        imm32 = instruction['imm32']  # Direccion de salto
-        
+        opcode = instruction["opcode"]
+        imm32 = instruction["imm32"]  # Direccion de salto
+
         if opcode == Opcodes.JMP:
             self.pc = imm32
-        
+
         elif opcode == Opcodes.JZ:
             if self._get_flag(Flags.ZERO):
                 self.pc = imm32
-        
+
         elif opcode == Opcodes.JNZ:
             if not self._get_flag(Flags.ZERO):
                 self.pc = imm32
-        
+
         elif opcode == Opcodes.JC:
             if self._get_flag(Flags.CARRY):
                 self.pc = imm32
-        
+
         elif opcode == Opcodes.JNC:
             if not self._get_flag(Flags.CARRY):
                 self.pc = imm32
-        
+
         elif opcode == Opcodes.JS:
             if self._get_flag(Flags.NEGATIVE):
                 self.pc = imm32
@@ -613,26 +665,26 @@ class CPU:
         elif opcode == Opcodes.CALL:
             self._push(self.pc)  # Guardar direccion de retorno
             self.pc = imm32
-        
+
         elif opcode == Opcodes.RET:
             self.pc = self._pop()  # Restaurar direccion de retorno
-        
+
         return True
-    
+
     def _sign_extend_32(self, value: int) -> int:
         """Extiende el signo de un valor de 32 bits a 64 bits"""
         if value & 0x80000000:  # Si el bit de signo esta activado
             return value | 0xFFFFFFFF00000000  # Extender con 1s
         else:
             return value & 0xFFFFFFFF  # Mantener positivo
-    
+
     def _read_memory_64(self, address: int) -> int:
         """Lee un valor de 64 bits desde memoria (Memory)"""
         try:
             return self.mem.read_word(address)
         except ValueError as e:
             raise RuntimeError(f"Segmentation fault (read) @ 0x{address:08X}: {e}")
-    
+
     def _write_memory_64(self, address: int, value: int):
         """Escribe un valor de 64 bits en memoria (Memory)"""
         try:
@@ -663,8 +715,14 @@ class CPU:
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write("EUCLID-64 core dump\n")
                 f.write(f"program: {self.current_program or ''}\n")
-                f.write(f"pc=0x{self.pc:016X} ir=0x{self.ir:016X} flags=0b{self.flags:08b} sp=0x{self.stack_pointer:016X}\n")
-                f.write("registers:" + ",".join(f"R{i}=0x{v:016X}" for i, v in enumerate(self.registers)) + "\n")
+                f.write(
+                    f"pc=0x{self.pc:016X} ir=0x{self.ir:016X} flags=0b{self.flags:08b} sp=0x{self.stack_pointer:016X}\n"
+                )
+                f.write(
+                    "registers:"
+                    + ",".join(f"R{i}=0x{v:016X}" for i, v in enumerate(self.registers))
+                    + "\n"
+                )
                 f.write(f"cycles={self.cycle_count} running={self.running}\n")
                 # segmentos
                 f.write("segments:\n")
@@ -676,7 +734,7 @@ class CPU:
         except Exception:
             txt_path = ""
         return bin_path, txt_path
-    
+
     def _push(self, value: int):
         """Empuja un valor a la pila (crecimiento hacia abajo en bloques de 8 bytes)"""
         if self.stack_pointer < 8:
@@ -691,33 +749,33 @@ class CPU:
         value = self._read_memory_64(self.stack_pointer)
         self.stack_pointer += 8
         return value
-    
+
     def _get_flag(self, flag: Flags) -> bool:
         """Obtiene el estado de un flag"""
         return bool(self.flags & (1 << flag))
-    
+
     def _set_flag(self, flag: Flags, value: bool):
         """Establece el estado de un flag"""
         if value:
-            self.flags |= (1 << flag)
+            self.flags |= 1 << flag
         else:
             self.flags &= ~(1 << flag)
-    
+
     def get_state(self) -> Dict[str, Any]:
         """Retorna el estado actual de la CPU"""
         return {
-            'pc': self.pc,
-            'ir': self.ir,
-            'mar': self.mar,
-            'mdr': self.mdr,
-            'accumulator': self.accumulator,
-            'flags': self.flags,
-            'registers': self.registers.copy(),
-            'stack_pointer': self.stack_pointer,
-            'cycle_count': self.cycle_count,
-            'running': self.running
+            "pc": self.pc,
+            "ir": self.ir,
+            "mar": self.mar,
+            "mdr": self.mdr,
+            "accumulator": self.accumulator,
+            "flags": self.flags,
+            "registers": self.registers.copy(),
+            "stack_pointer": self.stack_pointer,
+            "cycle_count": self.cycle_count,
+            "running": self.running,
         }
-    
+
     def print_state(self):
         """Imprime el estado actual de la CPU"""
         state = self.get_state()
@@ -729,7 +787,7 @@ class CPU:
         print(f"Stack Pointer: 0x{state['stack_pointer']:016X}")
         print(f"Cycles: {state['cycle_count']}")
         print(f"Running: {state['running']}")
-        
+
         print("\nRegistros:")
-        for i, reg in enumerate(state['registers']):
+        for i, reg in enumerate(state["registers"]):
             print(f"R{i}: 0x{reg:016X}")
