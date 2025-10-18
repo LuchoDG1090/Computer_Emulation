@@ -27,7 +27,6 @@ fin:
     ST R1, [res]
     OUT R1, 0xFFFF0008
     HALT
-EXEC_FROM
 
 # ---------- Datos ----------
 ORG 0x0BB8              # 3.000 en hexadecimal, correspondiente a la posición 375 en la memoria (8 bytes)

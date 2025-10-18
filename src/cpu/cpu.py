@@ -15,10 +15,10 @@ import os
 from typing import Any, Dict, List, Optional
 
 import src.user_interface.logging.logger as logger
-from src.cpu import isa
 from src.cpu.core import ALU, ALUOperation, Flags
 from src.cpu.decoder import Decoder
-from src.cpu.isa import Opcodes
+from src.isa import isa
+from src.isa.isa import Opcodes
 from src.memory.memory import Memory
 from src.user_interface.cli import color, messages
 from src.user_interface.cli.table_formater import Table

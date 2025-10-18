@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from isa import InstructionType, opcode_to_type
+from src.isa.isa import InstructionType, opcode_to_type
 
 
 class Decoder:
