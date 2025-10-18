@@ -43,6 +43,9 @@ class Memory:
     def write_word(self, addr: int, value: int):
         self._check_addr(addr, 8)
         struct.pack_into("<Q", self.data, addr, value & 0xFFFFFFFFFFFFFFFF)
+    
+    def get_content_list(self):
+        return [self.data[i:i+8] for i in range(len(self.data))]
 
     # ---------------------------
     #  ACCESO POR BIT

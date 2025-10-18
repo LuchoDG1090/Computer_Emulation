@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import customtkinter as ctk
+from src.cpu.cpu import CPU
 from src.user_interface.gui.components import top_menu, main_func
+from src.memory.memory import Memory
 
 class Routes:
     LOGO_PATH = r"src\user_interface\gui\resources\logo_sin_fondo.png"
@@ -25,6 +27,8 @@ class MainFrame(ctk.CTk):
         self.width = self.winfo_screenwidth()
         self.height = self.winfo_screenheight()
         self.geometry(f'{self.width}x{self.height}')
+        self.memory = Memory(65536)
+        self.cpu = CPU(65536, memory = self.memory)
 
         self.configure(fg_color = '#26205E')
 
@@ -49,6 +53,8 @@ class MainFrame(ctk.CTk):
             self,
             self.__return_percentage_relation(self.height, 90),
             self.width,
+            memory = self.memory,
+            cpu = self.cpu,
             compile_icon_path = Routes.COMPILE_ICON_PATH,
             upload_icon_path = Routes.UPLOAD_ICON_PATH,
             assemble_icon_path = Routes.ASSEMBLE_ICON_PATH,

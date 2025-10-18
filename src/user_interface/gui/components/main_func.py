@@ -17,6 +17,8 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight = 1)
+        self.memory = kwargs.get('memory', '')
+        self.cpu = kwargs.get('cpu', '')
         self.compile_icon_path = kwargs.get('compile_icon_path', '')
         self.upload_icon_path = kwargs.get('upload_icon_path', '')
         self.assemble_icon_path = kwargs.get('assemble_icon_path', '')
@@ -70,7 +72,9 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
         self.reloc_code = reloc.RelocCodeFrame(
             self.frame_second_column,
-            reloc_icon = self.reloc_icon_path
+            reloc_icon = self.reloc_icon_path,
+            memory = self.memory,
+            cpu = self.cpu
         )
         self.reloc_code.grid(column = 0, row = 0, sticky = 'nsew', pady = 12)
 

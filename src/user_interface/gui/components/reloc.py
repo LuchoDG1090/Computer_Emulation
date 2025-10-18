@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from PIL import Image
+from src.user_interface.gui.func import reloc as func
 
 class RelocCodeFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color = '#0C1826', **kwargs):
@@ -10,6 +11,8 @@ class RelocCodeFrame(ctk.CTkFrame):
         self.rowconfigure(1, weight=8)
         self.rowconfigure(2, weight=1)
         self.reloc_icon = kwargs.get('reloc_icon', '')
+        self.cpu = kwargs.get('cpu', '')
+        self.memory = kwargs.get('memory', '')
 
         self.__build_text()
         self.__build_entry_text()
@@ -45,20 +48,22 @@ class RelocCodeFrame(ctk.CTkFrame):
             dark_image = Image.open(self.reloc_icon),
             size = (40, 40)
         )
-        boton_compilar = ctk.CTkButton(
+        boton_enlazar_cargar = ctk.CTkButton(
             button_frame, 
-            text='Enlazar- cargar',
+            text='Enlazar-cargar',
             image = compile_image,
             compound='right',
             fg_color='#4C44AC',
             text_color='white',
             corner_radius=50,
             font=("Comic Sans MS", 16, "bold"),
+            command = lambda: func.link_load(self.text_entry, self.memory)
         )
-        boton_compilar.grid(row = 0, column = 0)
+        boton_enlazar_cargar.grid(row = 0, column = 0)
 
 
         button_frame.grid(column = 0, row = 2, sticky = 'nsew', padx = 30)
     
     def set_text(self, text):
+        self.text_entry.delete("1.0", "end")
         self.text_entry.insert("1.0", text)
