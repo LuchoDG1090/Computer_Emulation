@@ -4,19 +4,19 @@ Se valida acceso bit a bit, byte, palabra (64 bits), operaciones de bus,
 y persistencia en archivos binarios.
 """
 
-import unittest
 import os
-import tempfile
 
-# Añadir el directorio src 
+# Añadir el directorio src
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+import tempfile
+import unittest
 
-from memory.memory import Memory, Bus
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from src.memory.memory import Bus, Memory
 
 
 class TestMemory(unittest.TestCase):
-
     def setUp(self):
         # Como tu Memory ya no recibe size_words, lo cambiamos a size_bytes
         self.mem = Memory(size_bytes=16)  # 16 bytes = 2 palabras de 64 bits
@@ -78,5 +78,5 @@ class TestMemory(unittest.TestCase):
             self.assertEqual(mem2.read_byte(1), 0xBB)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

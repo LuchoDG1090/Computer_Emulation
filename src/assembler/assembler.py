@@ -234,10 +234,7 @@ class Assembler:
         if not filepath:
             return
 
-        if filepath.endswith(".exec"):
-            self.memory_map.save_exec_format(filepath)
-        else:
-            self.memory_map.save_map_format(filepath)
+        self.memory_map.save_map_format(filepath)
 
     def _print_summary(self, output_binary, output_map):
         """Imprime resumen del ensamblado"""
