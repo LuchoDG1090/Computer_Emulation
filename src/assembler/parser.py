@@ -6,10 +6,11 @@ from src.assembler.exceptions import ParserError
 class Instruction:
     """Representa una instrucción parseada"""
 
-    def __init__(self, address, mnemonic, operands=None):
+    def __init__(self, address, mnemonic, operands=None, line_no=None):
         self.address = address
         self.mnemonic = mnemonic
         self.operands = operands or []
+        self.line_no = line_no
 
     def __repr__(self):
         return f"Instruction({self.address:#x}, {self.mnemonic}, {self.operands})"
@@ -18,10 +19,11 @@ class Instruction:
 class Directive:
     """Representa una directiva parseada"""
 
-    def __init__(self, address, name, args=None):
+    def __init__(self, address, name, args=None, line_no=None):
         self.address = address
         self.name = name
         self.args = args or []
+        self.line_no = line_no
 
     def __repr__(self):
         return f"Directive({self.address:#x}, {self.name}, {self.args})"

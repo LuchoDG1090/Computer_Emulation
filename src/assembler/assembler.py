@@ -17,6 +17,7 @@ class Assembler:
         self.memory_map = MemoryMap()
         self.parser = InstructionParser()
         self.word_size = 8  # 64 bits
+        self.address_word_index = {}
 
     def assemble_file(self, input_file, output_binary, output_map=None):
         """Ensambla un archivo"""
@@ -41,8 +42,9 @@ class Assembler:
         lexer.input(source_code)
         parsed_lines = []
         current_address = 0
+        word_index = 0
 
-        for line_tokens in self._group_tokens_by_line(lexer):
+        for line_no, line_tokens in self._group_tokens_by_line(lexer):
             label, item, current_address = self._process_line(
                 line_tokens, current_address
             )
@@ -52,7 +54,10 @@ class Assembler:
 
             if item:
                 item.address = current_address
+                item.line_no = line_no
+                self.address_word_index[item.address] = word_index
                 parsed_lines.append(item)
+                word_index += self._words_generated(item)
                 current_address = self._advance_address(item, current_address)
 
         return parsed_lines
@@ -60,18 +65,22 @@ class Assembler:
     def _group_tokens_by_line(self, lexer):
         """Agrupa tokens por línea"""
         current_line = []
+        current_line_no = None
 
         for token in lexer:
             if token.type == "NEWLINE":
                 if current_line:
-                    yield current_line
+                    yield current_line_no, current_line
                     current_line = []
+                    current_line_no = None
             else:
+                if current_line_no is None:
+                    current_line_no = token.lineno
                 current_line.append(token)
 
         # Última línea sin newline
         if current_line:
-            yield current_line
+            yield current_line_no, current_line
 
     def _process_line(self, tokens, current_address):
         """Procesa una línea de tokens"""
@@ -143,28 +152,41 @@ class Assembler:
 
     def _encode_instruction(self, instruction):
         """Codifica una instrucción a binario"""
-        resolved_operands = self._resolve_operands(instruction.operands)
+        resolved_operands, relocations = self._resolve_operands(instruction)
         instruction_word = self.encoder.encode_instruction(
             instruction.mnemonic, resolved_operands
         )
-        return self.encoder.to_binary_string(instruction_word)
+        binary_code = self.encoder.to_binary_string(instruction_word)
+        if not relocations:
+            return binary_code
 
-    def _resolve_operands(self, operands):
-        """Resuelve etiquetas a direcciones"""
+        # For relocatable operands, replace the immediate field with the placeholder
+        prefix = binary_code[:32]
+        # Currently only one relocation per instruction is expected
+        placeholder = relocations[0]["placeholder"]
+        return f"{prefix}{placeholder}"
+
+    def _resolve_operands(self, instruction):
+        """Resuelve operandos y detecta referencias reubicables"""
         resolved = []
-        for op in operands:
-            # Detectar [etiqueta]
+        relocations = []
+
+        for index, op in enumerate(instruction.operands):
+            label = None
+
             if isinstance(op, str) and op.startswith("[") and op.endswith("]"):
-                label = op[1:-1]  # Quitar corchetes
-                if self.symbol_table.exists(label):
-                    resolved.append(self.symbol_table.get(label))
-                else:
-                    resolved.append(op)  # Mantener como está si no existe
+                label = op[1:-1]
             elif isinstance(op, str) and self.symbol_table.exists(op):
-                resolved.append(self.symbol_table.get(op))
+                label = op
+
+            if label and self.symbol_table.exists(label):
+                placeholder = self._get_placeholder_for_label(label)
+                resolved.append(0)
+                relocations.append({"operand_index": index, "placeholder": placeholder})
             else:
                 resolved.append(op)
-        return resolved
+
+        return resolved, relocations
 
     # === Directivas ===
 
@@ -177,7 +199,10 @@ class Assembler:
         binary_lines = []
         for value in directive.args:
             resolved_value = self._resolve_value(value)
-            binary_lines.append(format(resolved_value & 0xFFFFFFFFFFFFFFFF, "064b"))
+            if isinstance(resolved_value, str):
+                binary_lines.append(resolved_value)
+            else:
+                binary_lines.append(format(resolved_value & 0xFFFFFFFFFFFFFFFF, "064b"))
             self.memory_map.mark_data(directive.address)
         return binary_lines
 
@@ -194,7 +219,7 @@ class Assembler:
     def _resolve_value(self, value):
         """Resuelve un valor (puede ser etiqueta)"""
         if isinstance(value, str) and self.symbol_table.exists(value):
-            return self.symbol_table.get(value)
+            return self._get_placeholder_for_label(value)
         return value
 
     def _calculate_directive_address(self, directive, current_address):
@@ -218,6 +243,29 @@ class Assembler:
         self.symbol_table.clear()
         self.memory_map = MemoryMap()
         self.parser.current_address = 0
+        self.address_word_index = {}
+
+    def _get_placeholder_for_label(self, label):
+        """Obtiene el marcador de reubicación para una etiqueta"""
+        address = self.symbol_table.get(label)
+        index = self.address_word_index.get(address, 0)
+        return f"{{{index}}}"
+
+    def _words_generated(self, item):
+        """Devuelve cuántas palabras de 64 bits produce un item"""
+        if isinstance(item, Instruction):
+            return 1
+
+        if isinstance(item, Directive):
+            if item.name == "ORG":
+                return 0
+            if item.name == "DW":
+                return len(item.args)
+            if item.name == "RESW":
+                count = item.args[0] if item.args else 1
+                return count
+
+        return 0
 
     def _read_file(self, filepath):
         """Lee un archivo"""
