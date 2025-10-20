@@ -36,7 +36,6 @@ class CPU:
             memory if memory is not None else Memory(size_bytes=memory_size)
         )
         self.memory_size: int = self.mem.size
-        self.memory: bytearray = self.mem.data  # Compatibilidad
 
         # Componentes
         self.registers = RegisterFile()
@@ -88,14 +87,6 @@ class CPU:
         self.segments = []
         self.current_program = None
         self.occupied_words = set()
-
-    def load_program(self, program: bytes, start_address: int = 0):
-        """Carga un programa en memoria"""
-        if start_address + len(program) > self.mem.size:
-            raise ValueError("Programa demasiado grande para la memoria")
-
-        self.mem.data[start_address : start_address + len(program)] = program
-        self.pc = start_address
 
     # === Ciclo Fetch-Decode-Execute ===
 

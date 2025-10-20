@@ -92,18 +92,19 @@ class DataTransferExecutor:
         self.registers[rd] = value
 
     def _execute_st(self, instruction: Dict[str, Any], cpu):
-        """ST Rs1, Rd + offset o ST Rs1, #address"""
+        """ST Rd, #address o ST Rd, [Rs1 + offset]"""
         rd = instruction["rd"]
         rs1 = instruction["rs1"]
         imm32 = instruction["imm32"]
         func = instruction["func"]
 
-        if func == 0:  # Dirección absoluta
+        if func == 0:  # Dirección absoluta: ST Rd, #address
             address = imm32
-        else:  # Offset desde registro base
-            address = self.registers[rd] + self.memory_ops.sign_extend_32(imm32)
+            value = self.registers[rd]
+        else:  # Offset desde registro base: ST Rd, [Rs1 + offset]
+            address = self.registers[rs1] + self.memory_ops.sign_extend_32(imm32)
+            value = self.registers[rd]
 
-        value = self.registers[rs1]
         self.memory_ops.write_word(address, value)
 
     def _execute_out(self, instruction: Dict[str, Any], cpu):
