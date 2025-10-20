@@ -5,13 +5,14 @@ y persistencia en archivos binarios.
 """
 
 import os
-
-# Añadir el directorio src
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+# Agregar el directorio raíz al path para que las importaciones funcionen
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR))
 
 from src.memory.memory import Bus, Memory
 

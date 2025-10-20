@@ -1,5 +1,23 @@
 """Test completo de la CPU refactorizada"""
 
+import logging
+import sys
+from pathlib import Path
+
+# Deshabilitar logging para evitar bugs
+logging.disable(logging.CRITICAL)
+
+# Configurar codificación UTF-8 para Windows
+if sys.platform == "win32":
+    import io
+
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+
+# Agregar el directorio raíz al path para que las importaciones funcionen
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR))
+
 from src.assembler.assembler import Assembler
 from src.cpu.cpu import CPU
 from src.isa.isa import Opcodes
@@ -77,9 +95,9 @@ def test_load_store():
     # ST R1, 0x200
     cpu.pc = 8
     opcode = Opcodes.ST << 56
-    rs1 = 1 << 48
+    rd = 1 << 52  # Corregido: ST usa rd, no rs1
     imm32 = 0x200
-    instruction = opcode | rs1 | imm32
+    instruction = opcode | rd | imm32
 
     cpu.mem.write_word(8, instruction)
     cpu.step()
@@ -201,16 +219,15 @@ ORG 0x0
     assembler = Assembler()
     binario = assembler.assemble(codigo)
 
-    # Convertir binario a bytes
-    program = bytearray()
+    # Convertir binario a palabras y cargar en memoria
+    cpu = CPU()
+
+    address = 0
     for linea in binario.strip().split("\n"):
         if linea:
             valor = int(linea, 2)
-            program.extend(valor.to_bytes(8, byteorder="little"))
-
-    # Cargar en CPU
-    cpu = CPU()
-    cpu.load_program(bytes(program))
+            cpu.mem.write_word(address, valor)
+            address += 8
 
     # Configurar salida
     output = []
