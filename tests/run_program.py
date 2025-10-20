@@ -10,8 +10,8 @@ from pathlib import Path
 # Configurar UTF-8 para Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-# Añadir ruta del proyecto
-ROOT_DIR = Path(__file__).resolve().parent
+# Añadir ruta del proyecto (ir al directorio padre de 'tests')
+ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from src.assembler.assembler import Assembler
