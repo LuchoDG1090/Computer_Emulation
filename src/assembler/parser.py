@@ -157,4 +157,4 @@ class InstructionParser:
 
     def _is_valid_arg_token(self, token):
         """Verifica si es un token válido para argumento de directiva"""
-        return token.type in ("IMMEDIATE", "REGISTER", "OPCODE", "IDENTIFIER")
+        return token.type in ("IMMEDIATE", "REGISTER", "OPCODE", "IDENTIFIER", "STRING")

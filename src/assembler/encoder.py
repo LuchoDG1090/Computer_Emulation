@@ -72,23 +72,52 @@ class InstructionEncoder:
             - ADDI RD, RS1, IMM32
             - LD RD, IMM32
             - ST RD, IMM32
+            - CP RD, RS1 (copia registro a registro)
         """
         rd = self._parse_register(operands[0])
 
+        # Caso especial: CP usa dos registros, no inmediato
+        if opcode == Opcodes.CP.value and len(operands) == 2:
+            rs1 = self._parse_register(operands[1])
+            imm32 = 1  # Indicador para el decoder
+            return self._build_instruction(opcode, rd, rs1, 0, 1, imm32)
+
         if len(operands) == 2:
-            # Formato: MOVI RD, IMM32 o LD RD, IMM32
+            # Formato: MOVI RD, IMM32 o LD RD, IMM32 o OUT RD, PORT
             rs1 = 0
             imm32 = self._parse_immediate(operands[1])
+            func = 0
         elif len(operands) == 3:
-            # Formato: ADDI RD, RS1, IMM32
+            # Formato: ADDI RD, RS1, IMM32 o IN RD, RS1, COUNT o OUT RD, COUNT, FUNC
             rs1 = self._parse_register(operands[1])
-            imm32 = self._parse_immediate(operands[2])
+            op2 = self._parse_immediate(operands[2])
+
+            if opcode == Opcodes.IN.value:
+                # IN RD, RS1, COUNT - leer array con separador espacio
+                imm32 = op2  # count
+                func = (1 << 1) | (0x20 << 4)  # subop=1, sep=' '
+            elif opcode == Opcodes.OUT.value:
+                # OUT RS1, COUNT, FUNC - imprimir array
+                imm32 = rs1  # count está en segundo operando
+                func = op2  # func está en tercer operando
+                rs1 = rd  # registro fuente
+                rd = 0
+            elif opcode == Opcodes.LD.value or opcode == Opcodes.ST.value:
+                # LD/ST RD, RS1, OFFSET - modo de direccionamiento relativo
+                imm32 = op2  # offset
+                func = 1  # indica modo relativo (rs1 + offset)
+            else:
+                # Instrucción normal de 3 operandos (ADDI, etc)
+                imm32 = op2
+                func = 0
+
+            return self._build_instruction(opcode, rd, rs1, 0, func, imm32)
         else:
             raise ValueError(
                 f"I-Type requiere 2 o 3 operandos, recibió {len(operands)}"
             )
 
-        return self._build_instruction(opcode, rd, rs1, 0, 0, imm32)
+        return self._build_instruction(opcode, rd, rs1, 0, func, imm32)
 
     def _encode_j_type(self, opcode, operands):
         """

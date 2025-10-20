@@ -5,29 +5,46 @@ class MemoryMap:
     """Gestiona el mapa de memoria ejecutable"""
 
     def __init__(self):
-        self.executable_addresses = set()
-        self.data_addresses = set()
+        self.entries = {}
+        self.order = []
 
-    def mark_executable(self, address):
+    def _register(self, address, flag, index):
+        """Registra una dirección asociada a un índice de palabra"""
+        if index is None:
+            raise ValueError(
+                "Se requiere un índice de palabra para registrar en el mapa"
+            )
+
+        if index not in self.entries:
+            self.entries[index] = {"address": address, "flag": flag}
+            self.order.append(index)
+        else:
+            # Actualizar bandera si cambia (datos -> ejecutable)
+            existing = self.entries[index]
+            existing["address"] = address
+            existing["flag"] = max(existing["flag"], flag)
+
+    def mark_executable(self, address, index):
         """Marca una dirección como ejecutable"""
-        self.executable_addresses.add(address)
+        self._register(address, 1, index)
 
-    def mark_data(self, address):
+    def mark_data(self, address, index):
         """Marca una dirección como datos"""
-        self.data_addresses.add(address)
+        self._register(address, 0, index)
 
     def is_executable(self, address):
         """Verifica si una dirección es ejecutable"""
-        return address in self.executable_addresses
+        for entry in self.entries.values():
+            if entry["address"] == address and entry["flag"] == 1:
+                return True
+        return False
 
     def save_map_format(self, filename):
         """
-        Guarda en formato .map (dirección,flag)
+        Guarda en formato .map: índice, dirección original y flag
         flag = 1 si ejecutable, 0 si dato
         """
-        all_addresses = self.executable_addresses | self.data_addresses
-
         with open(filename, "w") as f:
-            for addr in sorted(all_addresses):
-                flag = 1 if addr in self.executable_addresses else 0
-                f.write(f"0x{addr:08X},{flag}\n")
+            for index in self.order:
+                entry = self.entries[index]
+                f.write(f"{index},0x{entry['address']:08X},{entry['flag']}\n")

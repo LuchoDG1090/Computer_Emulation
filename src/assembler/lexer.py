@@ -16,6 +16,7 @@ reserved.update(
         "ORG": "DIRECTIVE",
         "DW": "DIRECTIVE",
         "RESW": "DIRECTIVE",
+        "DB": "DIRECTIVE",  # Define Byte - para strings y datos byte
     }
 )
 
@@ -31,6 +32,7 @@ tokens = (
     "LBRACKET",
     "RBRACKET",
     "IDENTIFIER",
+    "STRING",  # Para strings entre comillas
 )
 
 # Expresiones regulares para tokens simples
@@ -52,13 +54,29 @@ def t_REGISTER(t):
 
 
 def t_OPCODE(t):
-    r"[A-Z][A-Z0-9_]*"
-    t.type = reserved.get(t.value, "OPCODE")
+    r"[A-Z][a-zA-Z0-9_]*"
+    if t.value in reserved:
+        t.type = reserved[t.value]
+    else:
+        t.type = "IDENTIFIER"
+    return t
+
+
+def t_STRING(t):
+    r'"([^"\\]|\\.)*"'
+    # Remover las comillas y procesar secuencias de escape
+    t.value = t.value[1:-1]  # Quitar comillas
+    # Procesar secuencias de escape comunes
+    t.value = t.value.replace("\\n", "\n")
+    t.value = t.value.replace("\\t", "\t")
+    t.value = t.value.replace("\\r", "\r")
+    t.value = t.value.replace('\\"', '"')
+    t.value = t.value.replace("\\\\", "\\")
     return t
 
 
 def t_IDENTIFIER(t):
-    r"[a-z_][a-z_0-9]*"
+    r"[a-z_][a-zA-Z_0-9]*"
     return t
 
 
