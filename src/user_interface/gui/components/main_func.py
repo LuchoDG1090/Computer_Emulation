@@ -79,7 +79,9 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.frame_second_column.rowconfigure(1, weight=1)
         self.frame_second_column.columnconfigure(0, weight=1)
 
-        self.ram_memory = ram.DinamicRandomAccessMemory(self.frame_second_column)
+        self.ram_memory = ram.DinamicRandomAccessMemory(
+            self.frame_second_column, memory=self.memory
+        )
 
         # Crear el selector de programas primero para poder pasarlo a reloc
         self.program_selector = None
@@ -114,10 +116,12 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
         self.console_frame = console.ConsoleFrame(frame_third_column)
 
-        self.flag_register_frame = flag_register.FlagRegisterFrame(frame_third_column)
+        self.flag_register_frame = flag_register.FlagRegisterFrame(
+            frame_third_column, cpu=self.cpu
+        )
 
         self.gen_purpose_regs = general_purpose_regs.GeneralPurposeRegisterFrame(
-            frame_third_column
+            frame_third_column, cpu=self.cpu
         )
 
         # Program Counter (crear antes del selector para poder pasar el callback)
@@ -129,6 +133,8 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             cpu=self.cpu,
             pc_update_callback=self.pc_frame.update_pc,
             update_state_callback=self.__update_cpu_state,
+            memory=self.memory,
+            ram_display=self.ram_memory,
         )
         self.reloc_code.program_selector = self.program_selector
 
@@ -141,6 +147,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             clear_output_callback=self.console_frame.clear_console,
             clear_ram_callback=self.ram_memory.clear_memory,
             console_frame=self.console_frame,
+            clear_programs_callback=self.program_selector.update_program_list,
         )
 
         self.console_frame.grid(column=0, row=0, sticky="ew", pady=12)

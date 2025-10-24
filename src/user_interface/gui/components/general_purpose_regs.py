@@ -2,14 +2,16 @@ import customtkinter as ctk
 
 
 class GeneralPurposeRegisterFrame(ctk.CTkFrame):
-    def __init__(self, parent, fg_color="#0C1826"):
+    def __init__(self, parent, fg_color="#0C1826", **kwargs):
         super().__init__(parent, fg_color=fg_color)
+
+        self.cpu = kwargs.get("cpu", None)
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=0)
         self.rowconfigure(1, weight=1)
 
-        self.register_labels = {}
+        self.register_entries = {}
 
         self.__build_text()
         self.__build_table()
@@ -51,29 +53,96 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
             )
             name_lbl.grid(row=i + 1, column=0, sticky="ew", padx=5, pady=2)
 
-            hex_lbl = ctk.CTkLabel(
+            hex_entry = ctk.CTkEntry(
                 scrollable_frame,
-                text="0x0000000000000000",
                 fg_color="#1a1a1a",
                 corner_radius=4,
                 font=("Consolas", 10),
             )
-            hex_lbl.grid(row=i + 1, column=1, sticky="ew", padx=5, pady=2)
+            hex_entry.insert(0, "0x0000000000000000")
+            hex_entry.grid(row=i + 1, column=1, sticky="ew", padx=5, pady=2)
+            hex_entry.bind("<Return>", lambda e, idx=i: self.__on_hex_change(idx))
+            hex_entry.bind("<FocusOut>", lambda e, idx=i: self.__on_hex_change(idx))
 
-            dec_lbl = ctk.CTkLabel(
+            dec_entry = ctk.CTkEntry(
                 scrollable_frame,
-                text="0",
                 fg_color="#1a1a1a",
                 corner_radius=4,
                 font=("Consolas", 10),
             )
-            dec_lbl.grid(row=i + 1, column=2, sticky="ew", padx=5, pady=2)
+            dec_entry.insert(0, "0")
+            dec_entry.grid(row=i + 1, column=2, sticky="ew", padx=5, pady=2)
+            dec_entry.bind("<Return>", lambda e, idx=i: self.__on_dec_change(idx))
+            dec_entry.bind("<FocusOut>", lambda e, idx=i: self.__on_dec_change(idx))
 
-            self.register_labels[reg_name] = (hex_lbl, dec_lbl)
+            self.register_entries[reg_name] = (hex_entry, dec_entry)
 
         scrollable_frame.columnconfigure(0, weight=1)
         scrollable_frame.columnconfigure(1, weight=2)
         scrollable_frame.columnconfigure(2, weight=2)
+
+    def __on_hex_change(self, reg_index):
+        """Aplica cambio cuando se edita el campo hexadecimal"""
+        if not self.cpu:
+            return
+
+        reg_name = f"R{reg_index}"
+        hex_entry, dec_entry = self.register_entries[reg_name]
+
+        try:
+            hex_value = hex_entry.get().strip()
+            if hex_value.startswith("0x") or hex_value.startswith("0X"):
+                hex_value = hex_value[2:]
+
+            value = int(hex_value, 16)
+
+            if value < 0 or value > 0xFFFFFFFFFFFFFFFF:
+                print(f"Valor fuera de rango para {reg_name}: {hex_value}")
+                return
+
+            self.cpu.registers.write(reg_index, value)
+
+            # Actualizar campo decimal
+            if value >= 0x8000000000000000:
+                signed_value = value - 0x10000000000000000
+            else:
+                signed_value = value
+
+            dec_entry.delete(0, "end")
+            dec_entry.insert(0, str(signed_value))
+
+        except ValueError:
+            print(f"Valor hexadecimal inválido para {reg_name}: {hex_entry.get()}")
+
+    def __on_dec_change(self, reg_index):
+        """Aplica cambio cuando se edita el campo decimal"""
+        if not self.cpu:
+            return
+
+        reg_name = f"R{reg_index}"
+        hex_entry, dec_entry = self.register_entries[reg_name]
+
+        try:
+            signed_value = int(dec_entry.get().strip())
+
+            # Convertir a unsigned de 64 bits
+            if signed_value < 0:
+                value = signed_value + 0x10000000000000000
+            else:
+                value = signed_value
+
+            if value < 0 or value > 0xFFFFFFFFFFFFFFFF:
+                print(f"Valor fuera de rango para {reg_name}: {signed_value}")
+                return
+
+            self.cpu.registers.write(reg_index, value)
+
+            # Actualizar campo hexadecimal
+            hex_entry.delete(0, "end")
+            hex_entry.insert(0, f"0x{value:016X}")
+
+        except ValueError:
+            print(f"Valor decimal inválido para {reg_name}: {dec_entry.get()}")
 
     def update_registers(self, registers: list):
         """Actualiza la visualización de los registros"""
@@ -87,6 +156,11 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
             else:
                 signed_value = value
 
-            hex_lbl, dec_lbl = self.register_labels[reg_name]
-            hex_lbl.configure(text=f"0x{value:016X}")
-            dec_lbl.configure(text=str(signed_value))
+            hex_entry, dec_entry = self.register_entries[reg_name]
+
+            # Actualizar campos de entrada
+            hex_entry.delete(0, "end")
+            hex_entry.insert(0, f"0x{value:016X}")
+
+            dec_entry.delete(0, "end")
+            dec_entry.insert(0, str(signed_value))

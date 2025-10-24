@@ -42,6 +42,8 @@ class RelocCodeFrame(ctk.CTkFrame):
         addr_frame = ctk.CTkFrame(self, fg_color="transparent")
         addr_frame.columnconfigure(0, weight=1)
         addr_frame.columnconfigure(1, weight=2)
+        addr_frame.columnconfigure(2, weight=1)
+        addr_frame.columnconfigure(3, weight=2)
 
         label = ctk.CTkLabel(
             addr_frame,
@@ -55,6 +57,20 @@ class RelocCodeFrame(ctk.CTkFrame):
             addr_frame, placeholder_text="0 (suma a direcciones)", font=("Consolas", 11)
         )
         self.address_entry.grid(row=0, column=1, sticky="ew", padx=5)
+
+        # Nombre personalizado del programa (opcional)
+        name_label = ctk.CTkLabel(
+            addr_frame,
+            text="Nombre:",
+            font=("Comic Sans MS", 12),
+            text_color="white",
+        )
+        name_label.grid(row=0, column=2, sticky="e", padx=5)
+
+        self.program_name_entry = ctk.CTkEntry(
+            addr_frame, placeholder_text="Opcional", font=("Consolas", 11)
+        )
+        self.program_name_entry.grid(row=0, column=3, sticky="ew", padx=5)
 
         addr_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=5)
 
@@ -95,21 +111,22 @@ class RelocCodeFrame(ctk.CTkFrame):
         addr_text = self.address_entry.get().strip()
         if addr_text:
             try:
-                # Interpretar como decimal
-                base_address = int(addr_text)
-
-                # Validar que sea múltiplo de 8 (alineación de palabra)
-                if base_address % 8 != 0:
-                    print(
-                        f"\033[33m Advertencia: dirección {base_address} no está alineada a palabra (múltiplo de 8) \033[0m"
-                    )
-                    base_address = (base_address // 8) * 8
-                    print(f"Ajustando a: {base_address}")
+                # Interpretar como posición de palabra en decimal
+                word_position = int(addr_text)
+                # Convertir a bytes (multiplicar por 8)
+                base_address = word_position * 8
 
             except ValueError:
                 print(f"\033[31m Error: dirección inválida '{addr_text}' \033[0m")
                 return
 
-        func.link_load(self.text_entry, self.memory, self.ram_display, base_address)
+        # Obtener nombre personalizado si se proporcionó
+        program_name = self.program_name_entry.get().strip()
+        if program_name == "":
+            program_name = None
+
+        func.link_load(
+            self.text_entry, self.memory, self.ram_display, base_address, program_name
+        )
         if self.program_selector:
             self.program_selector.update_program_list()

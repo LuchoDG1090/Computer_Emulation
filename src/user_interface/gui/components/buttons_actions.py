@@ -18,6 +18,7 @@ class BotonesAcciones(ctk.CTkFrame):
         self.clear_output_callback = kwargs.get("clear_output_callback", None)
         self.clear_ram_callback = kwargs.get("clear_ram_callback", None)
         self.console_frame = kwargs.get("console_frame", None)
+        self.clear_programs_callback = kwargs.get("clear_programs_callback", None)
 
         self.__boton_siguiente_instruccion()
         self.__boton_reiniciar()
@@ -77,4 +78,5 @@ class BotonesAcciones(ctk.CTkFrame):
                 self.update_callback,
                 self.clear_output_callback,
                 self.clear_ram_callback,
+                self.clear_programs_callback,
             )

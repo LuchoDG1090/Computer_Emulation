@@ -12,6 +12,8 @@ class LoadedProgram:
         self.entry_point = entry_point
         self.bin_path = bin_path
         self.map_path = map_path
+        # Identificador simple y estable: combinación nombre+entry_point+rango
+        self.uid = f"{name}:{entry_point}:{min_addr}-{max_addr}"
 
 
 class CompilationRegistry:
@@ -66,3 +68,27 @@ class CompilationRegistry:
     def clear_loaded_programs(cls):
         """Limpia la lista de programas cargados"""
         cls._loaded_programs = []
+
+    @classmethod
+    def unload_program(cls, program_name):
+        """Elimina un programa específico de la lista de cargados"""
+        cls._loaded_programs = [
+            p for p in cls._loaded_programs if p.name != program_name
+        ]
+
+    @classmethod
+    def unload_program_instance(cls, program):
+        """Elimina una instancia específica de programa (por identidad/UID)."""
+        cls._loaded_programs = [p for p in cls._loaded_programs if p.uid != program.uid]
+
+    @classmethod
+    def check_collision(cls, min_addr, max_addr):
+        """
+        Verifica si hay colisión con programas ya cargados
+        Retorna (colisiona, programa_colision) donde programa_colision es el nombre del programa con el que colisiona
+        """
+        for program in cls._loaded_programs:
+            # Verificar si los rangos se solapan
+            if not (max_addr < program.min_addr or min_addr > program.max_addr):
+                return True, program.name
+        return False, None

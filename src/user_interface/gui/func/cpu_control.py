@@ -1,5 +1,7 @@
 """Funciones de control de ejecución del CPU"""
 
+from .compilation_registry import CompilationRegistry
+
 
 def execute_step(cpu, update_callback=None):
     """
@@ -31,7 +33,11 @@ def execute_step(cpu, update_callback=None):
 
 
 def reset_cpu(
-    cpu, update_callback=None, clear_output_callback=None, clear_ram_callback=None
+    cpu,
+    update_callback=None,
+    clear_output_callback=None,
+    clear_ram_callback=None,
+    clear_programs_callback=None,
 ):
     """
     Reinicia el CPU al estado inicial
@@ -41,14 +47,21 @@ def reset_cpu(
         update_callback: Función para actualizar la GUI con el estado del CPU
         clear_output_callback: Función para limpiar la salida
         clear_ram_callback: Función para limpiar la visualización de RAM
+        clear_programs_callback: Función para limpiar los programas cargados
     """
     cpu.reset()
+
+    # Limpiar programas cargados
+    CompilationRegistry.clear_loaded_programs()
 
     if clear_output_callback:
         clear_output_callback()
 
     if clear_ram_callback:
         clear_ram_callback()
+
+    if clear_programs_callback:
+        clear_programs_callback()
 
     if update_callback:
         update_callback(cpu.get_state())
