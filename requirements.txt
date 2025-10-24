@@ -1,16 +1,5 @@
-# Dependencias para el Emulador de CPU
-
 # Para pruebas unitarias
-pytest>=7.0.0
+pytest>=8.4.2
 
-# Para desarrollo y análisis de código
-pylint>=2.15.0
-black>=22.0.0
-
-# Para documentación (opcional)
-sphinx>=4.5.0
-
-# Dependencias estándar de Python (ya incluidas)
-# - struct (para manejo de bytes)
-# - enum (para enumeraciones)
-# - typing (para type hints)
+# Ruff para linting y formateo
+ruff>=0.14.1

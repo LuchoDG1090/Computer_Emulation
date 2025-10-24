@@ -1,5 +1,9 @@
-# Matriz 3x2 por 2x4 con números naturales
+# Multiplicación de matrices: 3x2 por 2x4 (números naturales)
 # Datos (A y B) desde 1028, resultado desde 20455, programa desde 3700
+#
+# Formato de entrada:
+# - Para A (3x2): ingrese 2 números por fila separados por espacio
+# - Para B (2x4): ingrese 4 números por fila separados por espacio
 
 # --------------------
 # Datos
@@ -40,41 +44,18 @@ START:
 	MOVI R6, 4          # n = cols(B) = 4
 	MOVI R7, 8          # tamaño de palabra (bytes)
 
+	# Mensaje introductorio y formato
+	MOVI R8, MSG_INTRO
+	OUTS R8, 0xFFFF0008
+
 	# --------------------
 	# Entrada: leer A (3 filas, 2 columnas) y B (2 filas, 4 columnas)
 	# Cada fila se ingresa como linea con numeros separados por espacio
 	# IN Rcount, Rbase, N   con func=subop(parse-line)+sep ' '
 	# --------------------
 	# Leer A
-	# Prompt: "A rows (3x2):\n"
-	MOVI R8, 65   # 'A'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 32   # ' '
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 114  # 'r'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 111  # 'o'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 119  # 'w'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 115  # 's'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 32   # ' '
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 40   # '('
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 51   # '3'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 120  # 'x'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 50   # '2'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 41   # ')'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 58   # ':'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 10   # '\n'
-	OUT  R8, 0xFFFF0000
+	MOVI R8, MSG_A
+	OUTS R8, 0xFFFF0008
 
 	MOVI R10, 0          # i = 0
 A_in_loop:
@@ -88,35 +69,8 @@ A_in_loop:
 	JNZ  A_in_loop
 
 	# Leer B
-	# Prompt: "B rows (2x4):\n"
-	MOVI R8, 66   # 'B'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 32   # ' '
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 114  # 'r'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 111  # 'o'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 119  # 'w'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 115  # 's'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 32   # ' '
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 40   # '('
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 50   # '2'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 120  # 'x'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 52   # '4'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 41   # ')'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 58   # ':'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 10   # '\n'
-	OUT  R8, 0xFFFF0000
+	MOVI R8, MSG_B
+	OUTS R8, 0xFFFF0008
 
 	MOVI R10, 0          # i = 0..m-1
 B_in_loop:
@@ -133,12 +87,8 @@ B_in_loop:
 	# --------------------
 	# Imprimir matriz A
 	# --------------------
-	MOVI R8, 65          # 'A'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 58          # ':'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 10          # '\n'
-	OUT  R8, 0xFFFF0000
+	MOVI R8, MSG_A_TITLE
+	OUTS R8, 0xFFFF0008
 
 	MOVI R10, 0          # i = 0 (filas A)
 A_i_print:
@@ -160,12 +110,8 @@ A_i_print:
 	# --------------------
 	# Imprimir matriz B
 	# --------------------
-	MOVI R8, 66          # 'B'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 58          # ':'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 10          # '\n'
-	OUT  R8, 0xFFFF0000
+	MOVI R8, MSG_B_TITLE
+	OUTS R8, 0xFFFF0008
 
 	MOVI R10, 0          # i = 0 (filas B = m)
 B_i_print:
@@ -175,7 +121,8 @@ B_i_print:
 	ADD R12, R12, R12    # *4
 	MUL R12, R12, R7     # *8
 	ADD R14, R2, R12     # R14 = &B[i][0]
-	OUT R14, 4, 514
+	# Imprimir como unsigned para evitar negativos por overflow
+	OUT R14, 4, 522
 	# fin de fila
 	MOVI R8, 10
 	OUT  R8, 0xFFFF0000
@@ -251,12 +198,8 @@ k_loop:
 	# --------------------
 	# Imprimir matriz resultado C (3x4)
 	# --------------------
-	MOVI R8, 67          # 'C'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 58          # ':'
-	OUT  R8, 0xFFFF0000
-	MOVI R8, 10          # '\n'
-	OUT  R8, 0xFFFF0000
+	MOVI R8, MSG_C_TITLE
+	OUTS R8, 0xFFFF0008
 
 	MOVI R10, 0          # i = 0 (filas C = p)
 C_i_print:
@@ -266,7 +209,8 @@ C_i_print:
 	ADD R12, R12, R12    # *4
 	MUL R12, R12, R7     # *8
 	ADD R14, R3, R12     # &C[i][0]
-	OUT R14, 4, 514
+	# Imprimir como unsigned para evitar negativos por overflow
+	OUT R14, 4, 522
 	# fin de fila
 	MOVI R8, 10
 	OUT  R8, 0xFFFF0000
@@ -276,5 +220,20 @@ C_i_print:
 	JNZ  C_i_print
 
 	HALT
+
+# --------------------
+# Strings (mensajes)
+# --------------------
+ORG 0xF000
+MSG_INTRO:    DB "Multiplicación de matrices 3x2 por 2x4 (números naturales)", 10
+			   DB "Formato:", 10
+			   DB " - Ingrese 2 números por fila para A (separados por espacio)", 10
+			   DB " - Ingrese 4 números por fila para B (separados por espacio)", 10
+			   DB 0
+MSG_A:        DB "Ingrese la matriz A (3x2), una fila por línea (2 números separados por espacio):", 10, 0
+MSG_B:        DB "Ingrese la matriz B (2x4), una fila por línea (4 números separados por espacio):", 10, 0
+MSG_A_TITLE:  DB 10, "Matriz A:", 10, 0
+MSG_B_TITLE:  DB "Matriz B:", 10, 0
+MSG_C_TITLE:  DB "Matriz C = A x B:", 10, 0
 
 

@@ -1,253 +1,395 @@
-import src.assembler.encoder
+"""Ensamblador principal"""
+
+from src.assembler.encoder import InstructionEncoder
+from src.assembler.exceptions import EncodingError
+from src.assembler.lexer import lexer
+from src.assembler.memory_map import MemoryMap
+from src.assembler.parser import Directive, Instruction, InstructionParser
+from src.assembler.symbol_table import SymbolTable
+
 
 class Assembler:
+    """Ensamblador de dos pasadas con PLY"""
+
     def __init__(self):
-        self.encoder = src.assembler.encoder.Encoder()
-        self.word_size = 8            # tamaño de palabra (64 bits)
-        self.loc = 0                  # contador de ubicación actual
-        self.symbols = {}             # tabla de símbolos (etiqueta -> dirección)
+        self.encoder = InstructionEncoder()
+        self.symbol_table = SymbolTable()
+        self.memory_map = MemoryMap()
+        self.parser = InstructionParser()
+        self.word_size = 8  # 64 bits
+        self.address_word_index = {}
 
-    def assemble(self, asm_file, output_img):
-        # PASADA 1: recolectar símbolos y nodos (dirección + tokens)
-        self.loc = 0
-        self.symbols.clear()
-        nodes = []  # cada nodo: {'addr': int, 'tokens': list[str]}
+    def assemble_file(self, input_file, output_binary, output_map=None):
+        """Ensambla un archivo"""
+        source_code = self._read_file(input_file)
+        binary_output = self.assemble(source_code)
 
-        with open(asm_file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-            print(lines)
+        self._write_binary(output_binary, binary_output)
+        self._write_map(output_map)
+        self._print_summary(output_binary, output_map)
 
-        for raw in lines:
-            tokens = self.parse_line(raw)
-            if not tokens:
-                continue
+    def assemble(self, source_code):
+        """Ensambla código fuente"""
+        self._reset_state()
+        parsed_lines = self._first_pass(source_code)
+        binary_output = self._second_pass(parsed_lines)
+        return binary_output
 
-            # etiqueta al inicio: "mcd:" o "loop:"
-            if tokens[0].endswith(':'):
-                label = tokens[0][:-1]
-                if not label:
-                    raise ValueError("Etiqueta vacía")
-                if label in self.symbols:
-                    raise ValueError(f"Etiqueta duplicada: {label}")
-                self.symbols[label] = self.loc
-                tokens = tokens[1:]  # resto de la línea tras la etiqueta
-                if not tokens:
-                    continue  # solo etiqueta en la línea
+    # === Primera Pasada ===
 
-            head = tokens[0].upper()
+    def _first_pass(self, source_code):
+        """Primera pasada: identificar etiquetas y parsear"""
+        lexer.input(source_code)
+        parsed_lines = []
+        current_address = 0
+        word_index = 0
 
-            if head == 'ORG':
-                if len(tokens) < 2:
-                    raise ValueError("ORG requiere una dirección")
-                self.loc = self._parse_int(tokens[1])
-                continue
+        for line_no, line_tokens in self._group_tokens_by_line(lexer):
+            label, item, current_address = self._process_line(
+                line_tokens, current_address
+            )
 
-            if head == 'EXEC_FROM':
-                # Guardar como nodo (no consume palabra)
-                nodes.append({'addr': self.loc, 'tokens': tokens})
-                continue
+            if label:
+                self.symbol_table.add(label, current_address)
 
-            # Manejo especial de DW/RESW para ajustar 'loc' por el tamaño real
-            if head == 'DW':
-                # cantidad de valores en esta línea (tokens después de 'DW')
-                count_vals = max(0, len(tokens) - 1)
-                nodes.append({'addr': self.loc, 'tokens': tokens})
-                self.loc += self.word_size * count_vals
-                continue
+            if item:
+                item.address = current_address
+                item.line_no = line_no
+                self._register_word_indices(item, word_index)
+                parsed_lines.append(item)
+                word_index += self._words_generated(item)
+                current_address = self._advance_address(item, current_address)
 
-            if head == 'RESW':
-                if len(tokens) != 2:
-                    raise ValueError("RESW requiere un argumento (cantidad)")
-                try:
-                    count = self._parse_int(tokens[1])
-                except Exception as e:
-                    raise ValueError(f"RESW argumento inválido: {tokens[1]}") from e
-                nodes.append({'addr': self.loc, 'tokens': tokens})
-                self.loc += self.word_size * count
-                continue
+        return parsed_lines
 
-            # Instrucción normal: registra dirección actual y tokens
-            nodes.append({'addr': self.loc, 'tokens': tokens})
-            self.loc += self.word_size
+    def _group_tokens_by_line(self, lexer):
+        """Agrupa tokens por línea"""
+        current_line = []
+        current_line_no = None
 
-        # PASADA 2: resolver símbolos y emitir palabras codificadas
-        emitted = []
-        exec_addrs: list[int] = []      # direcciones de instrucciones (8-byte aligned)
-        exec_from_addr: int | None = None  # inicio de rango continuo (opcional)
-        for n in nodes:
-            resolved = self._resolve_tokens(n['tokens'])
-            tokens = resolved
-            mnemonic = tokens[0].upper()
-
-            # --- Directiva EXEC_FROM (opcional) ---
-            if mnemonic == "EXEC_FROM":
-                if len(tokens) == 2:
-                    exec_from_addr = self._parse_int(tokens[1])
-                else:
-                    exec_from_addr = n['addr']  # desde la posición actual
-                continue
-
-            # --- Directiva DW: emitir datos directamente ---
-            if mnemonic == "DW":
-                for val_tok in tokens[1:]:
-                    val_tok = val_tok.rstrip(',')
-                    word = self._parse_int(val_tok)
-                    emitted.append((n['addr'], word))
-                    n['addr'] += self.word_size
-                continue
-
-            # --- Directiva RESW: reservar palabras ---
-            if mnemonic == "RESW":
-                if len(tokens) != 2:
-                    raise ValueError("RESW requiere un argumento (cantidad)")
-                count = self._parse_int(tokens[1])
-                for _ in range(count):
-                    emitted.append((n['addr'], 0))
-                    n['addr'] += self.word_size
-                continue
-
-            # --- Instrucción real: sigue el camino normal ---
-            opcode = self.encoder.mnemonic_to_opcode(mnemonic)
-
-            if len(tokens) == 4:  # 3 operandos
-                rd = self.encoder.reg_to_num(tokens[1])
-                # Soportar I-Type con 3 operandos para ADDI/ST/LD (base+offset)
-                if mnemonic == "ADDI":
-                    rs1 = self.encoder.reg_to_num(tokens[2])
-                    imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
-                    word = self.encoder.i_type(opcode, rd, rs1, imm32, func=0)
-                elif mnemonic == "ST":
-                    # ST Rs, Rb, imm  -> func=1 (addr = Rb + signext(imm))
-                    rs_src = self.encoder.reg_to_num(tokens[1])  # fuente
-                    rb = self.encoder.reg_to_num(tokens[2])      # base
-                    imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
-                    word = self.encoder.i_type(opcode, rd=rb, rs1=rs_src, imm32=imm32, func=1)
-                elif mnemonic == "LD":
-                    # LD Rd, Rb, imm -> func=1 (addr = Rb + signext(imm))
-                    rb = self.encoder.reg_to_num(tokens[2])      # base
-                    imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
-                    word = self.encoder.i_type(opcode, rd=rd, rs1=rb, imm32=imm32, func=1)
-                elif mnemonic == "IN":
-                    # IN Rd, Rb, count -> func=subop(parse-line) + sep=' '
-                    rb = self.encoder.reg_to_num(tokens[2])
-                    imm_tok = tokens[3].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
-                    func_val = (1 << 1) | (32 << 4)
-                    word = self.encoder.i_type(opcode, rd=rd, rs1=rb, imm32=imm32, func=func_val)
-                elif mnemonic == "OUT":
-                    # OUT Rsrc, imm, func  -> I-Type con func personalizado
-                    imm_tok = tokens[2].rstrip(',')
-                    imm32 = self._parse_int(imm_tok)
-                    func_tok = tokens[3].rstrip(',')
-                    func_val = self._parse_int(func_tok)
-                    word = self.encoder.i_type(opcode, rd=rd, rs1=0, imm32=imm32, func=func_val)
-                else:
-                    # R-Type clásico: ADD/SUB/MUL/...
-                    rs1 = self.encoder.reg_to_num(tokens[2])
-                    rs2 = self.encoder.reg_to_num(tokens[3])
-                    word = self.encoder.r_type(opcode, rd, rs1, rs2)
-
-            elif len(tokens) == 3:  # Ej: MOV R1, 0x1000  o  CP R1, R2
-                rd = self.encoder.reg_to_num(tokens[1])
-                if mnemonic == "CP":
-                    # CP Rd, Rs  -> I-Type con registro fuente en RS1 (func=1)
-                    rs1 = self.encoder.reg_to_num(tokens[2])
-                    word = self.encoder.i_type(opcode, rd, rs1, 0, func=1)
-                elif mnemonic == "ST":
-                    # ST Rs, [addr] -> I-Type absoluto: rs1=fuente, imm32=addr, func=0
-                    rs_src = rd  # primer operando es la fuente
-                    imm_tok = tokens[2].rstrip(',')
-                    if imm_tok.startswith('[') and imm_tok.endswith(']'):
-                        imm_tok = imm_tok[1:-1]
-                    imm32 = self._parse_int(imm_tok)
-                    word = self.encoder.i_type(opcode, rd=0, rs1=rs_src, imm32=imm32, func=0)
-                else:
-                    imm_tok = tokens[2].rstrip(',')
-                    if imm_tok.startswith('[') and imm_tok.endswith(']'):
-                        imm_tok = imm_tok[1:-1]
-                    imm32 = self._parse_int(imm_tok)
-                    word = self.encoder.i_type(opcode, rd, 0, imm32)
-
-            elif len(tokens) == 2:  # Ej: JMP loop
-                imm32 = self._parse_int(tokens[1])
-                word = self.encoder.j_type(opcode, imm32)
-
+        for token in lexer:
+            if token.type == "NEWLINE":
+                if current_line:
+                    yield current_line_no, current_line
+                    current_line = []
+                    current_line_no = None
             else:
-                word = self.encoder.s_type(opcode)
+                if current_line_no is None:
+                    current_line_no = token.lineno
+                current_line.append(token)
 
-            emitted.append((n['addr'], word))
-            # Marcar esta dirección como ejecutable (es una instrucción)
-            exec_addrs.append(n['addr'])
+        # Última línea sin newline
+        if current_line:
+            yield current_line_no, current_line
 
-        # Si se marcó EXEC_FROM, completar un rango continuo desde allí hasta la última instrucción
-        if exec_from_addr is not None and exec_addrs:
-            last_code_addr = max(exec_addrs)
-            a = exec_from_addr & ~0x7  # alinear a 8
-            b = last_code_addr
-            for addr in range(a, b + self.word_size, self.word_size):
-                exec_addrs.append(addr)
+    def _process_line(self, tokens, current_address):
+        """Procesa una línea de tokens"""
+        if not tokens:
+            return None, None, current_address
 
-        self.write_img(emitted, output_img)
-        self.write_exec_map(exec_addrs, output_img + ".exec")
+        label, item = self.parser.parse_line(tokens)
+        return label, item, current_address
 
-    def write_img(self, pairs: list[tuple[int, int]], output_path: str):
-        """
-        Genera un archivo .img con pares direccion: valor_hex (64 bits).
-        Respeta las direcciones decididas por ORG.
-        """
-        with open(output_path, "w", encoding="utf-8") as f:
-            for addr, word in sorted(pairs, key=lambda x: x[0]):
-                f.write(f"0x{addr:08X}: 0x{word:016X}\n")
+    def _advance_address(self, item, current_address):
+        """Calcula la siguiente dirección según el tipo de item"""
+        if isinstance(item, Instruction):
+            return current_address + self.word_size
 
-    def write_exec_map(self, exec_addrs: list[int], path: str):
-        """Emite un archivo .exec con una direccion ejecutable por linea."""
-        addrs = sorted(set(exec_addrs))
-        with open(path, "w", encoding="utf-8") as f:
-            for addr in addrs:
-                f.write(f"0x{addr:08X}\n")
+        if isinstance(item, Directive):
+            return self._calculate_directive_address(item, current_address)
 
+        return current_address
 
-    def parse_line(self, line: str):
-        # quita comentarios '#' y espacios extra
-        line = line.split('#', 1)[0].strip()
-        if not line:
-            return None
-        # tokens por espacio; operandos con coma se mantienen (p.ej. "R1,")
-        return line.split()
+    # === Segunda Pasada ===
 
-    def _parse_int(self, tok: str) -> int:
-        t = tok.strip()
-        if t.lower().startswith('0x'):
-            return int(t, 16)
-        return int(t, 10)
+    def _second_pass(self, parsed_lines):
+        """Segunda pasada: generar código binario"""
+        binary_lines = []
 
-    def _resolve_tokens(self, tokens: list[str]) -> list[str]:
-        """
-        Sustituye etiquetas por literales hex. Maneja LABEL y [LABEL].
-        Conserva comas si el token las trae (p.ej., "R1,").
-        """
-        out = []
-        for tok in tokens:
-            has_comma = tok.endswith(',')
-            core = tok[:-1] if has_comma else tok
+        for item in parsed_lines:
+            codes = self._generate_binary(item)
+            if codes:
+                binary_lines.extend(codes if isinstance(codes, list) else [codes])
 
-            # Direccionamiento por memoria [LABEL]
-            if core.startswith('[') and core.endswith(']'):
-                inner = core[1:-1]
-                if inner in self.symbols:
-                    resolved = f"[0x{self.symbols[inner]:X}]"
-                else:
-                    resolved = core
+        return "\n".join(binary_lines)
+
+    def _generate_binary(self, item):
+        """Genera código binario para un item"""
+        if isinstance(item, Instruction):
+            return self._generate_instruction_binary(item)
+
+        if isinstance(item, Directive):
+            return self._generate_directive_binary(item)
+
+        return None
+
+    def _generate_instruction_binary(self, instruction):
+        """Genera binario para una instrucción"""
+        try:
+            binary_code = self._encode_instruction(instruction)
+            index = self.address_word_index.get(instruction.address)
+            self.memory_map.mark_executable(instruction.address, index)
+            return binary_code
+        except Exception as e:
+            raise EncodingError(
+                f"Error en {instruction.mnemonic} @ {instruction.address:#x}: {e}"
+            )
+
+    def _generate_directive_binary(self, directive):
+        """Genera binario para una directiva"""
+        handlers = {
+            "ORG": self._handle_org,
+            "DW": self._handle_dw,
+            "RESW": self._handle_resw,
+            "DB": self._handle_db,
+        }
+
+        handler = handlers.get(directive.name)
+        if handler:
+            return handler(directive)
+
+        return []
+
+    # === Codificación ===
+
+    def _encode_instruction(self, instruction):
+        """Codifica una instrucción a binario"""
+        resolved_operands, relocations = self._resolve_operands(instruction)
+        instruction_word = self.encoder.encode_instruction(
+            instruction.mnemonic, resolved_operands
+        )
+        binary_code = self.encoder.to_binary_string(instruction_word)
+        if not relocations:
+            return binary_code
+
+        # For relocatable operands, replace the immediate field with the placeholder
+        prefix = binary_code[:32]
+        # Currently only one relocation per instruction is expected
+        placeholder = relocations[0]["placeholder"]
+        return f"{prefix}{placeholder}"
+
+    def _resolve_operands(self, instruction):
+        """Resuelve operandos y detecta referencias reubicables"""
+        resolved = []
+        relocations = []
+
+        for index, op in enumerate(instruction.operands):
+            label = None
+
+            if isinstance(op, str) and op.startswith("[") and op.endswith("]"):
+                label = op[1:-1]
+            elif isinstance(op, str) and self.symbol_table.exists(op):
+                label = op
+
+            if label and self.symbol_table.exists(label):
+                placeholder = self._get_placeholder_for_label(label)
+                resolved.append(0)
+                relocations.append({"operand_index": index, "placeholder": placeholder})
             else:
-                if core in self.symbols:
-                    resolved = f"0x{self.symbols[core]:X}"
-                else:
-                    resolved = core
+                resolved.append(op)
 
-            if has_comma:
-                resolved += ','
-            out.append(resolved)
-        return out
+        return resolved, relocations
+
+    # === Directivas ===
+
+    def _handle_org(self, directive):
+        """Procesa directiva ORG"""
+        return []
+
+    def _handle_dw(self, directive):
+        """Procesa directiva DW (Define Word)"""
+        binary_lines = []
+        for offset, value in enumerate(directive.args):
+            resolved_value = self._resolve_value(value)
+            if isinstance(resolved_value, str):
+                binary_lines.append(resolved_value)
+            else:
+                binary_lines.append(format(resolved_value & 0xFFFFFFFFFFFFFFFF, "064b"))
+            address = directive.address + (offset * self.word_size)
+            index = self.address_word_index.get(address)
+            self.memory_map.mark_data(address, index)
+        return binary_lines
+
+    def _handle_resw(self, directive):
+        """Procesa directiva RESW (Reserve Words)"""
+        count = directive.args[0] if directive.args else 1
+        binary_lines = ["0" * 64 for _ in range(count)]
+
+        for offset in range(count):
+            address = directive.address + (offset * self.word_size)
+            index = self.address_word_index.get(address)
+            self.memory_map.mark_data(address, index)
+
+        return binary_lines
+
+    def _handle_db(self, directive):
+        """Procesa directiva DB (Define Byte)"""
+        bytes_data = []
+
+        # Procesar cada argumento
+        for arg in directive.args:
+            if isinstance(arg, str):
+                # Es una cadena de texto
+                for char in arg:
+                    bytes_data.append(ord(char))
+            else:
+                # Es un valor numérico (byte)
+                bytes_data.append(arg & 0xFF)
+
+        # Agrupar bytes en palabras de 8 bytes
+        binary_lines = []
+        word_count = (len(bytes_data) + 7) // 8  # Redondear hacia arriba
+
+        for word_idx in range(word_count):
+            word_value = 0
+            start_byte = word_idx * 8
+            end_byte = min(start_byte + 8, len(bytes_data))
+
+            # Empaquetar bytes en una palabra (little-endian)
+            for byte_idx in range(start_byte, end_byte):
+                byte_offset = byte_idx - start_byte
+                word_value |= bytes_data[byte_idx] << (byte_offset * 8)
+
+            # Generar representación binaria
+            binary_lines.append(format(word_value, "064b"))
+
+            # Marcar en el mapa de memoria
+            address = directive.address + (word_idx * self.word_size)
+            index = self.address_word_index.get(address)
+            self.memory_map.mark_data(address, index)
+
+        return binary_lines
+
+    def _resolve_value(self, value):
+        """Resuelve un valor (puede ser etiqueta)"""
+        if isinstance(value, str) and self.symbol_table.exists(value):
+            return self._get_placeholder_for_label(value)
+        return value
+
+    def _calculate_directive_address(self, directive, current_address):
+        """Calcula dirección después de una directiva"""
+        if directive.name == "ORG":
+            return directive.args[0] if directive.args else current_address
+
+        if directive.name == "DW":
+            return current_address + (len(directive.args) * self.word_size)
+
+        if directive.name == "RESW":
+            count = directive.args[0] if directive.args else 1
+            return current_address + (count * self.word_size)
+
+        if directive.name == "DB":
+            # Calcular cuántos bytes ocupan todos los argumentos
+            total_bytes = 0
+            for arg in directive.args:
+                if isinstance(arg, str):
+                    total_bytes += len(arg)
+                else:
+                    total_bytes += 1
+            # Redondear hacia arriba al siguiente múltiplo de word_size
+            word_count = (total_bytes + self.word_size - 1) // self.word_size
+            return current_address + (word_count * self.word_size)
+
+        return current_address
+
+    # === Utilidades ===
+
+    def _reset_state(self):
+        """Reinicia el estado del ensamblador"""
+        self.symbol_table.clear()
+        self.memory_map = MemoryMap()
+        self.parser.current_address = 0
+        self.address_word_index = {}
+
+    def _get_placeholder_for_label(self, label):
+        """Obtiene el marcador de reubicación para una etiqueta"""
+        address = self.symbol_table.get(label)
+        index = self.address_word_index.get(address, 0)
+        return f"{{{index}}}"
+
+    def _words_generated(self, item):
+        """Devuelve cuántas palabras de 64 bits produce un item"""
+        if isinstance(item, Instruction):
+            return 1
+
+        if isinstance(item, Directive):
+            if item.name == "ORG":
+                return 0
+            if item.name == "DW":
+                return len(item.args)
+            if item.name == "RESW":
+                count = item.args[0] if item.args else 1
+                return count
+            if item.name == "DB":
+                # Calcular cuántos bytes ocupan todos los argumentos
+                total_bytes = 0
+                for arg in item.args:
+                    if isinstance(arg, str):
+                        total_bytes += len(arg)
+                    else:
+                        total_bytes += 1
+                # Redondear hacia arriba al siguiente múltiplo de word_size
+                return (total_bytes + self.word_size - 1) // self.word_size
+
+        return 0
+
+    def _register_word_indices(self, item, base_index):
+        """Registra el índice de palabra para cada dirección emitida"""
+        if isinstance(item, Instruction):
+            self.address_word_index[item.address] = base_index
+            return
+
+        if isinstance(item, Directive):
+            if item.name == "ORG":
+                return
+
+            if item.name == "DW":
+                for offset in range(len(item.args)):
+                    address = item.address + (offset * self.word_size)
+                    self.address_word_index[address] = base_index + offset
+                return
+
+            if item.name == "RESW":
+                count = item.args[0] if item.args else 1
+                for offset in range(count):
+                    address = item.address + (offset * self.word_size)
+                    self.address_word_index[address] = base_index + offset
+                return
+
+            if item.name == "DB":
+                # Calcular número de palabras que ocupan los bytes
+                total_bytes = 0
+                for arg in item.args:
+                    if isinstance(arg, str):
+                        total_bytes += len(arg)
+                    else:
+                        total_bytes += 1
+                word_count = (total_bytes + self.word_size - 1) // self.word_size
+
+                for offset in range(word_count):
+                    address = item.address + (offset * self.word_size)
+                    self.address_word_index[address] = base_index + offset
+
+    def _read_file(self, filepath):
+        """Lee un archivo"""
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+
+    def _write_binary(self, filepath, content):
+        """Escribe archivo binario"""
+        with open(filepath, "w") as f:
+            f.write(content)
+
+    def _write_map(self, filepath):
+        """Escribe archivo de mapa de memoria"""
+        if not filepath:
+            return
+
+        self.memory_map.save_map_format(filepath)
+
+    def _print_summary(self, output_binary, output_map):
+        """Imprime resumen del ensamblado"""
+        print("✓ Ensamblado completado")
+        print(f"  Binario: {output_binary}")
+        if output_map:
+            print(f"  Mapa: {output_map}")
