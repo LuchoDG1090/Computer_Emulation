@@ -1,5 +1,5 @@
 # ---------- Código ----------
-ORG 0x4E20              # 20.000 en hexadecimal, correspondiente a la posición 2.500 en la memoria (8 bytes)
+ORG 2500
 entrada:
     # Imprimir mensaje "Ingrese el primer número: "
     MOVI R5, msg1       # Cargar dirección del mensaje en R5
@@ -40,17 +40,17 @@ fin:
     HALT
 
 # ---------- Datos ----------
-ORG 0x0BB8              # 3.000 en hexadecimal, correspondiente a la posición 375 en la memoria (8 bytes)
+ORG 375
 a: RESW 1               # reserva una palabra para a (inicializada en 0)
 
-ORG 0x2FF8              # 12.280 en hexadecimal, correspondiente a la posición 1.535 en la memoria (8 bytes)
+ORG 1535
 b: RESW 1               # reserva una palabra para b (inicializada en 0)
 
-ORG 0xE9B0              # 59.824 en hexadecimal, correspondiente a la posición 7.478 en la memoria (8 bytes)
+ORG 7478
 res: RESW 1             # reserva una palabra para el resultado (inicializada en 0)
 
 # ---------- Strings (usando directiva DB) ----------
-ORG 0xF000              # Strings en una posición alta de memoria (61440 bytes, dentro del rango de 64KB)
+ORG 0xF000
 msg1: DB "Ingrese el primer numero: ", 0
 msg2: DB "Ingrese el segundo numero: ", 0
 msg_result: DB "El MCD es: ", 0
