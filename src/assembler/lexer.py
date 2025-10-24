@@ -1,5 +1,8 @@
 """Analizador léxico usando PLY"""
 
+# Solo se utiliza re en t_IMMEDIATE
+import re
+
 import src.ply.lex as lex
 from src.assembler.exceptions import LexerError
 from src.isa.isa import Opcodes
@@ -81,11 +84,18 @@ def t_IDENTIFIER(t):
 
 
 def t_IMMEDIATE(t):
-    r"(-?0x[0-9A-Fa-f]+)|(-?\d+)"
-    if t.value.startswith("0x") or t.value.startswith("-0x"):
-        t.value = int(t.value, 16)
+    r"(-?\d+\.\d+([eE][+-]?\d+)?)|(-?0x[0-9A-Fa-f]+)|(-?\d+)"
+    # Orden lógico de detección para evitar falsos positivos:
+    # 1) Hexadecimal primero (0x... o -0x...), ya que puede contener 'A-F' o 'E' y no es notación científica
+    # 2) Flotante: contiene un punto decimal o un exponente válido al final (e.g., 1e-3)
+    # 3) Entero decimal
+    val = t.value
+    if val.startswith("0x") or val.startswith("-0x"):
+        t.value = int(val, 16)
+    elif "." in val or re.search(r"[eE][+-]?\d+$", val):
+        t.value = float(val)
     else:
-        t.value = int(t.value)
+        t.value = int(val)
     return t
 
 

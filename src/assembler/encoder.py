@@ -1,5 +1,7 @@
 """Encoder de instrucciones a formato binario de 64 bits"""
 
+import struct
+
 from src.isa.isa import InstructionType, Opcodes, opcode_to_type
 
 
@@ -30,12 +32,13 @@ class InstructionEncoder:
         """
         # Obtener opcode
         try:
-            opcode = Opcodes[mnemonic].value
+            opcode_enum = Opcodes[mnemonic]
+            opcode = opcode_enum.value
         except KeyError:
             raise ValueError(f"Instrucción desconocida: {mnemonic}")
 
         # Determinar tipo de instrucción
-        inst_type = opcode_to_type.get(Opcodes[mnemonic], InstructionType.S_TYPE)
+        inst_type = opcode_to_type.get(opcode_enum, InstructionType.S_TYPE)
 
         # Codificar según el tipo
         if inst_type == InstructionType.R_TYPE:
@@ -55,6 +58,13 @@ class InstructionEncoder:
         Formato: ADD RD, RS1, RS2
         Usa: RD, RS1, RS2
         """
+        # Soportar forma abreviada de CMP con 2 operandos: CMP RS1, RS2
+        if len(operands) == 2 and opcode == Opcodes.CMP.value:
+            rd = 0  # RD no se usa para CMP (solo actualiza flags)
+            rs1 = self._parse_register(operands[0])
+            rs2 = self._parse_register(operands[1])
+            return self._build_instruction(opcode, rd, rs1, rs2, 0, 0)
+
         if len(operands) < 3:
             raise ValueError(f"R-Type requiere 3 operandos, recibió {len(operands)}")
 
@@ -73,7 +83,28 @@ class InstructionEncoder:
             - LD RD, IMM32
             - ST RD, IMM32
             - CP RD, RS1 (copia registro a registro)
+            - PUSH RS1 | PUSH #imm (1 operando)
+            - POP RD (1 operando)
         """
+        # Instrucciones de 1 operando: PUSH/POP
+        if opcode == Opcodes.PUSH.value:
+            if len(operands) != 1:
+                raise ValueError(f"PUSH requiere 1 operando, recibió {len(operands)}")
+            op = operands[0]
+            # PUSH de registro
+            if isinstance(op, int) or (isinstance(op, str) and op.startswith("R")):
+                rs1 = self._parse_register(op)
+                return self._build_instruction(opcode, 0, rs1, 0, 1, 0)
+            # PUSH inmediato
+            imm32 = self._parse_immediate(op)
+            return self._build_instruction(opcode, 0, 0, 0, 0, imm32)
+
+        if opcode == Opcodes.POP.value:
+            if len(operands) != 1:
+                raise ValueError(f"POP requiere 1 operando, recibió {len(operands)}")
+            rd = self._parse_register(operands[0])
+            return self._build_instruction(opcode, rd, 0, 0, 0, 0)
+
         rd = self._parse_register(operands[0])
 
         # Caso especial: CP usa dos registros, no inmediato
@@ -85,30 +116,57 @@ class InstructionEncoder:
         if len(operands) == 2:
             # Formato: MOVI RD, IMM32 o LD RD, IMM32 o OUT RD, PORT
             rs1 = 0
-            imm32 = self._parse_immediate(operands[1])
-            func = 0
+            imm32_raw = operands[1]
+            imm32 = self._parse_immediate(imm32_raw)
+
+            # Si es MOVI con flotante, marcar con FUNC=2 para que el CPU lo sepa
+            if opcode == Opcodes.MOVI.value and isinstance(imm32_raw, float):
+                func = 2  # Indica que es un float (single precision en IMM32)
+            else:
+                func = 0
         elif len(operands) == 3:
-            # Formato: ADDI RD, RS1, IMM32 o IN RD, RS1, COUNT o OUT RD, COUNT, FUNC
-            rs1 = self._parse_register(operands[1])
-            op2 = self._parse_immediate(operands[2])
+            # Formato: ADDI RD, RS1, IMM32 o IN/OUT variantes
+            op2_val = operands[1]
+            op3_val = operands[2]
 
             if opcode == Opcodes.IN.value:
-                # IN RD, RS1, COUNT - leer array con separador espacio
-                imm32 = op2  # count
-                func = (1 << 1) | (0x20 << 4)  # subop=1, sep=' '
+                # Dos variantes soportadas:
+                # 1) IN RD, PORT, FUNC  -> lectura simple (puerto/MMIO)
+                # 2) IN RD, RS1, COUNT  -> lectura extendida de línea de enteros a memoria
+                #    RS1 = base del array, IMM32 = cantidad máx.
+                if (
+                    isinstance(op2_val, (int, str))
+                    and (
+                        isinstance(op2_val, int)
+                        or (isinstance(op2_val, str) and op2_val.startswith("R"))
+                    )
+                    and not (isinstance(op3_val, str) and op3_val.startswith("R"))
+                ):
+                    # Si segundo operando es registro y tercero es inmediato: modo extendido a memoria
+                    rs1 = self._parse_register(op2_val)
+                    imm32 = self._parse_immediate(op3_val)  # COUNT
+                    # FUNC por defecto: subop=1 (parse array) y separador=' ' (0x20)
+                    # Bits: [3:1]=1, [11:4]=0x20
+                    func = ((0x20 & 0xFF) << 4) | (1 << 1)
+                else:
+                    # IN RD, PORT, FUNC - el tercer operando es FUNC explícito
+                    imm32 = self._parse_immediate(op2_val)  # PORT
+                    func = self._parse_immediate(op3_val)  # FUNC
+                    rs1 = 0
             elif opcode == Opcodes.OUT.value:
-                # OUT RS1, COUNT, FUNC - imprimir array
-                imm32 = rs1  # count está en segundo operando
-                func = op2  # func está en tercer operando
-                rs1 = rd  # registro fuente
-                rd = 0
+                # OUT RD, PORT, FUNC - el tercer operando es FUNC explícito
+                imm32 = self._parse_immediate(op2_val)  # PORT
+                func = self._parse_immediate(op3_val)  # FUNC
+                rs1 = 0
             elif opcode == Opcodes.LD.value or opcode == Opcodes.ST.value:
                 # LD/ST RD, RS1, OFFSET - modo de direccionamiento relativo
-                imm32 = op2  # offset
+                rs1 = self._parse_register(op2_val)
+                imm32 = self._parse_immediate(op3_val)  # offset
                 func = 1  # indica modo relativo (rs1 + offset)
             else:
                 # Instrucción normal de 3 operandos (ADDI, etc)
-                imm32 = op2
+                rs1 = self._parse_register(op2_val)
+                imm32 = self._parse_immediate(op3_val)
                 func = 0
 
             return self._build_instruction(opcode, rd, rs1, 0, func, imm32)
@@ -198,11 +256,17 @@ class InstructionEncoder:
         Parsea un operando inmediato
 
         Args:
-            operand: Valor inmediato (int o dirección)
+            operand: Valor inmediato (int, float o dirección)
 
         Returns:
-            int: Valor inmediato de 32 bits
+            int: Valor inmediato de 32 bits (o representación especial para floats)
         """
+        if isinstance(operand, float):
+            # Para flotantes, convertir a representación IEEE 754
+            # Usamos single precision (32 bits) para que quepa en IMM32
+            float_bits = struct.unpack("I", struct.pack("f", operand))[0]
+            return float_bits
+
         if isinstance(operand, int):
             # Asegurar que cabe en 32 bits (signed)
             if -2147483648 <= operand <= 4294967295:
