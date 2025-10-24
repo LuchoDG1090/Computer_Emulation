@@ -71,10 +71,20 @@ class DataTransferExecutor:
         imm32 = instruction["imm32"]
         func = instruction["func"]
 
-        if func == 0:  # Inmediato
-            self.registers[rd] = imm32
-        else:  # Registro a registro
+        if func == 0:  # Inmediato entero
+            # Sign-extend el inmediato de 32 bits a 64 bits
+            self.registers[rd] = self.memory_ops.sign_extend_32(imm32)
+        elif func == 1:  # Registro a registro
             self.registers[rd] = self.registers[rs1]
+        elif func == 2:  # Inmediato flotante (single precision en IMM32)
+            # IMM32 contiene un float de 32 bits, convertir a double de 64 bits
+            import struct
+
+            # Interpretar IMM32 como float de 32 bits
+            float_val = struct.unpack("f", struct.pack("I", imm32 & 0xFFFFFFFF))[0]
+            # Convertir a double de 64 bits y guardar su representación
+            double_bits = struct.unpack("Q", struct.pack("d", float_val))[0]
+            self.registers[rd] = double_bits
 
     def _execute_ld(self, instruction: Dict[str, Any], cpu):
         """LD Rd, Rs1 + offset o LD Rd, #address"""
@@ -130,7 +140,11 @@ class DataTransferExecutor:
         subop = (func >> 1) & 0x7
         sep_chr = (func >> 4) & 0xFF
 
-        if subop == 1:
+        if subop == 3:
+            # Leer flotante (INF)
+            value = self.io_ports.read_input_float(imm32)
+            self.registers[rd] = value
+        elif subop == 1:
             # Parse array de enteros en memoria
             base = self.registers[rs1]
             count = imm32 & 0xFFFFFFFF

@@ -1,3 +1,4 @@
+import struct
 from enum import IntEnum
 from typing import Tuple
 
@@ -187,5 +188,96 @@ class ALU:
         if operation in [ALUOperation.ADD, ALUOperation.SUB, ALUOperation.MUL]:
             if result > 0x7FFFFFFFFFFFFFFF or result < -0x8000000000000000:
                 flags |= 1 << Flags.OVERFLOW
+
+        return flags
+
+
+class FloatALU:
+    """Unidad Aritmética para operaciones de punto flotante IEEE 754"""
+
+    def execute(self, operation: str, operand1: int, operand2: int) -> Tuple[int, int]:
+        """
+        Ejecuta una operación flotante
+
+        Args:
+            operation: 'FADD', 'FSUB', 'FMUL', 'FDIV'
+            operand1: Primer operando (64 bits, interpretado como double)
+            operand2: Segundo operando (64 bits, interpretado como double)
+
+        Returns:
+            Tupla (resultado_como_int_64bits, flags)
+        """
+        # Convertir de representación entera a float
+        f1 = self.int_to_float(operand1)
+        f2 = self.int_to_float(operand2)
+
+        # Realizar operación
+        if operation == "FADD":
+            result_float = f1 + f2
+        elif operation == "FSUB":
+            result_float = f1 - f2
+        elif operation == "FMUL":
+            result_float = f1 * f2
+        elif operation == "FDIV":
+            if f2 == 0.0:
+                # División por cero: resultado IEEE 754 es inf
+                result_float = float("inf") if f1 >= 0 else float("-inf")
+            else:
+                result_float = f1 / f2
+        else:
+            raise ValueError(f"Operación flotante no reconocida: {operation}")
+
+        # Convertir resultado de vuelta a int de 64 bits
+        result_int = self.float_to_int(result_float)
+
+        # Calcular flags
+        flags = self._calculate_float_flags(result_float)
+
+        logger_handler.info(f"FloatALU: {operation} {f1} y {f2} = {result_float}")
+
+        return result_int, flags
+
+    def int_to_float(self, value: int) -> float:
+        """
+        Convierte un entero de 64 bits a float (IEEE 754 double precision)
+
+        Args:
+            value: Entero de 64 bits (representación binaria de un double)
+
+        Returns:
+            float: Valor en punto flotante
+        """
+        # Asegurar que sea de 64 bits
+        value = value & 0xFFFFFFFFFFFFFFFF
+        # Usar struct para interpretar los bits como double
+        return struct.unpack("d", struct.pack("Q", value))[0]
+
+    def float_to_int(self, value: float) -> int:
+        """
+        Convierte un float a su representación entera de 64 bits (IEEE 754)
+
+        Args:
+            value: Valor en punto flotante
+
+        Returns:
+            int: Representación de 64 bits del float
+        """
+        # Usar struct para obtener la representación binaria
+        return struct.unpack("Q", struct.pack("d", value))[0]
+
+    def _calculate_float_flags(self, result: float) -> int:
+        """Calcula flags para resultado flotante"""
+        flags = 0
+
+        if result == 0.0:
+            flags |= 1 << Flags.ZERO
+        elif result < 0.0:
+            flags |= 1 << Flags.NEGATIVE
+        elif result > 0.0:
+            flags |= 1 << Flags.POSITIVE
+
+        # Overflow si el resultado es infinito
+        if result == float("inf") or result == float("-inf"):
+            flags |= 1 << Flags.OVERFLOW
 
         return flags

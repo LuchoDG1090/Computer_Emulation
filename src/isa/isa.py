@@ -17,6 +17,12 @@ class Opcodes(IntEnum):
     SHL = 0x18  # Desplazamiento izquierda
     SHR = 0x19  # Desplazamiento derecha
 
+    # Instrucciones de punto flotante (IEEE 754 double precision)
+    FADD = 0x1A  # Suma flotante
+    FSUB = 0x1B  # Resta flotante
+    FMUL = 0x1C  # Multiplicación flotante
+    FDIV = 0x1D  # División flotante
+
     # Instrucciones ALU con inmediato
     ADDI = 0x20  # Suma con inmediato
     MOVI = 0x22  # Mover inmediato a registro
@@ -76,6 +82,11 @@ opcode_to_type = {
     Opcodes.SHL: InstructionType.R_TYPE,
     Opcodes.SHR: InstructionType.R_TYPE,
     Opcodes.CMP: InstructionType.R_TYPE,
+    # Operaciones flotantes (también R-Type)
+    Opcodes.FADD: InstructionType.R_TYPE,
+    Opcodes.FSUB: InstructionType.R_TYPE,
+    Opcodes.FMUL: InstructionType.R_TYPE,
+    Opcodes.FDIV: InstructionType.R_TYPE,
     # I-Type: operaciones con inmediatos y memoria
     Opcodes.MOVI: InstructionType.I_TYPE,
     Opcodes.CP: InstructionType.I_TYPE,

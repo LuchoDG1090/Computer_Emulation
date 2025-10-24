@@ -2,6 +2,7 @@
 Módulo de puertos de entrada/salida (I/O) para la CPU
 """
 
+import struct
 from typing import Any, Callable, Dict, Optional
 
 from src.memory.memory import Memory
@@ -55,14 +56,29 @@ class IOPorts:
         subop = (func >> 1) & 0x7
         sep_chr = (func >> 4) & 0xFF
 
-        # Suboperación: imprimir array de enteros con separador
+        # Suboperación: imprimir array de enteros con separador (signed)
         if subop == 1:
             self._output_int_array(value, target, sep_chr)
             return
 
-        # Suboperación: imprimir entero sin newline
+        # Suboperación: imprimir entero unsigned sin newline
+        if subop == 4:
+            self._output_uint_no_newline(value)
+            return
+
+        # Suboperación: imprimir entero signed sin newline
         if subop == 2:
             self._output_int_no_newline(value)
+            return
+
+        # Suboperación: imprimir flotante (double precision)
+        if subop == 3:
+            self._write_float(value)
+            return
+
+        # Suboperación: imprimir array de enteros con separador (unsigned)
+        if subop == 5:
+            self._output_uint_array(value, target, sep_chr)
             return
 
         # Operaciones normales
@@ -110,7 +126,12 @@ class IOPorts:
 
     def _write_int(self, value: int):
         """Escribe un entero"""
+        # Convertir a representación con signo de 64 bits
         val = int(value & 0xFFFFFFFFFFFFFFFF)
+
+        # Si el bit más significativo está en 1, es un número negativo
+        if val >= 0x8000000000000000:
+            val = val - 0x10000000000000000
 
         if self.output_int_callback:
             self.output_int_callback(val)
@@ -118,15 +139,45 @@ class IOPorts:
             # Fallback: agregar a buffer
             self.output_int_buffer.append(val)
 
+    def _write_float(self, value: int):
+        """Escribe un flotante (double precision IEEE 754)"""
+        # Convertir de representación entera a float
+        float_val = struct.unpack("d", struct.pack("Q", value & 0xFFFFFFFFFFFFFFFF))[0]
+
+        # Convertir a string
+        float_str = str(float_val)
+
+        if self.output_char_callback:
+            # Imprimir carácter por carácter
+            for ch in float_str:
+                self.output_char_callback(ord(ch))
+        else:
+            # Fallback: agregar a buffer
+            self.output_buffer += float_str
+
     def _output_int_no_newline(self, value: int):
         """Escribe entero sin newline (para formato)"""
+        # Convertir a representación con signo de 64 bits
         val = int(value & 0xFFFFFFFFFFFFFFFF)
+
+        # Si el bit más significativo está en 1, es un número negativo
+        if val >= 0x8000000000000000:
+            val = val - 0x10000000000000000
 
         if self.output_int_callback:
             # La GUI decide cómo manejarlo
             self.output_int_callback(val)
         else:
             # Fallback: convertir a string y agregar
+            self.output_buffer += str(val)
+
+    def _output_uint_no_newline(self, value: int):
+        """Escribe entero unsigned sin newline (para formato)"""
+        val = int(value & 0xFFFFFFFFFFFFFFFF)
+
+        if self.output_int_callback:
+            self.output_int_callback(val)
+        else:
             self.output_buffer += str(val)
 
     def _output_int_array(self, base_addr: int, count: int, separator: int):
@@ -149,6 +200,28 @@ class IOPorts:
             self._output_int_no_newline(val)
 
             # Separador entre números (no después del último)
+            if i != count - 1 and separator:
+                self._write_char(separator)
+
+    def _output_uint_array(self, base_addr: int, count: int, separator: int):
+        """
+        Imprime array de enteros unsigned con separador
+
+        Args:
+            base_addr: Dirección base del array
+            count: Número de elementos
+            separator: Carácter ASCII separador
+        """
+        count = max(0, min(count, 1_000_000))
+
+        for i in range(count):
+            addr = base_addr + i * 8
+            if not (0 <= addr <= (self.memory_size - 8)):
+                break
+
+            val = self.mem.read_word(addr)
+            self._output_uint_no_newline(val)
+
             if i != count - 1 and separator:
                 self._write_char(separator)
 
@@ -207,9 +280,44 @@ class IOPorts:
     def _read_int(self) -> int:
         """Lee un entero desde la entrada"""
         if self.input_int_callback:
-            return self.input_int_callback() & 0xFFFFFFFFFFFFFFFF
+            val = self.input_int_callback()
+
+            # Convertir números negativos a representación sin signo de 64 bits
+            if val < 0:
+                val = (1 << 64) + val  # Equivalente a: 0x10000000000000000 + val
+
+            return val & 0xFFFFFFFFFFFFFFFF
 
         # Fallback: retornar 0
+        return 0
+
+    def read_input_float(self, source: int) -> int:
+        """
+        Lee un flotante desde la entrada y lo retorna como int (IEEE 754 bits)
+
+        Args:
+            source: Puerto o dirección MMIO (ignorado, siempre usa consola)
+
+        Returns:
+            Representación de 64 bits del flotante leído
+        """
+        if self.input_int_callback:
+            # Leer el valor como si fuera entero, pero parsearlo como float
+            # Necesitamos un callback especial o modificar el existente
+            # Por simplicidad, vamos a crear un input_float_callback
+            if hasattr(self, "input_float_callback") and self.input_float_callback:
+                float_val = self.input_float_callback()
+            else:
+                # Fallback: usar input_int_callback pero parsear como float
+                try:
+                    # Leer como string y parsear como float
+                    float_val = float(input(""))
+                except Exception:
+                    float_val = 0.0
+
+            # Convertir a representación IEEE 754 de 64 bits
+            return struct.unpack("Q", struct.pack("d", float_val))[0]
+
         return 0
 
     # === Configuración de callbacks (para la GUI) ===

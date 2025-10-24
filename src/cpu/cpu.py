@@ -153,6 +153,11 @@ class CPU:
             Opcodes.SHL,
             Opcodes.SHR,
             Opcodes.CMP,
+            # Operaciones flotantes
+            Opcodes.FADD,
+            Opcodes.FSUB,
+            Opcodes.FMUL,
+            Opcodes.FDIV,
         }
 
     def _get_data_transfer_opcodes(self):
@@ -161,8 +166,8 @@ class CPU:
             Opcodes.LD,
             Opcodes.ST,
             Opcodes.OUT,
-            Opcodes.ADDI,
             Opcodes.IN,
+            Opcodes.ADDI,
             Opcodes.CP,
             Opcodes.INS,
             Opcodes.OUTS,
