@@ -93,6 +93,7 @@ class Assembler:
     def _advance_address(self, item, current_address):
         """Calcula la siguiente dirección según el tipo de item"""
         if isinstance(item, Instruction):
+            # Avanza una palabra en bytes (64 bits = 8 bytes)
             return current_address + self.word_size
 
         if isinstance(item, Directive):
@@ -163,8 +164,10 @@ class Assembler:
             return binary_code
 
         # For relocatable operands, replace the immediate field with the placeholder
+        # Para operandos reubicables, reemplazar el campo inmediato con el marcador
         prefix = binary_code[:32]
         # Currently only one relocation per instruction is expected
+        # Actualmente solo se espera una reubicación por instrucción
         placeholder = relocations[0]["placeholder"]
         return f"{prefix}{placeholder}"
 
@@ -205,6 +208,7 @@ class Assembler:
                 binary_lines.append(resolved_value)
             else:
                 binary_lines.append(format(resolved_value & 0xFFFFFFFFFFFFFFFF, "064b"))
+            # Dirección expresada en bytes
             address = directive.address + (offset * self.word_size)
             index = self.address_word_index.get(address)
             self.memory_map.mark_data(address, index)
@@ -216,6 +220,7 @@ class Assembler:
         binary_lines = ["0" * 64 for _ in range(count)]
 
         for offset in range(count):
+            # Dirección expresada en bytes
             address = directive.address + (offset * self.word_size)
             index = self.address_word_index.get(address)
             self.memory_map.mark_data(address, index)
@@ -253,7 +258,7 @@ class Assembler:
             # Generar representación binaria
             binary_lines.append(format(word_value, "064b"))
 
-            # Marcar en el mapa de memoria
+            # Marcar en el mapa de memoria (dirección en bytes)
             address = directive.address + (word_idx * self.word_size)
             index = self.address_word_index.get(address)
             self.memory_map.mark_data(address, index)
@@ -269,13 +274,16 @@ class Assembler:
     def _calculate_directive_address(self, directive, current_address):
         """Calcula dirección después de una directiva"""
         if directive.name == "ORG":
+            # ORG define la posición de memoria en bytes
             return directive.args[0] if directive.args else current_address
 
         if directive.name == "DW":
+            # Avanza tantas palabras (en bytes) como argumentos
             return current_address + (len(directive.args) * self.word_size)
 
         if directive.name == "RESW":
             count = directive.args[0] if directive.args else 1
+            # Avanza 'count' palabras en bytes
             return current_address + (count * self.word_size)
 
         if directive.name == "DB":
@@ -288,6 +296,7 @@ class Assembler:
                     total_bytes += 1
             # Redondear hacia arriba al siguiente múltiplo de word_size
             word_count = (total_bytes + self.word_size - 1) // self.word_size
+            # Avanza 'word_count' palabras en bytes
             return current_address + (word_count * self.word_size)
 
         return current_address
@@ -345,6 +354,7 @@ class Assembler:
 
             if item.name == "DW":
                 for offset in range(len(item.args)):
+                    # Dirección expresada en bytes
                     address = item.address + (offset * self.word_size)
                     self.address_word_index[address] = base_index + offset
                 return
@@ -352,6 +362,7 @@ class Assembler:
             if item.name == "RESW":
                 count = item.args[0] if item.args else 1
                 for offset in range(count):
+                    # Dirección expresada en bytes
                     address = item.address + (offset * self.word_size)
                     self.address_word_index[address] = base_index + offset
                 return
@@ -367,6 +378,7 @@ class Assembler:
                 word_count = (total_bytes + self.word_size - 1) // self.word_size
 
                 for offset in range(word_count):
+                    # Dirección expresada en bytes
                     address = item.address + (offset * self.word_size)
                     self.address_word_index[address] = base_index + offset
 

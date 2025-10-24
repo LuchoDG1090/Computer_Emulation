@@ -23,11 +23,12 @@ class Loader:
     ) -> Tuple[int, int]:
         """Escribe las palabras en sus direcciones absolutas según el mapa"""
 
+        # Las direcciones del mapa están en bytes
         min_addr = None
         max_addr = None
 
         for entry, word in zip(map_entries, program_words):
-            addr = entry.address
+            addr = entry.address  # dirección en bytes
 
             # Verificar que la dirección esté en rango
             if addr + Loader.WORD_SIZE > memory.size:
@@ -62,6 +63,7 @@ class Loader:
         if target_entry is None:
             raise ValueError(f"Placeholder {word.placeholder} no encontrado en el mapa")
 
+        # Dirección de destino en bytes
         target_addr = target_entry.address
 
         if word.kind == "reloc32":
@@ -79,9 +81,10 @@ class Loader:
 
         program_words, map_entries = Linker.analizar_programa(bin_path, map_path)
 
+        # Cargar y obtener extremos en bytes
         min_addr, max_addr = Loader.cargar_bin(cpu.mem, program_words, map_entries)
 
-        # Obtener direcciones ejecutables directamente del mapa
+        # Obtener direcciones ejecutables directamente del mapa (en bytes)
         exec_addresses = {entry.address for entry in map_entries if entry.flag == 1}
 
         if cpu.exec_map is None:
@@ -90,6 +93,7 @@ class Loader:
         cpu.exec_map.update(exec_addresses)
 
         cpu.pc = min(exec_addresses) if exec_addresses else 0
+        # Guardar segmento en bytes
         cpu.segments.append((min_addr, max_addr, os.path.basename(bin_path)))
         cpu.current_program = bin_path
 

@@ -1,5 +1,11 @@
+# Para la interfaz gráfica
+customtkinter==5.2.2
+
+# Para manipulación de imágenes
+pillow==12.0.0
+
 # Para pruebas unitarias
-pytest>=8.4.2
+pytest==8.4.2
 
 # Ruff para linting y formateo
-ruff>=0.14.1
+ruff==0.14.1
