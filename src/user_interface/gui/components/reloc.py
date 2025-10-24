@@ -16,6 +16,7 @@ class RelocCodeFrame(ctk.CTkFrame):
         self.cpu = kwargs.get("cpu", "")
         self.memory = kwargs.get("memory", "")
         self.ram_display = kwargs.get("ram_display", None)
+        self.program_selector = kwargs.get("program_selector", None)
 
         self.__build_text()
         self.__build_entry_text()
@@ -54,9 +55,7 @@ class RelocCodeFrame(ctk.CTkFrame):
             text_color="white",
             corner_radius=50,
             font=("Comic Sans MS", 16, "bold"),
-            command=lambda: func.link_load(
-                self.text_entry, self.memory, self.ram_display
-            ),
+            command=lambda: self.__link_load_and_update(),
         )
         boton_enlazar_cargar.grid(row=0, column=0)
 
@@ -65,3 +64,9 @@ class RelocCodeFrame(ctk.CTkFrame):
     def set_text(self, text):
         self.text_entry.delete("1.0", "end")
         self.text_entry.insert("1.0", text)
+
+    def __link_load_and_update(self):
+        """Carga el programa y actualiza el selector"""
+        func.link_load(self.text_entry, self.memory, self.ram_display)
+        if self.program_selector:
+            self.program_selector.update_program_list()

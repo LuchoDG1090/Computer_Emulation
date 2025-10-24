@@ -17,6 +17,7 @@ from src.user_interface.gui.components import (
     general_purpose_regs,
     high_level_code,
     input,
+    program_selector,
     ram,
     reloc,
     salida,
@@ -82,12 +83,16 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
         self.ram_memory = ram.DinamicRandomAccessMemory(self.frame_second_column)
 
+        # Crear el selector de programas primero para poder pasarlo a reloc
+        self.program_selector = None
+
         self.reloc_code = reloc.RelocCodeFrame(
             self.frame_second_column,
             reloc_icon=self.reloc_icon_path,
             memory=self.memory,
             cpu=self.cpu,
             ram_display=self.ram_memory,
+            program_selector=None,  # Se configurará después
         )
         self.reloc_code.grid(column=0, row=0, sticky="nsew", pady=12)
 
@@ -108,6 +113,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         frame_third_column.rowconfigure(2, weight=5)
         frame_third_column.rowconfigure(3, weight=5)
         frame_third_column.rowconfigure(4, weight=0)
+        frame_third_column.rowconfigure(5, weight=0)
         frame_third_column.grid_propagate(False)
         frame_third_column.columnconfigure(0, weight=1)
 
@@ -121,6 +127,12 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             frame_third_column
         )
 
+        # Crear el selector y conectarlo con reloc
+        self.program_selector = program_selector.ProgramSelectorFrame(
+            frame_third_column, cpu=self.cpu
+        )
+        self.reloc_code.program_selector = self.program_selector
+
         botones_acciones = buttons_actions.BotonesAcciones(
             frame_third_column,
             imagen_siguiente=self.siguiente_icon_path,
@@ -131,7 +143,8 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         unidad_de_control_frame.grid(column=0, row=1, sticky="ew", pady=12)
         flag_register_frame.grid(column=0, row=2, sticky="ew", pady=12)
         gen_purpose_regs.grid(column=0, row=3, sticky="ew", pady=12)
-        botones_acciones.grid(column=0, row=4, sticky="ew", pady=12)
+        self.program_selector.grid(column=0, row=4, sticky="ew", pady=12)
+        botones_acciones.grid(column=0, row=5, sticky="ew", pady=12)
 
         frame_third_column.grid(
             column=2, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)

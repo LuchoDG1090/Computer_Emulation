@@ -33,7 +33,7 @@ def get_textbox_lines(textbox):
     return contenido.strip().split("\n")
 
 
-def assemble(textbox_origen, textbox_destino):
+def assemble(textbox_origen, textbox_destino, source_file_path=None):
     import os
     import tempfile
 
@@ -54,6 +54,11 @@ def assemble(textbox_origen, textbox_destino):
             entry = asm.memory_map.entries[index]
             f.write(f"{index},0x{entry['address']:08X},{entry['flag']}\n")
 
-    CompilationRegistry.register(binary_output, bin_path, map_path)
+    # Extraer nombre del archivo fuente si existe
+    source_filename = None
+    if source_file_path:
+        source_filename = os.path.basename(source_file_path)
+
+    CompilationRegistry.register(binary_output, bin_path, map_path, source_filename)
 
     textbox_destino(binary_output)
