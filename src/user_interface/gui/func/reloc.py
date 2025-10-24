@@ -14,23 +14,47 @@ def link(bin_path, map_path):
         return False
 
 
-def load(memory, bin_path, map_path):
+def load(memory, bin_path, map_path, base_address=None):
+    """
+    Carga un programa en memoria
+
+    Args:
+        memory: Objeto Memory
+        bin_path: Ruta al archivo .bin
+        map_path: Ruta al archivo .map
+        base_address: Dirección base para sumar a todas las direcciones (en bytes)
+    """
     from src.memory.linker import Linker
 
     program_words, map_entries = Linker.analizar_programa(bin_path, map_path)
-    min_addr, max_addr = loader.Loader.cargar_bin(memory, program_words, map_entries)
+    min_addr, max_addr = loader.Loader.cargar_bin(
+        memory, program_words, map_entries, base_address
+    )
+
+    # Si se especifica base_address, se suma a todas las direcciones
+    offset = base_address if base_address is not None else 0
 
     # Obtener punto de entrada (primera dirección ejecutable)
     entry_point = None
     for entry in map_entries:
         if entry.flag == 1:
-            if entry_point is None or entry.address < entry_point:
-                entry_point = entry.address
+            adjusted_addr = entry.address + offset
+            if entry_point is None or adjusted_addr < entry_point:
+                entry_point = adjusted_addr
 
     return min_addr, max_addr, entry_point
 
 
-def link_load(textbox, memory, ram_display=None):
+def link_load(textbox, memory, ram_display=None, base_address=None):
+    """
+    Enlaza y carga un programa en memoria
+
+    Args:
+        textbox: CTkTextbox con el contenido del código relocalizable
+        memory: Objeto Memory
+        ram_display: Componente para actualizar visualización de RAM
+        base_address: Dirección base opcional para reubicación (en bytes)
+    """
     contenido = textbox.get("1.0", "end").strip()
 
     entry = CompilationRegistry.find_by_content(contenido)
@@ -44,7 +68,7 @@ def link_load(textbox, memory, ram_display=None):
 
     if link(bin_path, map_path):
         print("Enlazado correctamente")
-        min_addr, max_addr, entry_point = load(memory, bin_path, map_path)
+        min_addr, max_addr, entry_point = load(memory, bin_path, map_path, base_address)
 
         # Determinar nombre del programa
         program_name = None
@@ -60,10 +84,13 @@ def link_load(textbox, memory, ram_display=None):
             program_name, min_addr, max_addr, entry_point, bin_path, map_path
         )
 
-        print(
-            f"Programa '{program_name}' cargado en memoria: {min_addr} (0x{min_addr:x}) - {max_addr} (0x{max_addr:x})"
-        )
-        print(f"Punto de entrada: {entry_point} (0x{entry_point:x})")
+        # Convertir direcciones de bytes a posiciones de palabra para mostrar
+        min_word = min_addr // 8
+        max_word = max_addr // 8
+        entry_word = entry_point // 8
+
+        print(f"Programa '{program_name}' cargado en memoria: {min_word} - {max_word}")
+        print(f"Punto de entrada: {entry_word}")
 
         if ram_display:
             ram_display.update_memory(memory, min_addr, max_addr)

@@ -30,7 +30,9 @@ def execute_step(cpu, update_callback=None):
         return False
 
 
-def reset_cpu(cpu, update_callback=None, clear_output_callback=None):
+def reset_cpu(
+    cpu, update_callback=None, clear_output_callback=None, clear_ram_callback=None
+):
     """
     Reinicia el CPU al estado inicial
 
@@ -38,11 +40,15 @@ def reset_cpu(cpu, update_callback=None, clear_output_callback=None):
         cpu: Instancia del CPU
         update_callback: Función para actualizar la GUI con el estado del CPU
         clear_output_callback: Función para limpiar la salida
+        clear_ram_callback: Función para limpiar la visualización de RAM
     """
     cpu.reset()
 
     if clear_output_callback:
         clear_output_callback()
+
+    if clear_ram_callback:
+        clear_ram_callback()
 
     if update_callback:
         update_callback(cpu.get_state())

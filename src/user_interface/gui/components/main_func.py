@@ -16,6 +16,7 @@ from src.user_interface.gui.components import (
     flag_register,
     general_purpose_regs,
     high_level_code,
+    program_counter,
     program_selector,
     ram,
     reloc,
@@ -107,6 +108,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         frame_third_column.rowconfigure(2, weight=5)
         frame_third_column.rowconfigure(3, weight=0)
         frame_third_column.rowconfigure(4, weight=0)
+        frame_third_column.rowconfigure(5, weight=0)
         frame_third_column.grid_propagate(False)
         frame_third_column.columnconfigure(0, weight=1)
 
@@ -118,9 +120,15 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             frame_third_column
         )
 
+        # Program Counter (crear antes del selector para poder pasar el callback)
+        self.pc_frame = program_counter.ProgramCounterFrame(frame_third_column)
+
         # Crear el selector y conectarlo con reloc
         self.program_selector = program_selector.ProgramSelectorFrame(
-            frame_third_column, cpu=self.cpu
+            frame_third_column,
+            cpu=self.cpu,
+            pc_update_callback=self.pc_frame.update_pc,
+            update_state_callback=self.__update_cpu_state,
         )
         self.reloc_code.program_selector = self.program_selector
 
@@ -131,13 +139,16 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             cpu=self.cpu,
             update_callback=self.__update_cpu_state,
             clear_output_callback=self.console_frame.clear_console,
+            clear_ram_callback=self.ram_memory.clear_memory,
+            console_frame=self.console_frame,
         )
 
         self.console_frame.grid(column=0, row=0, sticky="ew", pady=12)
         self.flag_register_frame.grid(column=0, row=1, sticky="ew", pady=12)
         self.gen_purpose_regs.grid(column=0, row=2, sticky="ew", pady=12)
         self.program_selector.grid(column=0, row=3, sticky="ew", pady=12)
-        botones_acciones.grid(column=0, row=4, sticky="ew", pady=12)
+        self.pc_frame.grid(column=0, row=4, sticky="ew", pady=12)
+        botones_acciones.grid(column=0, row=5, sticky="ew", pady=12)
 
         frame_third_column.grid(
             column=2, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
@@ -171,3 +182,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         # Actualizar flags
         if "flags" in state:
             self.flag_register_frame.update_flags(state["flags"])
+
+        # Actualizar PC
+        if "pc" in state:
+            self.pc_frame.update_pc(state["pc"])

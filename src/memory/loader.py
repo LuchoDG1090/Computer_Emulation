@@ -19,22 +19,35 @@ class Loader:
 
     @staticmethod
     def cargar_bin(
-        memory, program_words: List[ProgramWord], map_entries: List[MapEntry]
+        memory,
+        program_words: List[ProgramWord],
+        map_entries: List[MapEntry],
+        base_address: int = None,
     ) -> Tuple[int, int]:
-        """Escribe las palabras en sus direcciones absolutas según el mapa"""
+        """Escribe las palabras en sus direcciones absolutas según el mapa
+
+        Args:
+            memory: Objeto Memory donde cargar
+            program_words: Lista de palabras del programa
+            map_entries: Entradas del mapa de memoria
+            base_address: Dirección base para sumar a todas las direcciones (en bytes)
+        """
+
+        # Si se especifica base_address, se suma a todas las direcciones
+        offset = base_address if base_address is not None else 0
 
         # Las direcciones del mapa están en bytes
         min_addr = None
         max_addr = None
 
         for entry, word in zip(map_entries, program_words):
-            addr = entry.address  # dirección en bytes
+            addr = entry.address + offset  # sumar base_address a la dirección original
 
             # Verificar que la dirección esté en rango
             if addr + Loader.WORD_SIZE > memory.size:
                 raise ValueError(f"Dirección 0x{addr:08X} fuera de rango de memoria")
 
-            value = Loader._materializar_palabra(word, entry, map_entries)
+            value = Loader._materializar_palabra(word, entry, map_entries, offset)
             memory.write_word(addr, value)
 
             min_addr = addr if min_addr is None else min(min_addr, addr)
@@ -47,9 +60,19 @@ class Loader:
 
     @staticmethod
     def _materializar_palabra(
-        word: ProgramWord, current_entry: MapEntry, all_entries: List[MapEntry]
+        word: ProgramWord,
+        current_entry: MapEntry,
+        all_entries: List[MapEntry],
+        offset: int = 0,
     ) -> int:
-        """Convierte una palabra con marcador en su valor absoluto"""
+        """Convierte una palabra con marcador en su valor absoluto
+
+        Args:
+            word: Palabra a materializar
+            current_entry: Entrada actual del mapa
+            all_entries: Todas las entradas del mapa
+            offset: Offset de reubicación en bytes
+        """
         if word.kind == "absolute":
             return word.value or 0
 
@@ -63,8 +86,8 @@ class Loader:
         if target_entry is None:
             raise ValueError(f"Placeholder {word.placeholder} no encontrado en el mapa")
 
-        # Dirección de destino en bytes
-        target_addr = target_entry.address
+        # Dirección de destino en bytes con offset aplicado
+        target_addr = target_entry.address + offset
 
         if word.kind == "reloc32":
             prefix = (word.prefix or 0) & 0xFFFFFFFF
@@ -76,16 +99,30 @@ class Loader:
         raise ValueError(f"Tipo de palabra desconocido: {word.kind}")
 
     @staticmethod
-    def cargar_programa(cpu, bin_path: str, map_path: str) -> None:
-        """Carga un programa completo usando las direcciones absolutas del mapa"""
+    def cargar_programa(
+        cpu, bin_path: str, map_path: str, base_address: int = None
+    ) -> None:
+        """Carga un programa completo usando las direcciones absolutas del mapa
+
+        Args:
+            cpu: Instancia del CPU
+            bin_path: Ruta al archivo .bin
+            map_path: Ruta al archivo .map
+            base_address: Dirección base para sumar a todas las direcciones (en bytes)
+        """
 
         program_words, map_entries = Linker.analizar_programa(bin_path, map_path)
 
         # Cargar y obtener extremos en bytes
-        min_addr, max_addr = Loader.cargar_bin(cpu.mem, program_words, map_entries)
+        min_addr, max_addr = Loader.cargar_bin(
+            cpu.mem, program_words, map_entries, base_address
+        )
 
-        # Obtener direcciones ejecutables directamente del mapa (en bytes)
-        exec_addresses = {entry.address for entry in map_entries if entry.flag == 1}
+        # Si se especifica base_address, se suma a todas las direcciones
+        offset = base_address if base_address is not None else 0
+        exec_addresses = {
+            entry.address + offset for entry in map_entries if entry.flag == 1
+        }
 
         if cpu.exec_map is None:
             cpu.exec_map = set()

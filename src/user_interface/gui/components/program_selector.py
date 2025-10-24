@@ -8,6 +8,8 @@ class ProgramSelectorFrame(ctk.CTkFrame):
         super().__init__(parent, fg_color=fg_color)
 
         self.cpu = kwargs.get("cpu", None)
+        self.pc_update_callback = kwargs.get("pc_update_callback", None)
+        self.update_state_callback = kwargs.get("update_state_callback", None)
 
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=2)
@@ -54,8 +56,23 @@ class ProgramSelectorFrame(ctk.CTkFrame):
         for program in programs:
             if program.name == selected_name:
                 if self.cpu:
+                    # Limpiar registros y flags sin tocar la memoria
                     self.cpu.pc = program.entry_point
+                    self.cpu.ir = 0
+                    self.cpu.flags = 0
+                    self.cpu.registers.reset()
+                    self.cpu.stack_ops.reset()
+                    self.cpu.running = False
+                    self.cpu.cycle_count = 0
+
+                    word_pos = program.entry_point // 8
                     print(
-                        f"CPU configurado para ejecutar '{selected_name}' desde PC=0x{program.entry_point:x}"
+                        f"CPU configurado para ejecutar '{selected_name}' desde PC={word_pos}"
                     )
+
+                    if self.pc_update_callback:
+                        self.pc_update_callback(program.entry_point)
+
+                    if self.update_state_callback:
+                        self.update_state_callback(self.cpu.get_state())
                 break

@@ -12,6 +12,7 @@ class RelocCodeFrame(ctk.CTkFrame):
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=8)
         self.rowconfigure(2, weight=1)
+        self.rowconfigure(3, weight=1)
         self.reloc_icon = kwargs.get("reloc_icon", "")
         self.cpu = kwargs.get("cpu", "")
         self.memory = kwargs.get("memory", "")
@@ -20,6 +21,7 @@ class RelocCodeFrame(ctk.CTkFrame):
 
         self.__build_text()
         self.__build_entry_text()
+        self.__build_address_input()
         self.__build_buttons()
 
     def __build_text(self):
@@ -34,6 +36,27 @@ class RelocCodeFrame(ctk.CTkFrame):
     def __build_entry_text(self):
         self.text_entry = ctk.CTkTextbox(self, fg_color="#2b2b2b")
         self.text_entry.grid(row=1, column=0, sticky="nsew", padx=12)
+
+    def __build_address_input(self):
+        """Campo para especificar dirección base de carga"""
+        addr_frame = ctk.CTkFrame(self, fg_color="transparent")
+        addr_frame.columnconfigure(0, weight=1)
+        addr_frame.columnconfigure(1, weight=2)
+
+        label = ctk.CTkLabel(
+            addr_frame,
+            text="Dirección base (decimal):",
+            font=("Comic Sans MS", 12),
+            text_color="white",
+        )
+        label.grid(row=0, column=0, sticky="e", padx=5)
+
+        self.address_entry = ctk.CTkEntry(
+            addr_frame, placeholder_text="0 (suma a direcciones)", font=("Consolas", 11)
+        )
+        self.address_entry.grid(row=0, column=1, sticky="ew", padx=5)
+
+        addr_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=5)
 
     def __build_buttons(self):
         button_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -59,7 +82,7 @@ class RelocCodeFrame(ctk.CTkFrame):
         )
         boton_enlazar_cargar.grid(row=0, column=0)
 
-        button_frame.grid(column=0, row=2, sticky="nsew", padx=30)
+        button_frame.grid(column=0, row=3, sticky="nsew", padx=30)
 
     def set_text(self, text):
         self.text_entry.delete("1.0", "end")
@@ -67,6 +90,26 @@ class RelocCodeFrame(ctk.CTkFrame):
 
     def __link_load_and_update(self):
         """Carga el programa y actualiza el selector"""
-        func.link_load(self.text_entry, self.memory, self.ram_display)
+        # Obtener dirección base si se especificó
+        base_address = None
+        addr_text = self.address_entry.get().strip()
+        if addr_text:
+            try:
+                # Interpretar como decimal
+                base_address = int(addr_text)
+
+                # Validar que sea múltiplo de 8 (alineación de palabra)
+                if base_address % 8 != 0:
+                    print(
+                        f"\033[33m Advertencia: dirección {base_address} no está alineada a palabra (múltiplo de 8) \033[0m"
+                    )
+                    base_address = (base_address // 8) * 8
+                    print(f"Ajustando a: {base_address}")
+
+            except ValueError:
+                print(f"\033[31m Error: dirección inválida '{addr_text}' \033[0m")
+                return
+
+        func.link_load(self.text_entry, self.memory, self.ram_display, base_address)
         if self.program_selector:
             self.program_selector.update_program_list()
