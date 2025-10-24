@@ -117,13 +117,13 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         frame_third_column.grid_propagate(False)
         frame_third_column.columnconfigure(0, weight=1)
 
-        salida_frame = salida.SalidaFrame(frame_third_column)
+        self.salida_frame = salida.SalidaFrame(frame_third_column)
 
-        unidad_de_control_frame = control_unit.ControlUnitFrame(frame_third_column)
+        self.unidad_de_control_frame = control_unit.ControlUnitFrame(frame_third_column)
 
-        flag_register_frame = flag_register.FlagRegisterFrame(frame_third_column)
+        self.flag_register_frame = flag_register.FlagRegisterFrame(frame_third_column)
 
-        gen_purpose_regs = general_purpose_regs.GeneralPurposeRegisterFrame(
+        self.gen_purpose_regs = general_purpose_regs.GeneralPurposeRegisterFrame(
             frame_third_column
         )
 
@@ -137,15 +137,27 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             frame_third_column,
             imagen_siguiente=self.siguiente_icon_path,
             reiniciar_imagen=self.reiniciar_icon_path,
+            cpu=self.cpu,
+            update_callback=self.__update_cpu_state,
         )
 
-        salida_frame.grid(column=0, row=0, sticky="ew", pady=12)
-        unidad_de_control_frame.grid(column=0, row=1, sticky="ew", pady=12)
-        flag_register_frame.grid(column=0, row=2, sticky="ew", pady=12)
-        gen_purpose_regs.grid(column=0, row=3, sticky="ew", pady=12)
+        self.salida_frame.grid(column=0, row=0, sticky="ew", pady=12)
+        self.unidad_de_control_frame.grid(column=0, row=1, sticky="ew", pady=12)
+        self.flag_register_frame.grid(column=0, row=2, sticky="ew", pady=12)
+        self.gen_purpose_regs.grid(column=0, row=3, sticky="ew", pady=12)
         self.program_selector.grid(column=0, row=4, sticky="ew", pady=12)
         botones_acciones.grid(column=0, row=5, sticky="ew", pady=12)
 
         frame_third_column.grid(
             column=2, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
         )
+
+    def __update_cpu_state(self, state):
+        """
+        Actualiza todos los componentes de la GUI con el estado del CPU
+
+        Args:
+            state: Diccionario con el estado del CPU
+        """
+        # Actualizar componentes de la GUI
+        print(f"PC: 0x{state['pc']:08X}, Ciclo: {state['cycle_count']}")
