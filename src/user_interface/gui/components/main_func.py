@@ -12,15 +12,13 @@ import customtkinter as ctk
 from src.user_interface.gui.components import (
     assembly,
     buttons_actions,
-    control_unit,
+    console,
     flag_register,
     general_purpose_regs,
     high_level_code,
-    input,
     program_selector,
     ram,
     reloc,
-    salida,
 )
 
 
@@ -28,8 +26,8 @@ class MainFunctionalityMenu(ctk.CTkFrame):
     def __init__(self, parent, height, width, **kwargs):
         super().__init__(parent, width=width, height=height, fg_color="transparent")
 
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=1)
+        self.columnconfigure(0, weight=2)
+        self.columnconfigure(1, weight=2)
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
         self.memory = kwargs.get("memory", "")
@@ -78,7 +76,6 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.frame_second_column = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_second_column.rowconfigure(0, weight=1)
         self.frame_second_column.rowconfigure(1, weight=1)
-        self.frame_second_column.rowconfigure(2, weight=1)
         self.frame_second_column.columnconfigure(0, weight=1)
 
         self.ram_memory = ram.DinamicRandomAccessMemory(self.frame_second_column)
@@ -98,9 +95,6 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
         self.ram_memory.grid(column=0, row=1, sticky="nsew", pady=12)
 
-        self.input_frame = input.userInputBox(self.frame_second_column)
-        self.input_frame.grid(column=0, row=2, sticky="nsew", pady=12)
-
         self.frame_second_column.grid(
             column=1, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
         )
@@ -111,15 +105,12 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         frame_third_column.rowconfigure(0, weight=5)
         frame_third_column.rowconfigure(1, weight=5)
         frame_third_column.rowconfigure(2, weight=5)
-        frame_third_column.rowconfigure(3, weight=5)
+        frame_third_column.rowconfigure(3, weight=0)
         frame_third_column.rowconfigure(4, weight=0)
-        frame_third_column.rowconfigure(5, weight=0)
         frame_third_column.grid_propagate(False)
         frame_third_column.columnconfigure(0, weight=1)
 
-        self.salida_frame = salida.SalidaFrame(frame_third_column)
-
-        self.unidad_de_control_frame = control_unit.ControlUnitFrame(frame_third_column)
+        self.console_frame = console.ConsoleFrame(frame_third_column)
 
         self.flag_register_frame = flag_register.FlagRegisterFrame(frame_third_column)
 
@@ -139,18 +130,32 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             reiniciar_imagen=self.reiniciar_icon_path,
             cpu=self.cpu,
             update_callback=self.__update_cpu_state,
+            clear_output_callback=self.console_frame.clear_console,
         )
 
-        self.salida_frame.grid(column=0, row=0, sticky="ew", pady=12)
-        self.unidad_de_control_frame.grid(column=0, row=1, sticky="ew", pady=12)
-        self.flag_register_frame.grid(column=0, row=2, sticky="ew", pady=12)
-        self.gen_purpose_regs.grid(column=0, row=3, sticky="ew", pady=12)
-        self.program_selector.grid(column=0, row=4, sticky="ew", pady=12)
-        botones_acciones.grid(column=0, row=5, sticky="ew", pady=12)
+        self.console_frame.grid(column=0, row=0, sticky="ew", pady=12)
+        self.flag_register_frame.grid(column=0, row=1, sticky="ew", pady=12)
+        self.gen_purpose_regs.grid(column=0, row=2, sticky="ew", pady=12)
+        self.program_selector.grid(column=0, row=3, sticky="ew", pady=12)
+        botones_acciones.grid(column=0, row=4, sticky="ew", pady=12)
 
         frame_third_column.grid(
             column=2, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
         )
+
+        # Conectar callbacks de I/O del CPU
+        self.__setup_io_callbacks()
+
+    def __setup_io_callbacks(self):
+        """Configura los callbacks de entrada/salida del CPU"""
+        if self.cpu:
+            # Callbacks de salida
+            self.cpu.io_ports.set_output_char_callback(self.console_frame.append_char)
+            self.cpu.io_ports.set_output_int_callback(self.console_frame.append_int)
+
+            # Callbacks de entrada
+            self.cpu.io_ports.set_input_char_callback(self.console_frame.request_char)
+            self.cpu.io_ports.set_input_int_callback(self.console_frame.request_int)
 
     def __update_cpu_state(self, state):
         """
@@ -159,5 +164,10 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         Args:
             state: Diccionario con el estado del CPU
         """
-        # Actualizar componentes de la GUI
-        print(f"PC: 0x{state['pc']:08X}, Ciclo: {state['cycle_count']}")
+        # Actualizar registros
+        if "registers" in state:
+            self.gen_purpose_regs.update_registers(state["registers"])
+
+        # Actualizar flags
+        if "flags" in state:
+            self.flag_register_frame.update_flags(state["flags"])

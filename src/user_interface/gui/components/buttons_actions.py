@@ -15,6 +15,7 @@ class BotonesAcciones(ctk.CTkFrame):
         self.imagen_reiniciar = kwargs.get("reiniciar_imagen", "")
         self.cpu = kwargs.get("cpu", None)
         self.update_callback = kwargs.get("update_callback", None)
+        self.clear_output_callback = kwargs.get("clear_output_callback", None)
 
         self.__boton_siguiente_instruccion()
         self.__boton_reiniciar()
@@ -65,4 +66,6 @@ class BotonesAcciones(ctk.CTkFrame):
     def __reset_cpu(self):
         """Reinicia el CPU"""
         if self.cpu:
-            cpu_control.reset_cpu(self.cpu, self.update_callback)
+            cpu_control.reset_cpu(
+                self.cpu, self.update_callback, self.clear_output_callback
+            )
