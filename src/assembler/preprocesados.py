@@ -66,10 +66,6 @@ class MacroTable:
 
         return re.sub(pattern, replacer, line)
 
-# ========================================================
-# 3️⃣ Clase Preprocessor — núcleo del sistema
-# ========================================================
-
 class Preprocessor:
     def __init__(self):
         self.macros = MacroTable()
