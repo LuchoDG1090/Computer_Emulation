@@ -130,26 +130,41 @@ class InstructionEncoder:
             op3_val = operands[2]
 
             if opcode == Opcodes.IN.value:
-                # Dos variantes soportadas:
+                # Tres variantes soportadas:
                 # 1) IN RD, PORT, FUNC  -> lectura simple (puerto/MMIO)
-                # 2) IN RD, RS1, COUNT  -> lectura extendida de línea de enteros a memoria
-                #    RS1 = base del array, IMM32 = cantidad máx.
-                if (
-                    isinstance(op2_val, (int, str))
-                    and (
-                        isinstance(op2_val, int)
-                        or (isinstance(op2_val, str) and op2_val.startswith("R"))
-                    )
-                    and not (isinstance(op3_val, str) and op3_val.startswith("R"))
-                ):
-                    # Si segundo operando es registro y tercero es inmediato: modo extendido a memoria
+                # 2) IN RD, RS1, COUNT  -> COUNT es inmediato literal
+                # 3) IN RD, RS1, RS2    -> COUNT viene del registro RS2
+
+                # Verificar si el segundo operando es un registro
+                is_rs1_register = isinstance(op2_val, (int, str)) and (
+                    isinstance(op2_val, int)
+                    or (isinstance(op2_val, str) and op2_val.startswith("R"))
+                )
+
+                # Verificar si el tercer operando es un registro
+                is_op3_register = isinstance(op3_val, (int, str)) and (
+                    isinstance(op3_val, int)
+                    and 0 <= op3_val <= 15
+                    or (isinstance(op3_val, str) and op3_val.startswith("R"))
+                )
+
+                if is_rs1_register:
+                    # Modo extendido: leer array a memoria
                     rs1 = self._parse_register(op2_val)
-                    imm32 = self._parse_immediate(op3_val)  # COUNT
+
                     # FUNC por defecto: subop=1 (parse array) y separador=' ' (0x20)
-                    # Bits: [3:1]=1, [11:4]=0x20
                     func = ((0x20 & 0xFF) << 4) | (1 << 1)
+
+                    if is_op3_register:
+                        # Variante 3: COUNT en registro RS2
+                        # Codificar el número de registro en IMM32
+                        reg_num = self._parse_register(op3_val)
+                        imm32 = reg_num  # IMM32 contiene el número de registro (0-15)
+                    else:
+                        # Variante 2: COUNT literal
+                        imm32 = self._parse_immediate(op3_val)
                 else:
-                    # IN RD, PORT, FUNC - el tercer operando es FUNC explícito
+                    # Variante 1: IN RD, PORT, FUNC - el tercer operando es FUNC explícito
                     imm32 = self._parse_immediate(op2_val)  # PORT
                     func = self._parse_immediate(op3_val)  # FUNC
                     rs1 = 0

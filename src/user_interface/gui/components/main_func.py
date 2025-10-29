@@ -13,6 +13,7 @@ from src.user_interface.gui.components import (
     assembly,
     buttons_actions,
     console,
+    execute_complete,
     flag_register,
     general_purpose_regs,
     high_level_code,
@@ -20,7 +21,6 @@ from src.user_interface.gui.components import (
     program_selector,
     ram,
     reloc,
-    execute_complete
 )
 
 
@@ -95,16 +95,19 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             ram_display=self.ram_memory,
             program_selector=None,  # Se configurará después
         )
-        
 
-        self.frame_pc_selector_programa = ctk.CTkFrame(self.frame_second_column, fg_color = 'transparent')
+        self.frame_pc_selector_programa = ctk.CTkFrame(
+            self.frame_second_column, fg_color="transparent"
+        )
         self.frame_pc_selector_programa.rowconfigure(0, weight=1)
         self.frame_pc_selector_programa.rowconfigure(1, weight=1)
         self.frame_pc_selector_programa.rowconfigure(2, weight=2)
         self.frame_pc_selector_programa.columnconfigure(0, weight=1)
 
         # Program Counter (crear antes del selector para poder pasar el callback)
-        self.pc_frame = program_counter.ProgramCounterFrame(self.frame_pc_selector_programa)
+        self.pc_frame = program_counter.ProgramCounterFrame(
+            self.frame_pc_selector_programa
+        )
 
         # Crear el selector y conectarlo con reloc
         self.program_selector = program_selector.ProgramSelectorFrame(
@@ -115,22 +118,20 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             memory=self.memory,
             ram_display=self.ram_memory,
         )
-        
+
         self.execute_complete = execute_complete.CompleteExecute(
             self.frame_pc_selector_programa,
-            cpu = self.cpu,
-            update_callback=self.__update_cpu_state
+            cpu=self.cpu,
+            update_callback=self.__update_cpu_state,
         )
 
-        self.pc_frame.grid(column = 0, row = 0, sticky = 'nsew')
-        self.program_selector.grid(column = 0, row = 1, sticky = 'nsew')
-        self.execute_complete.grid(column = 0,  row = 2, sticky = 'nsew')
+        self.pc_frame.grid(column=0, row=0, sticky="nsew")
+        self.program_selector.grid(column=0, row=1, sticky="nsew")
+        self.execute_complete.grid(column=0, row=2, sticky="nsew")
 
-        
         self.reloc_code.grid(column=0, row=0, sticky="nsew", pady=12)
         self.ram_memory.grid(column=0, row=1, sticky="nsew", pady=12)
-        self.frame_pc_selector_programa.grid(column = 0, row = 2, sticky = 'nsew', pady = 12)
-
+        self.frame_pc_selector_programa.grid(column=0, row=2, sticky="nsew", pady=12)
 
         self.frame_second_column.grid(
             column=1, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)

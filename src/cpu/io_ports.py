@@ -33,7 +33,9 @@ class IOPorts:
         self.output_int_callback: Optional[Callable[[int], None]] = None
         self.input_char_callback: Optional[Callable[[], int]] = None
         self.input_int_callback: Optional[Callable[[], int]] = None
-        self.input_line_callback: Optional[Callable[[], str]] = None  # Para leer líneas completas
+        self.input_line_callback: Optional[Callable[[], str]] = (
+            None  # Para leer líneas completas
+        )
 
         # Archivos abiertos para I/O de strings
         self.open_files: Dict[int, Any] = {}  # puerto -> file handle
@@ -138,7 +140,7 @@ class IOPorts:
             self.output_int_callback(val)
             # Agregar newline después del entero
             if self.output_char_callback:
-                self.output_char_callback(ord('\n'))
+                self.output_char_callback(ord("\n"))
         else:
             # Fallback: agregar a buffer con newline
             self.output_int_buffer.append(val)

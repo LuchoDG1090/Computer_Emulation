@@ -147,7 +147,16 @@ class DataTransferExecutor:
         elif subop == 1:
             # Parse array de enteros en memoria
             base = self.registers[rs1]
-            count = imm32 & 0xFFFFFFFF
+
+            # Determinar si count viene de registro o inmediato
+            # Si IMM32 es 0-15, interpretarlo como número de registro
+            # Si es mayor, es el valor literal del count
+            if imm32 <= 15:
+                # COUNT viene del registro especificado en IMM32
+                count = self.registers[imm32] & 0xFFFFFFFF
+            else:
+                # COUNT es el valor literal en IMM32
+                count = imm32 & 0xFFFFFFFF
 
             # Leer línea completa desde callback
             line = ""
@@ -168,7 +177,7 @@ class DataTransferExecutor:
             # Si no hay separador definido (sep_chr == 0), usar espacios
             if sep_chr == 0:
                 sep_chr = 0x20  # espacio por defecto
-            
+
             parts = line.split(chr(sep_chr))
             parsed_count = 0
 
@@ -176,7 +185,7 @@ class DataTransferExecutor:
                 part = parts[i].strip()
                 if not part:  # Saltar strings vacíos
                     continue
-                    
+
                 try:
                     val = int(part, 0)
                 except ValueError:

@@ -43,10 +43,9 @@ have_len:
 
     # Leer N enteros desde una línea (separados por espacios)
     # IN Rd, Rs1, COUNT lee múltiples enteros a memoria[Rs1]
-    # Nota: COUNT debe ser inmediato, no puede ser registro
-    # Usamos 100 como límite máximo y luego verificamos cuántos se leyeron
+    # COUNT puede ser un registro (R2 contiene N)
     # R15 contendrá la cantidad realmente leída
-    IN   R15, R1, 100     # Lee hasta 100 enteros, R15 = cantidad leída
+    IN   R15, R1, R2      # Lee hasta R2 enteros, R15 = cantidad leída
     
     # Actualizar R2 con la cantidad real leída (puede ser menor que N solicitado)
     CP   R2, R15          # Usar cantidad realmente leída
