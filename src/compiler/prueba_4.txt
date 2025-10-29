@@ -1,0 +1,8 @@
+# Definicion de variables con diferente tipo de dato \n\n
+/*int x = 5;
+/**/*/
+float y = 3.14/5*10;
+bool flag = true;
+@
+@
+*/

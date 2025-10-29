@@ -1,0 +1,8 @@
+func fibonacci(int n) 
+    if (n <= 1) then
+        return n
+    endif
+    
+    int result = fibonacci(n-1) + fibonacci(n-2)
+    return result
+endfunc

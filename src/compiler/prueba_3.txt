@@ -1,0 +1,4 @@
+/*Ciclo for * \n*/
+for i = 1; i <= x; i++ 
+    output("Numero: ", i)
+endfor
