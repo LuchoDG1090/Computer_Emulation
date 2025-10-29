@@ -67,3 +67,26 @@ def reset_cpu(
         update_callback(cpu.get_state())
 
     print("CPU reiniciado")
+
+def complete_execute(cpu, update_callback = None):
+    ins = True
+    if not cpu.running:
+        cpu.running = True
+    while ins:
+        ins = cpu.step()
+
+        try:
+            ins = cpu.step()
+
+            if update_callback:
+                update_callback(cpu.get_state())
+        except Exception as e:
+            cpu.running = False
+            print(f"Error en ejecución: {e}")
+            return False
+
+    if not ins:
+        cpu.running = False
+        print("Programa terminado")
+
+        # return should_continue

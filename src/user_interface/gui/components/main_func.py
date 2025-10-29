@@ -20,6 +20,7 @@ from src.user_interface.gui.components import (
     program_selector,
     ram,
     reloc,
+    execute_complete
 )
 
 
@@ -77,9 +78,9 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
     def __build_second_column(self):
         self.frame_second_column = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_second_column.rowconfigure(0, weight=1)
-        self.frame_second_column.rowconfigure(1, weight=1)
-        self.frame_second_column.rowconfigure(2, weight=1)
+        self.frame_second_column.rowconfigure(0, weight=1, minsize=50)
+        self.frame_second_column.rowconfigure(1, weight=1, minsize=50)
+        self.frame_second_column.rowconfigure(2, weight=2, minsize=250)
         self.frame_second_column.columnconfigure(0, weight=1)
 
         self.ram_memory = ram.DinamicRandomAccessMemory(
@@ -97,6 +98,10 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         
 
         self.frame_pc_selector_programa = ctk.CTkFrame(self.frame_second_column, fg_color = 'transparent')
+        self.frame_pc_selector_programa.rowconfigure(0, weight=1)
+        self.frame_pc_selector_programa.rowconfigure(1, weight=1)
+        self.frame_pc_selector_programa.rowconfigure(2, weight=2)
+        self.frame_pc_selector_programa.columnconfigure(0, weight=1)
 
         # Program Counter (crear antes del selector para poder pasar el callback)
         self.pc_frame = program_counter.ProgramCounterFrame(self.frame_pc_selector_programa)
@@ -111,6 +116,16 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             ram_display=self.ram_memory,
         )
         
+        self.execute_complete = execute_complete.CompleteExecute(
+            self.frame_pc_selector_programa,
+            cpu = self.cpu,
+            update_callback=self.__update_cpu_state
+        )
+
+        self.pc_frame.grid(column = 0, row = 0, sticky = 'nsew')
+        self.program_selector.grid(column = 0, row = 1, sticky = 'nsew')
+        self.execute_complete.grid(column = 0,  row = 2, sticky = 'nsew')
+
         
         self.reloc_code.grid(column=0, row=0, sticky="nsew", pady=12)
         self.ram_memory.grid(column=0, row=1, sticky="nsew", pady=12)
