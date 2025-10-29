@@ -78,13 +78,19 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
     def __build_second_column(self):
         self.frame_second_column = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_second_column.rowconfigure(0, weight=1, minsize=50)
-        self.frame_second_column.rowconfigure(1, weight=1, minsize=50)
-        self.frame_second_column.rowconfigure(2, weight=2, minsize=250)
+        # Distribución: Reloc (arriba), RAM (principal ocupa casi todo),
+        # bloque inferior compacto (selector + PC + Ejecutar completo)
+        self.frame_second_column.rowconfigure(0, weight=2, minsize=100)
+        self.frame_second_column.rowconfigure(1, weight=7, minsize=260)
+        self.frame_second_column.rowconfigure(2, weight=0, minsize=120)
         self.frame_second_column.columnconfigure(0, weight=1)
 
         self.ram_memory = ram.DinamicRandomAccessMemory(
-            self.frame_second_column, memory=self.memory
+            self.frame_second_column,
+            memory=self.memory,
+            cpu=self.cpu,
+            apply_icon=self.assemble_icon_path,
+            load_icon=self.upload_icon_path,
         )
 
         self.reloc_code = reloc.RelocCodeFrame(
@@ -99,14 +105,15 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.frame_pc_selector_programa = ctk.CTkFrame(
             self.frame_second_column, fg_color="transparent"
         )
-        self.frame_pc_selector_programa.rowconfigure(0, weight=1)
-        self.frame_pc_selector_programa.rowconfigure(1, weight=1)
-        self.frame_pc_selector_programa.rowconfigure(2, weight=2)
+        # Bloque inferior compacto, sin expansión vertical
+        self.frame_pc_selector_programa.rowconfigure(0, weight=0, minsize=36)
+        self.frame_pc_selector_programa.rowconfigure(1, weight=0, minsize=36)
+        self.frame_pc_selector_programa.rowconfigure(2, weight=0, minsize=44)
         self.frame_pc_selector_programa.columnconfigure(0, weight=1)
 
         # Program Counter (crear antes del selector para poder pasar el callback)
         self.pc_frame = program_counter.ProgramCounterFrame(
-            self.frame_pc_selector_programa
+            self.frame_pc_selector_programa, cpu=self.cpu
         )
 
         # Crear el selector y conectarlo con reloc
@@ -125,13 +132,18 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             update_callback=self.__update_cpu_state,
         )
 
+        # Ubicar frames en la segunda columna
         self.pc_frame.grid(column=0, row=0, sticky="nsew")
         self.program_selector.grid(column=0, row=1, sticky="nsew")
-        self.execute_complete.grid(column=0, row=2, sticky="nsew")
+        self.execute_complete.grid(column=0, row=2, sticky="ew", pady=(6, 0))
 
         self.reloc_code.grid(column=0, row=0, sticky="nsew", pady=12)
         self.ram_memory.grid(column=0, row=1, sticky="nsew", pady=12)
         self.frame_pc_selector_programa.grid(column=0, row=2, sticky="nsew", pady=12)
+
+        # Conectar callback de actualización de PC al visor de RAM
+        if hasattr(self.ram_memory, "set_pc_update_callback"):
+            self.ram_memory.set_pc_update_callback(self.pc_frame.update_pc)
 
         self.frame_second_column.grid(
             column=1, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
@@ -176,8 +188,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.console_frame.grid(column=0, row=0, sticky="ew", pady=12)
         self.flag_register_frame.grid(column=0, row=1, sticky="ew", pady=12)
         self.gen_purpose_regs.grid(column=0, row=2, sticky="ew", pady=12)
-        self.program_selector.grid(column=0, row=3, sticky="ew", pady=12)
-        self.pc_frame.grid(column=0, row=4, sticky="ew", pady=12)
+        # program_selector y pc_frame se ubican en la segunda columna (bloque inferior)
         botones_acciones.grid(column=0, row=5, sticky="ew", pady=12)
 
         frame_third_column.grid(
@@ -217,3 +228,13 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         # Actualizar PC
         if "pc" in state:
             self.pc_frame.update_pc(state["pc"])
+
+        # Refrescar la vista de RAM con los valores actuales de memoria, sin
+        # perder ediciones en curso. Esto permite ver inmediatamente los cambios
+        # en memoria producidos por instrucciones como IN/LD/ST, E/S, etc.
+        if hasattr(self, "ram_memory") and self.ram_memory is not None:
+            try:
+                self.ram_memory.refresh_visible()
+            except Exception:
+                # Si aún no hay un rango mostrado o el widget no está listo, ignorar.
+                pass
