@@ -1,9 +1,9 @@
-# Multiplicación de matrices: 3x2 por 2x4 (números naturales)
+# Multiplicacion de matrices: 3x2 por 2x4 (numeros naturales)
 # Datos (A y B) desde 1028, resultado desde 20455, programa desde 3700
 #
 # Formato de entrada:
-# - Para A (3x2): ingrese 2 números por fila separados por espacio
-# - Para B (2x4): ingrese 4 números por fila separados por espacio
+# - Para A (3x2): ingrese 2 numeros por fila separados por espacio
+# - Para B (2x4): ingrese 4 numeros por fila separados por espacio
 
 # --------------------
 # Datos
@@ -28,7 +28,7 @@ RES: RESW 12   # 3*4 = 12 palabras de 64 bits
 
 
 # --------------------
-# Código
+# Codigo
 # --------------------
 ORG 3700
 
@@ -42,7 +42,7 @@ START:
 	MOVI R4, 3          # p = filas(A) = 3
 	MOVI R5, 2          # m = cols(A) = filas(B) = 2
 	MOVI R6, 4          # n = cols(B) = 4
-	MOVI R7, 8          # tamaño de palabra (bytes)
+	MOVI R7, 8          # tamanho de palabra (bytes)
 
 	# Mensaje introductorio y formato
 	MOVI R8, MSG_INTRO
@@ -225,13 +225,13 @@ C_i_print:
 # Strings (mensajes)
 # --------------------
 ORG 0xF000
-MSG_INTRO:    DB "Multiplicación de matrices 3x2 por 2x4 (números naturales)", 10
+MSG_INTRO:    DB "Multiplicacion de matrices 3x2 por 2x4 (numeros naturales)", 10
 			   DB "Formato:", 10
-			   DB " - Ingrese 2 números por fila para A (separados por espacio)", 10
-			   DB " - Ingrese 4 números por fila para B (separados por espacio)", 10
+			   DB " - Ingrese 2 numeros por fila para A (separados por espacio)", 10
+			   DB " - Ingrese 4 numeros por fila para B (separados por espacio)", 10
 			   DB 0
-MSG_A:        DB "Ingrese la matriz A (3x2), una fila por línea (2 números separados por espacio):", 10, 0
-MSG_B:        DB "Ingrese la matriz B (2x4), una fila por línea (4 números separados por espacio):", 10, 0
+MSG_A:        DB "Ingrese la matriz A (3x2), una fila por linea (2 numeros separados por espacio):", 10, 0
+MSG_B:        DB "Ingrese la matriz B (2x4), una fila por linea (4 numeros separados por espacio):", 10, 0
 MSG_A_TITLE:  DB 10, "Matriz A:", 10, 0
 MSG_B_TITLE:  DB "Matriz B:", 10, 0
 MSG_C_TITLE:  DB "Matriz C = A x B:", 10, 0

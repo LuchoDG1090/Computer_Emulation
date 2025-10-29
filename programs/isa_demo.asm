@@ -1,34 +1,34 @@
 # ===============================================================================
-# DEMOSTRACIÓN COMPLETA DEL ISA - ARQUITECTURA DE 64 BITS
+# DEMOSTRACION COMPLETA DEL ISA - ARQUITECTURA DE 64 BITS
 # ===============================================================================
 #
 # Este programa documenta y demuestra todas las instrucciones implementadas
 # en el conjunto de instrucciones (ISA) de la arquitectura.
 #
-# FORMATO DE INSTRUCCIÓN (64 bits):
+# FORMATO DE INSTRUCCION (64 bits):
 #   [63-56]: Opcode (8 bits)
 #   [55-52]: RD - Registro destino (4 bits)
 #   [51-48]: RS1 - Registro fuente 1 (4 bits)
 #   [47-44]: RS2 - Registro fuente 2 (4 bits)
-#   [43-32]: FUNC - Campo de función/modificadores (12 bits)
-#   [31-0]:  IMM32 - Inmediato/dirección (32 bits)
+#   [43-32]: FUNC - Campo de funcion/modificadores (12 bits)
+#   [31-0]:  IMM32 - Inmediato/direccion (32 bits)
 #
 # REGISTROS:
-#   R0-R15: 16 registros de propósito general de 64 bits
-#   R0: Típicamente usado como destino dummy en comparaciones
+#   R0-R15: 16 registros de proposito general de 64 bits
+#   R0: Tipicamente usado como destino dummy en comparaciones
 #
 # FLAGS (8 bits en registro de estado):
 #   Bit 0: ZERO (Z) - Resultado es cero
-#   Bit 1: CARRY (C) - Acarreo en operaciones aritméticas
+#   Bit 1: CARRY (C) - Acarreo en operaciones aritmeticas
 #   Bit 2: NEGATIVE (N) - Resultado negativo (bit de signo)
 #   Bit 3: POSITIVE (P) - Resultado positivo
-#   Bit 4: OVERFLOW (V) - Desbordamiento aritmético
-#   Bit 5: INTERRUPT (I) - Habilitación de interrupciones
+#   Bit 4: OVERFLOW (V) - Desbordamiento aritmetico
+#   Bit 5: INTERRUPT (I) - Habilitacion de interrupciones
 #
 # DIRECCIONES MMIO (Memory-Mapped I/O):
-#   0xFFFF0000: Salida de carácter (1 byte)
+#   0xFFFF0000: Salida de caracter (1 byte)
 #   0xFFFF0008: Salida de entero/string
-#   0xFFFF0010: Entrada de carácter (1 byte)
+#   0xFFFF0010: Entrada de caracter (1 byte)
 #   0xFFFF0018: Entrada de entero
 #
 # ===============================================================================
@@ -43,7 +43,7 @@ ORG 0x0
 # MOVI - Move Immediate (Mover inmediato a registro)
 # -----------------------------------------------------------------------------
 # Sintaxis: MOVI Rd, #imm32
-# Codificación: Opcode=0x22, FUNC determina el tipo de dato
+# Codificacion: Opcode=0x22, FUNC determina el tipo de dato
 #   FUNC=0: Entero con signo (sign-extend 32→64 bits)
 #   FUNC=2: Flotante (float32 en IMM32, convertido a double64 en registro)
 # Flags: No afecta
@@ -56,7 +56,7 @@ MOVI R3, 0x2A               # R3 = 42 (hexadecimal)
 MOVI R4, 0                  # R4 = 0
 
 # MOVI con flotantes: el ensamblador detecta el punto decimal y codifica como float32
-# El CPU convierte automáticamente a double precision (64 bits IEEE-754)
+# El CPU convierte automaticamente a double precision (64 bits IEEE-754)
 MOVI R5, 3.5                # R5 = 3.5 (double precision)
 MOVI R6, 2.0                # R6 = 2.0 (double precision)
 MOVI R7, -1.5               # R7 = -1.5 (double precision)
@@ -65,7 +65,7 @@ MOVI R7, -1.5               # R7 = -1.5 (double precision)
 # CP - Copy Register (Copiar registro a registro)
 # -----------------------------------------------------------------------------
 # Sintaxis: CP Rd, Rs1
-# Codificación: Opcode=0x29, FUNC=1
+# Codificacion: Opcode=0x29, FUNC=1
 # Flags: No afecta
 # Uso: Copiar el contenido de un registro a otro sin modificar flags
 # -----------------------------------------------------------------------------
@@ -76,9 +76,9 @@ CP R8, R1                   # R8 = R1 (copia 42)
 # OUT - Output (Salida a puerto/MMIO)
 # -----------------------------------------------------------------------------
 # Sintaxis: OUT Rs, port[, FUNC]
-# Codificación: Opcode=0x61, IMM32=puerto/dirección, FUNC=modificadores
+# Codificacion: Opcode=0x61, IMM32=puerto/direccion, FUNC=modificadores
 # FUNC bits [3:1] = subop:
-#   0: Normal (entero con signo o carácter)
+#   0: Normal (entero con signo o caracter)
 #   1: Array de enteros con signo (Rs=base, IMM32=count)
 #   2: Entero con signo sin newline
 #   3: Flotante (double precision)
@@ -89,10 +89,10 @@ CP R8, R1                   # R8 = R1 (copia 42)
 # Uso: Imprimir valores, arrays o strings a consola
 # -----------------------------------------------------------------------------
 
-# OUT básico: entero con signo
+# OUT basico: entero con signo
 OUT R1, 0xFFFF0008          # Imprime 42 (entero con signo)
 MOVI R10, 10
-OUT R10, 0xFFFF0000         # Imprime newline (carácter ASCII 10)
+OUT R10, 0xFFFF0000         # Imprime newline (caracter ASCII 10)
 
 # OUT con flotante: FUNC=6 es (3<<1)=subop 3
 FDIV R9, R5, R6             # R9 = 3.5 / 2.0 = 1.75 (double)
@@ -100,16 +100,16 @@ OUT R9, 0xFFFF0008, 6       # Imprime 1.75 como flotante
 OUT R10, 0xFFFF0000         # Newline
 
 # ===============================================================================
-# 2. INSTRUCCIONES ARITMÉTICAS Y LÓGICAS - ALU (R-Type)
+# 2. INSTRUCCIONES ARITMETICAS Y LOGICAS - ALU (R-Type)
 # ===============================================================================
 
 # -----------------------------------------------------------------------------
 # ADD - Add (Suma de enteros con signo)
 # -----------------------------------------------------------------------------
 # Sintaxis: ADD Rd, Rs1, Rs2
-# Codificación: Opcode=0x10
+# Codificacion: Opcode=0x10
 # Flags: Z, N, P, C (si hay acarreo), V (si hay overflow)
-# Uso: Rd = Rs1 + Rs2 (aritmética de 64 bits con signo)
+# Uso: Rd = Rs1 + Rs2 (aritmetica de 64 bits con signo)
 # -----------------------------------------------------------------------------
 
 ADD R11, R1, R8             # R11 = 42 + 42 = 84
@@ -118,7 +118,7 @@ ADD R11, R1, R8             # R11 = 42 + 42 = 84
 # SUB - Subtract (Resta de enteros con signo)
 # -----------------------------------------------------------------------------
 # Sintaxis: SUB Rd, Rs1, Rs2
-# Codificación: Opcode=0x11
+# Codificacion: Opcode=0x11
 # Flags: Z, N, P, C, V
 # Uso: Rd = Rs1 - Rs2
 # -----------------------------------------------------------------------------
@@ -126,10 +126,10 @@ ADD R11, R1, R8             # R11 = 42 + 42 = 84
 SUB R12, R11, R2            # R12 = 84 - (-5) = 89
 
 # -----------------------------------------------------------------------------
-# MUL - Multiply (Multiplicación de enteros con signo)
+# MUL - Multiply (Multiplicacion de enteros con signo)
 # -----------------------------------------------------------------------------
 # Sintaxis: MUL Rd, Rs1, Rs2
-# Codificación: Opcode=0x12
+# Codificacion: Opcode=0x12
 # Flags: Z, N, P, V (si resultado excede 64 bits)
 # Uso: Rd = Rs1 * Rs2 (resultado truncado a 64 bits)
 # -----------------------------------------------------------------------------
@@ -137,22 +137,22 @@ SUB R12, R11, R2            # R12 = 84 - (-5) = 89
 MUL R13, R1, R8             # R13 = 42 * 42 = 1764
 
 # -----------------------------------------------------------------------------
-# DIV - Divide (División entera con signo)
+# DIV - Divide (Division entera con signo)
 # -----------------------------------------------------------------------------
 # Sintaxis: DIV Rd, Rs1, Rs2
-# Codificación: Opcode=0x13
+# Codificacion: Opcode=0x13
 # Flags: Z, N, P
-# Uso: Rd = Rs1 / Rs2 (división entera, redondeo hacia cero)
-# Error: Genera excepción si Rs2 = 0
+# Uso: Rd = Rs1 / Rs2 (division entera, redondeo hacia cero)
+# Error: Genera excepcion si Rs2 = 0
 # -----------------------------------------------------------------------------
 
 DIV R14, R13, R1            # R14 = 1764 / 42 = 42
 
 # -----------------------------------------------------------------------------
-# AND - Bitwise AND (AND lógico bit a bit)
+# AND - Bitwise AND (AND logico bit a bit)
 # -----------------------------------------------------------------------------
 # Sintaxis: AND Rd, Rs1, Rs2
-# Codificación: Opcode=0x14
+# Codificacion: Opcode=0x14
 # Flags: Z, N, P
 # Uso: Rd = Rs1 & Rs2
 # -----------------------------------------------------------------------------
@@ -160,10 +160,10 @@ DIV R14, R13, R1            # R14 = 1764 / 42 = 42
 AND R15, R1, R2             # R15 = 42 & (-5)
 
 # -----------------------------------------------------------------------------
-# OR - Bitwise OR (OR lógico bit a bit)
+# OR - Bitwise OR (OR logico bit a bit)
 # -----------------------------------------------------------------------------
 # Sintaxis: OR Rd, Rs1, Rs2
-# Codificación: Opcode=0x15
+# Codificacion: Opcode=0x15
 # Flags: Z, N, P
 # Uso: Rd = Rs1 | Rs2
 # -----------------------------------------------------------------------------
@@ -171,10 +171,10 @@ AND R15, R1, R2             # R15 = 42 & (-5)
 OR R1, R1, R2               # R1 = 42 | (-5)
 
 # -----------------------------------------------------------------------------
-# XOR - Bitwise XOR (XOR lógico bit a bit)
+# XOR - Bitwise XOR (XOR logico bit a bit)
 # -----------------------------------------------------------------------------
 # Sintaxis: XOR Rd, Rs1, Rs2
-# Codificación: Opcode=0x16
+# Codificacion: Opcode=0x16
 # Flags: Z, N, P
 # Uso: Rd = Rs1 ^ Rs2
 # -----------------------------------------------------------------------------
@@ -185,8 +185,8 @@ XOR R2, R8, R4              # R2 = 42 ^ 0 = 42
 # NOT - Bitwise NOT (Complemento bit a bit)
 # -----------------------------------------------------------------------------
 # Sintaxis: NOT Rd, Rs1, Rs2
-# Codificación: Opcode=0x17
-# Nota: Rs2 se ignora (operación unaria), típicamente se usa R0
+# Codificacion: Opcode=0x17
+# Nota: Rs2 se ignora (operacion unaria), tipicamente se usa R0
 # Flags: Z, N, P
 # Uso: Rd = ~Rs1 (complemento a uno)
 # -----------------------------------------------------------------------------
@@ -195,10 +195,10 @@ MOVI R0, 0
 NOT R3, R8, R0              # R3 = ~42 (complemento a uno de 64 bits)
 
 # -----------------------------------------------------------------------------
-# SHL - Shift Left (Desplazamiento lógico a la izquierda)
+# SHL - Shift Left (Desplazamiento logico a la izquierda)
 # -----------------------------------------------------------------------------
 # Sintaxis: SHL Rd, Rs1, Rs2
-# Codificación: Opcode=0x18
+# Codificacion: Opcode=0x18
 # Flags: Z, N, P
 # Uso: Rd = Rs1 << (Rs2 & 63)
 # Nota: Solo se usan los 6 bits menos significativos de Rs2 (0-63)
@@ -208,10 +208,10 @@ MOVI R4, 3
 SHL R11, R8, R4             # R11 = 42 << 3 = 336
 
 # -----------------------------------------------------------------------------
-# SHR - Shift Right (Desplazamiento lógico a la derecha)
+# SHR - Shift Right (Desplazamiento logico a la derecha)
 # -----------------------------------------------------------------------------
 # Sintaxis: SHR Rd, Rs1, Rs2
-# Codificación: Opcode=0x19
+# Codificacion: Opcode=0x19
 # Flags: Z, N, P
 # Uso: Rd = Rs1 >> (Rs2 & 63) (desplazamiento sin signo)
 # Nota: Solo se usan los 6 bits menos significativos de Rs2
@@ -223,7 +223,7 @@ SHR R12, R11, R4            # R12 = 336 >> 3 = 42
 # ADDI - Add Immediate (Suma con inmediato)
 # -----------------------------------------------------------------------------
 # Sintaxis: ADDI Rd, Rs1, #imm32
-# Codificación: Opcode=0x20
+# Codificacion: Opcode=0x20
 # Flags: Z, N, P, C, V
 # Uso: Rd = Rs1 + sign_extend(imm32)
 # Nota: El inmediato se extiende con signo de 32 a 64 bits
@@ -240,10 +240,10 @@ ADDI R14, R8, 100           # R14 = 42 + 100 = 142
 # FADD - Floating Add (Suma de punto flotante)
 # -----------------------------------------------------------------------------
 # Sintaxis: FADD Rd, Rs1, Rs2
-# Codificación: Opcode=0x1A
+# Codificacion: Opcode=0x1A
 # Flags: Z, N, P, V (si resultado es infinito)
 # Uso: Rd = Rs1 + Rs2 (suma IEEE 754 double precision)
-# Nota: Los registros contienen representación binaria de doubles
+# Nota: Los registros contienen representacion binaria de doubles
 # -----------------------------------------------------------------------------
 
 FADD R15, R5, R6            # R15 = 3.5 + 2.0 = 5.5
@@ -252,7 +252,7 @@ FADD R15, R5, R6            # R15 = 3.5 + 2.0 = 5.5
 # FSUB - Floating Subtract (Resta de punto flotante)
 # -----------------------------------------------------------------------------
 # Sintaxis: FSUB Rd, Rs1, Rs2
-# Codificación: Opcode=0x1B
+# Codificacion: Opcode=0x1B
 # Flags: Z, N, P, V
 # Uso: Rd = Rs1 - Rs2
 # -----------------------------------------------------------------------------
@@ -260,10 +260,10 @@ FADD R15, R5, R6            # R15 = 3.5 + 2.0 = 5.5
 FSUB R1, R5, R6             # R1 = 3.5 - 2.0 = 1.5
 
 # -----------------------------------------------------------------------------
-# FMUL - Floating Multiply (Multiplicación de punto flotante)
+# FMUL - Floating Multiply (Multiplicacion de punto flotante)
 # -----------------------------------------------------------------------------
 # Sintaxis: FMUL Rd, Rs1, Rs2
-# Codificación: Opcode=0x1C
+# Codificacion: Opcode=0x1C
 # Flags: Z, N, P, V
 # Uso: Rd = Rs1 * Rs2
 # -----------------------------------------------------------------------------
@@ -271,13 +271,13 @@ FSUB R1, R5, R6             # R1 = 3.5 - 2.0 = 1.5
 FMUL R2, R5, R6             # R2 = 3.5 * 2.0 = 7.0
 
 # -----------------------------------------------------------------------------
-# FDIV - Floating Divide (División de punto flotante)
+# FDIV - Floating Divide (Division de punto flotante)
 # -----------------------------------------------------------------------------
 # Sintaxis: FDIV Rd, Rs1, Rs2
-# Codificación: Opcode=0x1D
-# Flags: Z, N, P, V (si división por cero → infinito)
+# Codificacion: Opcode=0x1D
+# Flags: Z, N, P, V (si division por cero → infinito)
 # Uso: Rd = Rs1 / Rs2
-# Nota: División por 0.0 resulta en ±inf según IEEE 754
+# Nota: Division por 0.0 resulta en ±inf segun IEEE 754
 # -----------------------------------------------------------------------------
 
 FDIV R3, R5, R6             # R3 = 3.5 / 2.0 = 1.75
@@ -293,18 +293,18 @@ OUT R10, 0xFFFF0000         # Newline
 # -----------------------------------------------------------------------------
 # Sintaxis: LD Rd, address        (absoluto, FUNC=0)
 #           LD Rd, Rs1, offset    (relativo, FUNC=1)
-# Codificación: Opcode=0x23
-#   FUNC=0: IMM32 = dirección absoluta
-#   FUNC=1: dirección = Rs1 + sign_extend(IMM32)
+# Codificacion: Opcode=0x23
+#   FUNC=0: IMM32 = direccion absoluta
+#   FUNC=1: direccion = Rs1 + sign_extend(IMM32)
 # Flags: No afecta
 # Uso: Cargar palabra de 64 bits desde memoria a registro
 # -----------------------------------------------------------------------------
 
-# LD absoluto: dirección directa o etiqueta
+# LD absoluto: direccion directa o etiqueta
 LD R11, valor_a              # R11 = memoria[valor_a]
 
 # LD relativo: base + offset
-MOVI R4, base_area           # R4 = dirección de base_area
+MOVI R4, base_area           # R4 = direccion de base_area
 LD R12, R4, 0                # R12 = memoria[base_area + 0]
 LD R13, R4, 8                # R13 = memoria[base_area + 8]
 
@@ -313,9 +313,9 @@ LD R13, R4, 8                # R13 = memoria[base_area + 8]
 # -----------------------------------------------------------------------------
 # Sintaxis: ST Rs, address        (absoluto, FUNC=0)
 #           ST Rs, Rb, offset     (relativo, FUNC=1)
-# Codificación: Opcode=0x24
-#   FUNC=0: IMM32 = dirección absoluta
-#   FUNC=1: dirección = Rb + sign_extend(IMM32)
+# Codificacion: Opcode=0x24
+#   FUNC=0: IMM32 = direccion absoluta
+#   FUNC=1: direccion = Rb + sign_extend(IMM32)
 # Flags: No afecta
 # Uso: Almacenar palabra de 64 bits desde registro a memoria
 # -----------------------------------------------------------------------------
@@ -336,7 +336,7 @@ ST R2, R4, 24                # memoria[base_area + 24] = R2
 # -----------------------------------------------------------------------------
 # Sintaxis: PUSH Rs             (registro, FUNC=1)
 #           PUSH #imm32         (inmediato, FUNC=0)
-# Codificación: Opcode=0x50
+# Codificacion: Opcode=0x50
 # Flags: No afecta
 # Uso: SP = SP - 8; memoria[SP] = Rs o imm32
 # Nota: Crece hacia direcciones menores
@@ -351,7 +351,7 @@ PUSH R9                      # Empuja 999 a la pila (desde registro)
 # POP - Pop from Stack (Sacar de la pila)
 # -----------------------------------------------------------------------------
 # Sintaxis: POP Rd
-# Codificación: Opcode=0x51
+# Codificacion: Opcode=0x51
 # Flags: No afecta
 # Uso: Rd = memoria[SP]; SP = SP + 8
 # -----------------------------------------------------------------------------
@@ -363,10 +363,10 @@ POP R15                      # R15 = siguiente valor
 # CALL - Call Subroutine (Llamar a subrutina)
 # -----------------------------------------------------------------------------
 # Sintaxis: CALL address
-# Codificación: Opcode=0x46, IMM32=dirección destino
+# Codificacion: Opcode=0x46, IMM32=direccion destino
 # Flags: No afecta
 # Uso: PUSH(PC+8); PC = address
-# Nota: Guarda dirección de retorno automáticamente
+# Nota: Guarda direccion de retorno automaticamente
 # -----------------------------------------------------------------------------
 
 CALL subrutina_inc           # Llama a subrutina
@@ -375,15 +375,15 @@ CALL subrutina_inc           # Llama a subrutina
 # RET - Return from Subroutine (Retornar de subrutina)
 # -----------------------------------------------------------------------------
 # Sintaxis: RET
-# Codificación: Opcode=0x47
+# Codificacion: Opcode=0x47
 # Flags: No afecta
 # Uso: PC = POP()
-# Nota: Recupera dirección de retorno de la pila
+# Nota: Recupera direccion de retorno de la pila
 # -----------------------------------------------------------------------------
-# Ver implementación en subrutina_inc más abajo
+# Ver implementacion en subrutina_inc mas abajo
 
 # ===============================================================================
-# 6. INSTRUCCIONES DE COMPARACIÓN Y CONTROL DE FLUJO
+# 6. INSTRUCCIONES DE COMPARACION Y CONTROL DE FLUJO
 # ===============================================================================
 
 # -----------------------------------------------------------------------------
@@ -391,10 +391,10 @@ CALL subrutina_inc           # Llama a subrutina
 # -----------------------------------------------------------------------------
 # Sintaxis: CMP Rd, Rs1, Rs2   (forma completa)
 #           CMP Rs1, Rs2       (forma abreviada, Rd=R0)
-# Codificación: Opcode=0x30
-# Flags: Z, N, P, C, V (según Rs1 - Rs2)
+# Codificacion: Opcode=0x30
+# Flags: Z, N, P, C, V (segun Rs1 - Rs2)
 # Uso: Realiza Rs1 - Rs2 y actualiza flags sin guardar resultado
-# Nota: Típicamente se usa la forma abreviada para comparaciones
+# Nota: Tipicamente se usa la forma abreviada para comparaciones
 # -----------------------------------------------------------------------------
 
 CMP R8, R1                   # Compara R8 - R1 (42 - valor), actualiza flags
@@ -403,7 +403,7 @@ CMP R8, R1                   # Compara R8 - R1 (42 - valor), actualiza flags
 # JMP - Jump Unconditional (Salto incondicional)
 # -----------------------------------------------------------------------------
 # Sintaxis: JMP address
-# Codificación: Opcode=0x40, IMM32=dirección destino
+# Codificacion: Opcode=0x40, IMM32=direccion destino
 # Flags: No afecta
 # Uso: PC = address
 # -----------------------------------------------------------------------------
@@ -414,10 +414,10 @@ JMP despues_saltos           # Salta incondicionalmente
 # JZ - Jump if Zero (Saltar si cero)
 # -----------------------------------------------------------------------------
 # Sintaxis: JZ address
-# Codificación: Opcode=0x41
+# Codificacion: Opcode=0x41
 # Flags: Lee Z
 # Uso: Si Z=1 entonces PC = address
-# Condición: Resultado anterior fue cero (igualdad en CMP)
+# Condicion: Resultado anterior fue cero (igualdad en CMP)
 # -----------------------------------------------------------------------------
 
 etiqueta_test_jz:
@@ -428,10 +428,10 @@ JZ etiqueta_z_set            # Salta porque Z=1
 # JNZ - Jump if Not Zero (Saltar si no cero)
 # -----------------------------------------------------------------------------
 # Sintaxis: JNZ address
-# Codificación: Opcode=0x42
+# Codificacion: Opcode=0x42
 # Flags: Lee Z
 # Uso: Si Z=0 entonces PC = address
-# Condición: Resultado anterior no fue cero (desigualdad en CMP)
+# Condicion: Resultado anterior no fue cero (desigualdad en CMP)
 # -----------------------------------------------------------------------------
 
 etiqueta_z_set:
@@ -442,10 +442,10 @@ JNZ etiqueta_nz_set          # Salta si son diferentes (Z=0)
 # JC - Jump if Carry (Saltar si carry)
 # -----------------------------------------------------------------------------
 # Sintaxis: JC address
-# Codificación: Opcode=0x43
+# Codificacion: Opcode=0x43
 # Flags: Lee C
 # Uso: Si C=1 entonces PC = address
-# Condición: Hubo acarreo en operación aritmética anterior
+# Condicion: Hubo acarreo en operacion aritmetica anterior
 # -----------------------------------------------------------------------------
 
 etiqueta_nz_set:
@@ -457,7 +457,7 @@ JC etiqueta_carry_set        # Salta si C=1
 # JNC - Jump if Not Carry (Saltar si no carry)
 # -----------------------------------------------------------------------------
 # Sintaxis: JNC address
-# Codificación: Opcode=0x44
+# Codificacion: Opcode=0x44
 # Flags: Lee C
 # Uso: Si C=0 entonces PC = address
 # -----------------------------------------------------------------------------
@@ -471,11 +471,11 @@ JNC etiqueta_no_carry        # Salta si C=0
 # JS - Jump if Signed (Saltar si negativo)
 # -----------------------------------------------------------------------------
 # Sintaxis: JS address
-# Codificación: Opcode=0x45
+# Codificacion: Opcode=0x45
 # Flags: Lee N
 # Uso: Si N=1 entonces PC = address
-# Condición: Resultado anterior fue negativo (bit de signo = 1)
-# Uso típico: Detectar números negativos en aritmética con signo
+# Condicion: Resultado anterior fue negativo (bit de signo = 1)
+# Uso tipico: Detectar numeros negativos en aritmetica con signo
 # -----------------------------------------------------------------------------
 
 etiqueta_no_carry:
@@ -494,23 +494,23 @@ OUT R10, 0xFFFF0000          # Newline
 # -----------------------------------------------------------------------------
 # IN - Input (Entrada desde puerto/MMIO)
 # -----------------------------------------------------------------------------
-# Sintaxis: IN Rd, port[, FUNC]           (básico)
+# Sintaxis: IN Rd, port[, FUNC]           (basico)
 #           IN Rd, Rs1, count             (extendido para arrays)
-# Codificación: Opcode=0x60
-# FUNC básico bits [3:1] = subop:
+# Codificacion: Opcode=0x60
+# FUNC basico bits [3:1] = subop:
 #   0: Entero con signo normal
 #   3: Flotante (double precision)
 # FUNC extendido:
 #   subop=1: Parse array de enteros (Rs1=base, IMM32=count)
-#   bits [11:4] = separador ASCII (típicamente 0x20 para espacio)
+#   bits [11:4] = separador ASCII (tipicamente 0x20 para espacio)
 # Flags: No afecta
-# Uso básico: Leer un valor desde consola/puerto
-# Uso extendido: Leer múltiples enteros de una línea a memoria
+# Uso basico: Leer un valor desde consola/puerto
+# Uso extendido: Leer multiples enteros de una linea a memoria
 # -----------------------------------------------------------------------------
 
-# IN básico de entero (descomentar para uso interactivo)
+# IN basico de entero (descomentar para uso interactivo)
 # IN R11, 0xFFFF0018          # Lee un entero desde consola a R11
-# OUT R11, 0xFFFF0008         # Imprime el valor leído
+# OUT R11, 0xFFFF0008         # Imprime el valor leido
 # OUT R10, 0xFFFF0000         # Newline
 
 # IN de flotante con FUNC=6 (subop=3)
@@ -518,31 +518,31 @@ OUT R10, 0xFFFF0000          # Newline
 # OUT R12, 0xFFFF0008, 6      # Imprime el flotante
 # OUT R10, 0xFFFF0000         # Newline
 
-# IN extendido para arrays: lee múltiples enteros separados por espacios
-# Ejemplo: leer 5 números en una línea como "10 20 30 40 50"
-# MOVI R13, array_datos       # R13 = dirección base del array
+# IN extendido para arrays: lee multiples enteros separados por espacios
+# Ejemplo: leer 5 numeros en una linea como "10 20 30 40 50"
+# MOVI R13, array_datos       # R13 = direccion base del array
 # IN R14, R13, 5              # Lee 5 enteros a memoria[R13..R13+32]
-#                             # R14 = cantidad de números parseados
-# FUNC se codifica automáticamente como ((0x20)<<4)|(1<<1) = 514
+#                             # R14 = cantidad de numeros parseados
+# FUNC se codifica automaticamente como ((0x20)<<4)|(1<<1) = 514
 
 # -----------------------------------------------------------------------------
 # INS - Input String (Entrada de string)
 # -----------------------------------------------------------------------------
 # Sintaxis: INS Rd, port
-# Codificación: Opcode=0x62, Rd contiene dirección del buffer
+# Codificacion: Opcode=0x62, Rd contiene direccion del buffer
 # Flags: No afecta
-# Uso: Lee una línea completa desde puerto a buffer en memoria
-# Nota: Agrega terminador null automáticamente
+# Uso: Lee una linea completa desde puerto a buffer en memoria
+# Nota: Agrega terminador null automaticamente
 # -----------------------------------------------------------------------------
 
-MOVI R4, buffer              # R4 = dirección del buffer
-# INS R4, 0xFFFF0018          # Lee línea a buffer (descomentar para interactivo)
+MOVI R4, buffer              # R4 = direccion del buffer
+# INS R4, 0xFFFF0018          # Lee linea a buffer (descomentar para interactivo)
 
 # -----------------------------------------------------------------------------
 # OUTS - Output String (Salida de string)
 # -----------------------------------------------------------------------------
 # Sintaxis: OUTS Rs, port
-# Codificación: Opcode=0x63, Rs contiene dirección del string
+# Codificacion: Opcode=0x63, Rs contiene direccion del string
 # Flags: No afecta
 # Uso: Imprime string null-terminated desde memoria
 # -----------------------------------------------------------------------------
@@ -551,7 +551,7 @@ OUTS R4, 0xFFFF0008          # Imprime string desde buffer
 OUT R10, 0xFFFF0000          # Newline
 
 # -----------------------------------------------------------------------------
-# OUT con arrays (demostración de subops)
+# OUT con arrays (demostracion de subops)
 # -----------------------------------------------------------------------------
 # OUT con array signed: FUNC = (sep<<4)|(1<<1)
 # Ejemplo: imprimir 4 enteros con espacio de separador
@@ -567,7 +567,7 @@ OUT R5, 4, 514               # Imprime 4 enteros con espacio (514 = (32<<4)|(1<<
 OUT R10, 0xFFFF0000          # Newline
 
 # OUT con array unsigned: FUNC = (sep<<4)|(5<<1) = 522
-# Útil para evitar mostrar negativos en aritmética que hace wrap
+# Util para evitar mostrar negativos en aritmetica que hace wrap
 MOVI R9, -1                  # -1 en complemento a 2 = 0xFFFFFFFFFFFFFFFF
 ST R9, R5, 0
 OUT R5, 1, 522               # Imprime como unsigned: 18446744073709551615
@@ -578,13 +578,13 @@ OUT R10, 0xFFFF0000          # Newline
 # ===============================================================================
 
 # -----------------------------------------------------------------------------
-# NOP - No Operation (Sin operación)
+# NOP - No Operation (Sin operacion)
 # -----------------------------------------------------------------------------
 # Sintaxis: NOP
-# Codificación: Opcode=0x70
+# Codificacion: Opcode=0x70
 # Flags: No afecta
 # Uso: No hace nada, consume un ciclo
-# Aplicaciones: Alineación, timing, relleno de pipeline
+# Aplicaciones: Alineacion, timing, relleno de pipeline
 # -----------------------------------------------------------------------------
 
 NOP
@@ -592,19 +592,19 @@ NOP
 NOP
 
 # -----------------------------------------------------------------------------
-# HALT - Halt Execution (Detener ejecución)
+# HALT - Halt Execution (Detener ejecucion)
 # -----------------------------------------------------------------------------
 # Sintaxis: HALT
-# Codificación: Opcode=0x71
+# Codificacion: Opcode=0x71
 # Flags: No afecta
 # Uso: Detiene la CPU, finaliza el programa
-# Nota: La ejecución no continúa después de HALT
+# Nota: La ejecucion no continua despues de HALT
 # -----------------------------------------------------------------------------
 
 HALT
 
 # ===============================================================================
-# 9. SUBRUTINAS Y ÁREA DE DATOS
+# 9. SUBRUTINAS Y AREA DE DATOS
 # ===============================================================================
 
 subrutina_inc:
@@ -613,7 +613,7 @@ subrutina_inc:
     RET                      # Retorna al llamador
 
 # ===============================================================================
-# ÁREA DE DATOS
+# AREA DE DATOS
 # ===============================================================================
 
 # -----------------------------------------------------------------------------
@@ -621,12 +621,12 @@ subrutina_inc:
 #   DW (Define Word): Define palabras de 64 bits
 #   DB (Define Byte): Define bytes (strings y datos byte)
 #   RESW (Reserve Words): Reserva espacio sin inicializar
-#   ORG (Origin): Establece la dirección de ensamblado
+#   ORG (Origin): Establece la direccion de ensamblado
 # -----------------------------------------------------------------------------
 
 valor_a: DW 0                # Variable de 64 bits inicializada en 0
 
-# Área para pruebas de LD/ST relativo (4 palabras = 32 bytes)
+# Area para pruebas de LD/ST relativo (4 palabras = 32 bytes)
 base_area:
     DW 0
     DW 0
@@ -650,7 +650,7 @@ buffer:
     DW 0
 
 # ===============================================================================
-# RESUMEN DE TIPOS DE INSTRUCCIÓN
+# RESUMEN DE TIPOS DE INSTRUCCION
 # ===============================================================================
 #
 # R-Type (Registro-Registro):
@@ -672,17 +672,17 @@ buffer:
 #   Formato: OP
 #
 # ===============================================================================
-# CONVENCIONES DE CODIFICACIÓN
+# CONVENCIONES DE CODIFICACION
 # ===============================================================================
 #
 # Registros: R0-R15 (64 bits cada uno)
-# Inmediatos: Números decimales, hexadecimales (0x...), o flotantes (con punto)
+# Inmediatos: Numeros decimales, hexadecimales (0x...), o flotantes (con punto)
 # Etiquetas: Identificadores seguidos de ':' para marcar posiciones
-# Comentarios: Inician con '#' y van hasta el final de la línea
+# Comentarios: Inician con '#' y van hasta el final de la linea
 #
 # Direccionamiento:
 #   - Absoluto: usa etiquetas o direcciones directas
 #   - Relativo: base + offset (3 operandos en LD/ST)
-#   - Inmediato: constantes embebidas en la instrucción
+#   - Inmediato: constantes embebidas en la instruccion
 #
 # ===============================================================================

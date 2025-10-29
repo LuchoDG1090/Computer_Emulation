@@ -41,14 +41,14 @@ have_len:
     MOVI R5, msg3
     OUTS R5, 0xFFFF0008
 
-    # Leer N enteros desde una línea (separados por espacios)
-    # IN Rd, Rs1, COUNT lee múltiples enteros a memoria[Rs1]
+    # Leer N enteros desde una linea (separados por espacios)
+    # IN Rd, Rs1, COUNT lee multiples enteros a memoria[Rs1]
     # COUNT puede ser un registro (R2 contiene N)
-    # R15 contendrá la cantidad realmente leída
-    IN   R15, R1, R2      # Lee hasta R2 enteros, R15 = cantidad leída
+    # R15 contendra la cantidad realmente leida
+    IN   R15, R1, R2      # Lee hasta R2 enteros, R15 = cantidad leida
     
-    # Actualizar R2 con la cantidad real leída (puede ser menor que N solicitado)
-    CP   R2, R15          # Usar cantidad realmente leída
+    # Actualizar R2 con la cantidad real leida (puede ser menor que N solicitado)
+    CP   R2, R15          # Usar cantidad realmente leida
 after_input_read:
 
     # Print before: "Array original: "

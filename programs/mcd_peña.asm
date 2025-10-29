@@ -1,16 +1,16 @@
-# ---------- Código ----------
+# ---------- Codigo ----------
 ORG 2500
 entrada:
-    # Imprimir mensaje "Ingrese el primer número: "
-    MOVI R5, msg1       # Cargar dirección del mensaje en R5
+    # Imprimir mensaje "Ingrese el primer numero: "
+    MOVI R5, msg1       # Cargar direccion del mensaje en R5
     OUTS R5, 0xFFFF0008 # Imprimir string a consola
-    IN R4, 0xFFFF0018   # Leer número
+    IN R4, 0xFFFF0018   # Leer numero
     ST R4, [a]          # Guardar en variable 'a'
 
-    # Imprimir mensaje "Ingrese el segundo número: "
-    MOVI R5, msg2       # Cargar dirección del segundo mensaje
+    # Imprimir mensaje "Ingrese el segundo numero: "
+    MOVI R5, msg2       # Cargar direccion del segundo mensaje
     OUTS R5, 0xFFFF0008 # Imprimir string a consola
-    IN R4, 0xFFFF0018   # Leer número
+    IN R4, 0xFFFF0018   # Leer numero
     ST R4, [b]          # Guardar en variable 'b'
 
 mcd:
