@@ -1,0 +1,11 @@
+/* Bucle while: */
+    Recibie una entrada y si su valor es igual a cero modifica el valor de la variable x
+while(activo)
+    input(x)
+    if (x == 0) then x = 'Hola \\t\\n'
+        output(x)
+        break
+        
+endif
+*/
+a = 3.14E-10

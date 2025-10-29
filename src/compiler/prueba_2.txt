@@ -1,0 +1,5 @@
+# Declaracion de variables con diferente tipo de dato \n\t\r\v\
+int x = 10
+float pi = 3.14159
+string mensaje = "Hola mundo \t\r\u" @$
+bool activo = true
