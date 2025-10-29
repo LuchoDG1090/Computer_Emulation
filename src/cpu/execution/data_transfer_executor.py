@@ -149,10 +149,13 @@ class DataTransferExecutor:
             base = self.registers[rs1]
             count = imm32 & 0xFFFFFFFF
 
-            # Leer línea (debe venir de callback)
+            # Leer línea completa desde callback
             line = ""
-            if self.io_ports.input_char_callback:
-                # Simular lectura de línea completa
+            if self.io_ports.input_line_callback:
+                # Usar callback de línea si está disponible
+                line = self.io_ports.input_line_callback()
+            elif self.io_ports.input_char_callback:
+                # Fallback: leer carácter por carácter
                 chars = []
                 while True:
                     ch = self.io_ports.input_char_callback()
@@ -162,19 +165,29 @@ class DataTransferExecutor:
                 line = "".join(chars)
 
             # Separar y parsear
-            parts = line.split(chr(sep_chr)) if sep_chr else line.split()
+            # Si no hay separador definido (sep_chr == 0), usar espacios
+            if sep_chr == 0:
+                sep_chr = 0x20  # espacio por defecto
+            
+            parts = line.split(chr(sep_chr))
             parsed_count = 0
 
             for i in range(min(count, len(parts))):
+                part = parts[i].strip()
+                if not part:  # Saltar strings vacíos
+                    continue
+                    
                 try:
-                    val = int(parts[i], 0)
+                    val = int(part, 0)
                 except ValueError:
-                    val = 0
+                    continue  # Saltar valores inválidos
 
-                addr = base + i * 8
+                addr = base + parsed_count * 8
                 if self.memory_ops.is_valid_address(addr):
                     self.memory_ops.write_word(addr, val)
                     parsed_count += 1
+                else:
+                    break  # Dirección inválida, detener
 
             self.registers[rd] = parsed_count
         else:

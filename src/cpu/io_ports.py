@@ -33,6 +33,7 @@ class IOPorts:
         self.output_int_callback: Optional[Callable[[int], None]] = None
         self.input_char_callback: Optional[Callable[[], int]] = None
         self.input_int_callback: Optional[Callable[[], int]] = None
+        self.input_line_callback: Optional[Callable[[], str]] = None  # Para leer líneas completas
 
         # Archivos abiertos para I/O de strings
         self.open_files: Dict[int, Any] = {}  # puerto -> file handle
@@ -135,9 +136,13 @@ class IOPorts:
 
         if self.output_int_callback:
             self.output_int_callback(val)
+            # Agregar newline después del entero
+            if self.output_char_callback:
+                self.output_char_callback(ord('\n'))
         else:
-            # Fallback: agregar a buffer
+            # Fallback: agregar a buffer con newline
             self.output_int_buffer.append(val)
+            self.output_buffer += str(val) + "\n"
 
     def _write_float(self, value: int):
         """Escribe un flotante (double precision IEEE 754)"""
@@ -337,6 +342,10 @@ class IOPorts:
     def set_input_int_callback(self, callback: Callable[[], int]):
         """Registra callback para entrada de enteros"""
         self.input_int_callback = callback
+
+    def set_input_line_callback(self, callback: Callable[[], str]):
+        """Registra callback para entrada de líneas completas"""
+        self.input_line_callback = callback
 
     # === Utilidades ===
 

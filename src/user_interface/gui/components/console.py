@@ -72,6 +72,9 @@ class ConsoleFrame(ctk.CTkFrame):
                 messagebox.showerror("Error", "Debe ingresar un número válido")
                 self.console_textbox.delete(self.input_start_pos, "end")
                 return "break"
+        elif self.input_type == "line":
+            # Para líneas, simplemente devolver el texto ingresado
+            self.input_result = user_input.strip()
 
         # Agregar newline
         self.console_textbox.insert("end", "\n")
@@ -94,8 +97,8 @@ class ConsoleFrame(ctk.CTkFrame):
         self.console_textbox.see("end")
 
     def append_int(self, value: int):
-        """Agrega un entero a la consola con newline"""
-        self.console_textbox.insert("end", f"{value}\n")
+        """Agrega un entero a la consola (sin newline automático)"""
+        self.console_textbox.insert("end", str(value))
         self.console_textbox.see("end")
 
     def request_char(self) -> int:
@@ -133,6 +136,25 @@ class ConsoleFrame(ctk.CTkFrame):
         self.console_textbox.wait_variable(self.__create_wait_var())
 
         result = self.input_result if self.input_result is not None else 0
+        self.input_result = None
+        return result
+
+    def request_line(self) -> str:
+        """Solicita una línea completa del usuario (para arrays de enteros)"""
+        self.input_type = "line"
+        self.input_result = None
+        self.waiting_for_input = True
+
+        # Marcar posición de inicio de entrada
+        self.input_start_pos = self.console_textbox.index("end-1c")
+
+        # Poner foco en la consola
+        self.console_textbox.focus()
+
+        # Esperar entrada del usuario
+        self.console_textbox.wait_variable(self.__create_wait_var())
+
+        result = self.input_result if self.input_result is not None else ""
         self.input_result = None
         return result
 

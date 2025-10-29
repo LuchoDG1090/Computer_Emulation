@@ -41,11 +41,15 @@ have_len:
     MOVI R5, msg3
     OUTS R5, 0xFFFF0008
 
-    # Read up to 100 integers from one line (space-separated) into ARR
-    # La instrucción IN leerá hasta N números (el usuario ingresará exactamente N)
-    IN   R15, R1, 100     # Read up to 100 integers into array at R1
-    # R15 ahora contiene cuántos números se leyeron realmente
-    CP   R2, R15          # Actualizar R2 con la cantidad real leída
+    # Leer N enteros desde una línea (separados por espacios)
+    # IN Rd, Rs1, COUNT lee múltiples enteros a memoria[Rs1]
+    # Nota: COUNT debe ser inmediato, no puede ser registro
+    # Usamos 100 como límite máximo y luego verificamos cuántos se leyeron
+    # R15 contendrá la cantidad realmente leída
+    IN   R15, R1, 100     # Lee hasta 100 enteros, R15 = cantidad leída
+    
+    # Actualizar R2 con la cantidad real leída (puede ser menor que N solicitado)
+    CP   R2, R15          # Usar cantidad realmente leída
 after_input_read:
 
     # Print before: "Array original: "

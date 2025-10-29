@@ -196,6 +196,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             # Callbacks de entrada
             self.cpu.io_ports.set_input_char_callback(self.console_frame.request_char)
             self.cpu.io_ports.set_input_int_callback(self.console_frame.request_int)
+            self.cpu.io_ports.set_input_line_callback(self.console_frame.request_line)
 
     def __update_cpu_state(self, state):
         """
