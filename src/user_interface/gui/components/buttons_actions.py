@@ -40,7 +40,7 @@ class BotonesAcciones(ctk.CTkFrame):
             font=("Comic Sans MS", 16, "bold"),
             command=self.__execute_step,
         )
-        self.boton_siguiente.grid(column=0, row=0, sticky="nsew")
+        self.boton_siguiente.grid(column=0, row=0, sticky="nsew", pady = 5)
 
     def __boton_reiniciar(self):
         reiniciar_imagen = ctk.CTkImage(
@@ -59,7 +59,7 @@ class BotonesAcciones(ctk.CTkFrame):
             font=("Comic Sans MS", 16, "bold"),
             command=self.__reset_cpu,
         )
-        boton_reiniciar.grid(column=0, row=1, sticky="nsew")
+        boton_reiniciar.grid(column=0, row=1, sticky="nsew", pady = 5)
 
     def __execute_step(self):
         """Ejecuta un paso de instrucción"""

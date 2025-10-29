@@ -25,7 +25,7 @@ class ProgramCounterFrame(ctk.CTkFrame):
             fg_color="#1a1a1a",
             corner_radius=4,
         )
-        self.pc_value.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+        self.pc_value.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
 
     def update_pc(self, pc: int):
         """Actualiza el valor del Program Counter mostrando posición de palabra"""

@@ -29,8 +29,10 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
         self.columnconfigure(0, weight=2)
         self.columnconfigure(1, weight=2)
-        self.columnconfigure(2, weight=1)
+        self.columnconfigure(2, weight=5)
         self.rowconfigure(0, weight=1)
+        # Crear el selector de programas primero para poder pasarlo a reloc
+        self.program_selector = None
         self.memory = kwargs.get("memory", "")
         self.cpu = kwargs.get("cpu", "")
         self.compile_icon_path = kwargs.get("compile_icon_path", "")
@@ -77,14 +79,12 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.frame_second_column = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_second_column.rowconfigure(0, weight=1)
         self.frame_second_column.rowconfigure(1, weight=1)
+        self.frame_second_column.rowconfigure(2, weight=1)
         self.frame_second_column.columnconfigure(0, weight=1)
 
         self.ram_memory = ram.DinamicRandomAccessMemory(
             self.frame_second_column, memory=self.memory
         )
-
-        # Crear el selector de programas primero para poder pasarlo a reloc
-        self.program_selector = None
 
         self.reloc_code = reloc.RelocCodeFrame(
             self.frame_second_column,
@@ -94,9 +94,28 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             ram_display=self.ram_memory,
             program_selector=None,  # Se configurará después
         )
-        self.reloc_code.grid(column=0, row=0, sticky="nsew", pady=12)
+        
 
+        self.frame_pc_selector_programa = ctk.CTkFrame(self.frame_second_column, fg_color = 'transparent')
+
+        # Program Counter (crear antes del selector para poder pasar el callback)
+        self.pc_frame = program_counter.ProgramCounterFrame(self.frame_pc_selector_programa)
+
+        # Crear el selector y conectarlo con reloc
+        self.program_selector = program_selector.ProgramSelectorFrame(
+            self.frame_pc_selector_programa,
+            cpu=self.cpu,
+            pc_update_callback=self.pc_frame.update_pc,
+            update_state_callback=self.__update_cpu_state,
+            memory=self.memory,
+            ram_display=self.ram_memory,
+        )
+        
+        
+        self.reloc_code.grid(column=0, row=0, sticky="nsew", pady=12)
         self.ram_memory.grid(column=0, row=1, sticky="nsew", pady=12)
+        self.frame_pc_selector_programa.grid(column = 0, row = 2, sticky = 'nsew', pady = 12)
+
 
         self.frame_second_column.grid(
             column=1, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
@@ -124,18 +143,6 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             frame_third_column, cpu=self.cpu
         )
 
-        # Program Counter (crear antes del selector para poder pasar el callback)
-        self.pc_frame = program_counter.ProgramCounterFrame(frame_third_column)
-
-        # Crear el selector y conectarlo con reloc
-        self.program_selector = program_selector.ProgramSelectorFrame(
-            frame_third_column,
-            cpu=self.cpu,
-            pc_update_callback=self.pc_frame.update_pc,
-            update_state_callback=self.__update_cpu_state,
-            memory=self.memory,
-            ram_display=self.ram_memory,
-        )
         self.reloc_code.program_selector = self.program_selector
 
         botones_acciones = buttons_actions.BotonesAcciones(
