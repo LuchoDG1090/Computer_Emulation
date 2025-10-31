@@ -50,10 +50,6 @@ class MacroTable:
         return self.macros.get(name)
 
     def replace_in_line(self, line):
-        """
-        Reemplaza macros en una línea, solo si son palabras completas.
-        Evita reemplazos dentro de otras palabras.
-        """
         if not self.macros:
             return line
 
@@ -79,7 +75,7 @@ class Preprocessor:
 
     def _process_file(self, filename, base_dir):
         if filename in self.processed_files:
-            raise Exception(f"Inclusión cíclica detectada: {filename}")
+            raise Exception(f"Inclusión cíclica: {filename}")
 
         self.processed_files.add(filename)
 
@@ -133,7 +129,7 @@ class Preprocessor:
 if __name__ == "__main__":
     pre = Preprocessor()
     try:
-        result = pre.preprocess_file("programs/test.asm")
+        result = pre.preprocess_file("programs/test.asm") #aqui se coloca el archivo de prueba, debe estar en programs
         print("===== CÓDIGO PREPROCESADO =====\n")
         print(result)
     except Exception as e:
