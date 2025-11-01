@@ -7,7 +7,7 @@
 func maxcd(int a0,int b0):
     int a=a0 # Variable entera a
     int b=a0 # Variable entera b
-    while (a!=b):
+    _wile (a!=b):
         if(a>b): a=a-b
         else: a=a-b
     endwhile

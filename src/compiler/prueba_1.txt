@@ -1,8 +1,30 @@
+/* Ejemplo de preprocesamiento con macros e includes */
+
+#define MAX_FIB 10
+#define RETURN_ZERO return 0
+#define BASE_CASE n <= 1
+
 func fibonacci(int n) 
-    if (n <= 1) then
+    if (BASE_CASE) then
         return n
     endif
     
     int result = fibonacci(n-1) + fibonacci(n-2)
     return result
 endfunc
+
+func test_fibonacci():
+    int i = 0
+    while (i < MAX_FIB):
+        int fib_result = fibonacci(i)
+        output fib_result
+        i = i + 1
+    endwhile
+    RETURN_ZERO
+endfunc
+
+/* El preprocesador debería expandir:
+   - MAX_FIB a 10
+   - RETURN_ZERO a "return 0"
+   - BASE_CASE a "n <= 1"
+*/

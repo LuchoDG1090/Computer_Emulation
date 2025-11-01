@@ -40,7 +40,8 @@ class MyLexer:
         'BIT_AND', 'BIT_OR', 'BIT_XOR', 'BIT_NOT', 'SHIFT_LEFT', 'SHIFT_RIGHT',
         'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
         'COMMA', 'COLON', 'SEMI', 'DOT', 'RANGE',
-        'COMMENT_SL'
+        'COMMENT_SL','KW',
+        # 'GENERAL_ERROR'
     ) + tuple(reserved.values())
 
     # -------------------------------
@@ -136,18 +137,27 @@ class MyLexer:
     t_SEMI = r';'
     t_DOT = r'\.'
     t_RANGE = r'\.\.'
+    # t_GENERAL_ERROR = r'.' 
 
     # -------------------------------
     # Identificadores y palabras reservadas
     # -------------------------------
-    def t_ID(self, t):
-        r'[a-zA-Z_][a-zA-Z0-9_]*'
-        t.type = reserved.get(t.value, 'ID')
-        if t.type == 'ID':
-            self.id_count += 1
-        else:
-            self.kw_count += 1
+
+    def t_KW(self, t):
+        r'if|endif|then|else|while|endwhile|break|continue|for|endfor|func|endfunc|return|output|input|int|float|string|bool|char|void|true|false|in|out'
+        self.kw_count += 1
         return t
+    
+    def t_ID(self, t):
+        r'[A-Za-z_][A-Za-z0-9_]*'
+        prefijo = 'UNAL'
+        if t.value[:len(prefijo)] != prefijo:
+            print(f"Error léxico: Cadena ilegal '{t.value}' en línea {t.lineno}")
+            print(f'Sugerencia: "{prefijo}_{t.value}"')
+        else:
+            self.id_count += 1
+        return t
+    
 
     # Números
     def t_NUMBER(self, t):
@@ -217,6 +227,7 @@ class MyLexer:
     # -------------------------------
     # Error léxico
     # -------------------------------
+
     def t_error(self, t):
         print(f"Error lexico: Caracter ilegal '{t.value[0]}' en linea {t.lineno}")
         t.lexer.skip(1)
