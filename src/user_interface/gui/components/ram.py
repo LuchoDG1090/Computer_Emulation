@@ -106,7 +106,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=8,
-            font=("Comic Sans MS", 12),
+            font=("Comic Sans MS", 16, "bold"),
             width=100,
             height=32,
         )
@@ -122,7 +122,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=8,
-            font=("Comic Sans MS", 12),
+            font=("Comic Sans MS", 16, "bold"),
             width=100,
             height=32,
         )
