@@ -29,6 +29,11 @@ def t_newline(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
 
+def t_comment(t):
+    r'/\*\*+/'
+    t.lexer.lineno += t.value.count('\n')
+    pass
+
 def t_error(t):
     print(f"Caracter ilegal '{t.value[0]}' en línea {t.lexer.lineno}")
     t.lexer.skip(1)
@@ -130,7 +135,7 @@ class Preprocessor:
 if __name__ == "__main__":
     pre = Preprocessor()
     try:
-        result = pre.preprocess_file("programs/mcd_peña.asm") #aqui se coloca el archivo de prueba, debe estar en programs
+        result = pre.preprocess_file("src/compiler/prueba_1.txt") #aqui se coloca el archivo de prueba
         print("===== CÓDIGO PREPROCESADO =====\n")
         print(result)
     except Exception as e:
