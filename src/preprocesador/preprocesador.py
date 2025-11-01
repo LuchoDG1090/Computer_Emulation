@@ -1,9 +1,6 @@
 import os
 import re
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ply'))
-
-import lex
+import ply.lex as lex
 
 tokens = [
     'INCLUDE_QUOTED',
