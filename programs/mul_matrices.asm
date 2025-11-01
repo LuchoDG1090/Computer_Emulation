@@ -224,7 +224,7 @@ C_i_print:
 # --------------------
 # Strings (mensajes)
 # --------------------
-ORG 0xF000
+ORG 7680
 MSG_INTRO:    DB "Multiplicacion de matrices 3x2 por 2x4 (numeros naturales)", 10
 			   DB "Formato:", 10
 			   DB " - Ingrese 2 numeros por fila para A (separados por espacio)", 10

@@ -42,14 +42,15 @@ def compile_asm(input_file, output_dir="build"):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Uso: python compile.py <archivo.asm>")
+    if len(sys.argv) < 3:
+        print("Uso: python compile.py <archivo.asm> <directorio_salida>")
         sys.exit(1)
 
     input_file = sys.argv[1]
+    output_dir = sys.argv[2]
 
     try:
-        compile_asm(input_file)
+        compile_asm(input_file, output_dir)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

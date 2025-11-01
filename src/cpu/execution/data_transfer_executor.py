@@ -136,35 +136,30 @@ class DataTransferExecutor:
         imm32 = instruction["imm32"]
         func = instruction["func"]
 
-        # Suboperación extendida: parse línea de enteros
+        # Suboperación extendida: parse línea de enteros o flotante
         subop = (func >> 1) & 0x7
-        sep_chr = (func >> 4) & 0xFF
+        _sep_chr = (func >> 4) & 0xFF  # reservado para futuros separadores
 
         if subop == 3:
             # Leer flotante (INF)
             value = self.io_ports.read_input_float(imm32)
             self.registers[rd] = value
-        elif subop == 1:
+            return
+
+        if subop == 1:
             # Parse array de enteros en memoria
             base = self.registers[rs1]
 
-            # Determinar si count viene de registro o inmediato
-            # Si IMM32 es 0-15, interpretarlo como número de registro
-            # Si es mayor, es el valor literal del count
-            if imm32 <= 15:
-                # COUNT viene del registro especificado en IMM32
-                count = self.registers[imm32] & 0xFFFFFFFF
-            else:
-                # COUNT es el valor literal en IMM32
-                count = imm32 & 0xFFFFFFFF
+            # Conteo de elementos: tratar IMM32 SIEMPRE como literal para evitar
+            # ambigüedad con registros bajos (R0..R15). Si se desea usar un registro
+            # como COUNT, se puede extender el formato en el futuro con una marca.
+            count = imm32 & 0xFFFFFFFF
 
             # Leer línea completa desde callback
             line = ""
             if self.io_ports.input_line_callback:
-                # Usar callback de línea si está disponible
                 line = self.io_ports.input_line_callback()
             elif self.io_ports.input_char_callback:
-                # Fallback: leer carácter por carácter
                 chars = []
                 while True:
                     ch = self.io_ports.input_char_callback()
@@ -173,36 +168,35 @@ class DataTransferExecutor:
                     chars.append(chr(ch))
                 line = "".join(chars)
 
-            # Separar y parsear
-            # Si no hay separador definido (sep_chr == 0), usar espacios
-            if sep_chr == 0:
-                sep_chr = 0x20  # espacio por defecto
+            # Normalizar y tokenizar robustamente (espacios múltiples, comas, etc.)
+            text = line.strip()
+            text = text.replace(",", " ").replace(";", " ")
 
-            parts = line.split(chr(sep_chr))
+            import re
+            tokens = [t for t in re.split(r"\s+", text) if t]
+
             parsed_count = 0
-
-            for i in range(min(count, len(parts))):
-                part = parts[i].strip()
-                if not part:  # Saltar strings vacíos
+            for token in tokens:
+                if parsed_count >= count:
+                    break
+                try:
+                    # Forzar base 10 para evitar confusión con 0-prefijos (e.g., '09')
+                    val = int(token, 10)
+                except ValueError:
                     continue
 
-                try:
-                    val = int(part, 0)
-                except ValueError:
-                    continue  # Saltar valores inválidos
-
                 addr = base + parsed_count * 8
-                if self.memory_ops.is_valid_address(addr):
-                    self.memory_ops.write_word(addr, val)
-                    parsed_count += 1
-                else:
-                    break  # Dirección inválida, detener
+                if not self.memory_ops.is_valid_address(addr):
+                    break
+                self.memory_ops.write_word(addr, val)
+                parsed_count += 1
 
             self.registers[rd] = parsed_count
-        else:
-            # IN normal
-            value = self.io_ports.read_input(imm32, func)
-            self.registers[rd] = value
+            return
+
+        # IN normal
+        value = self.io_ports.read_input(imm32, func)
+        self.registers[rd] = value
 
     def _execute_addi(self, instruction: Dict[str, Any], cpu):
         """ADDI Rd, Rs1, #imm32"""

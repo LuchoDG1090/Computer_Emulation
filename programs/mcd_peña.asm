@@ -50,7 +50,7 @@ ORG 7478
 res: RESW 1             # reserva una palabra para el resultado (inicializada en 0)
 
 # ---------- Strings (usando directiva DB) ----------
-ORG 0xF000
+ORG 7680
 msg1: DB "Ingrese el primer numero: ", 0
 msg2: DB "Ingrese el segundo numero: ", 0
 msg_result: DB "El MCD es: ", 0

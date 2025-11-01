@@ -138,7 +138,7 @@ after_after_print:
 # --------------------
 # Strings
 # --------------------
-ORG 0xF000
+ORG 7680
 msg1: DB "=== Bubble Sort - Ordenamiento de numeros ===\n", 0
 msg2: DB "Ingrese la cantidad de numeros: ", 0
 msg3: DB "Ingrese los numeros separados por espacio:\n", 0

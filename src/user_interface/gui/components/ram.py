@@ -337,34 +337,87 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             print("Memoria no disponible")
             return
 
-        path = filedialog.askopenfilename(
-            title="Seleccionar archivo .abs.bin (líneas 64 bits)",
-            filetypes=[("ABS Bin", "*.abs.bin"), ("Texto", "*.txt"), ("Todos", "*.*")],
+        import os
+
+        from src.memory import loader as abs_loader
+        from src.user_interface.gui.func.absolute_binary import (
+            read_abs_bin_to_program_words,
+            read_abs_map_to_entries,
         )
-        if not path:
+        from src.user_interface.gui.func.compilation_registry import (
+            CompilationRegistry,
+        )
+
+        # Seleccionar .abs.bin (líneas de 64 bits)
+        bin_path = filedialog.askopenfilename(
+            title="Seleccionar archivo absoluto (.abs.bin - 64 bits por línea)",
+            filetypes=[("ABS Bin", "*.abs.bin;*.bin"), ("Todos", "*.*")],
+        )
+        if not bin_path:
             return
 
-        wrote = 0
-        try:
-            addr = 0
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                for raw in f:
-                    line = raw.strip()
-                    if not line:
-                        continue
-                    norm = line.replace(" ", "")
-                    if not set(norm) <= {"0", "1"} or len(norm) != 64:
-                        raise ValueError(
-                            f"Línea no válida (esperado 64 bits binarios): {line}"
-                        )
-                    val = int(norm, 2)
-                    if addr > self.memory.size - 8:
-                        raise ValueError("Archivo excede el tamaño de la memoria")
-                    self.memory.write_word(addr, val)
-                    addr += 8
-                    wrote += 1
+        # Intentar inferir el .map homónimo
+        base, _ = os.path.splitext(bin_path)
+        map_path = base + ".map"
+        if not os.path.exists(map_path):
+            # Pedir .map manualmente
+            map_path = filedialog.askopenfilename(
+                title="Seleccionar archivo .map (decimal)",
+                filetypes=[("Map", "*.map"), ("Todos", "*.*")],
+            )
+            if not map_path:
+                return
 
-            self.update_memory(self.memory, self.last_min_addr, self.last_max_addr)
-            print(f"OK: {wrote} palabras cargadas desde 0 en RAM")
+        try:
+            # Parseo ligero SIN usar el linker: .abs.bin como absolutos y .map decimal en BYTES.
+            program_words = read_abs_bin_to_program_words(bin_path)
+            map_entries = read_abs_map_to_entries(map_path)
+
+            # Rango a escribir (en bytes) a partir del mapa tal cual
+            addrs = [e.address for e in map_entries]
+            min_addr = min(addrs)
+            max_addr = max(addrs)
+
+            # Verificar colisión
+            collision, collision_program = CompilationRegistry.check_collision(
+                min_addr, max_addr
+            )
+            if collision:
+                print(
+                    f"\033[31m Error: El rango {min_addr}-{max_addr} colisiona con '{collision_program}' \033[0m"
+                )
+                return
+
+            # Cargar en RAM respetando direcciones absolutas (sin base ni linker)
+            min_addr, max_addr = abs_loader.Loader.cargar_bin(
+                self.memory, program_words, map_entries, base_address=None
+            )
+
+            # Determinar punto de entrada: menor dirección ejecutable (en bytes)
+            # igual que en el flujo reubicable
+            exec_addrs = [e.address for e in map_entries if e.flag == 1]
+            pc = min(exec_addrs) if exec_addrs else min_addr
+            if self.cpu is not None:
+                self.cpu.pc = pc
+
+            # Registrar en lista de programas cargados (nombre del archivo)
+            program_name = os.path.splitext(os.path.basename(bin_path))[0]
+            CompilationRegistry.register_loaded_program(
+                program_name, min_addr, max_addr, pc, bin_path, map_path
+            )
+
+            # Actualizar vista RAM
+            self.update_memory(self.memory, min_addr, max_addr)
+
+            # Mensajes (posiciones en palabras y PC)
+            min_word = min_addr // 8
+            max_word = max_addr // 8
+            entry_word = pc // 8
+            print(
+                f"Programa absoluto '{program_name}' cargado: {min_word}-{max_word}, entrada @{entry_word}"
+            )
+            if self.pc_update_callback:
+                self.pc_update_callback(pc)
+
         except Exception as e:
             print(f"Error al cargar absoluto: {e}")

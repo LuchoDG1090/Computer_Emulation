@@ -47,4 +47,5 @@ class MemoryMap:
         with open(filename, "w") as f:
             for index in self.order:
                 entry = self.entries[index]
-                f.write(f"{index},0x{entry['address']:08X},{entry['flag']}\n")
+                # Requerimiento: direcciones en DECIMAL, no hexadecimal
+                f.write(f"{index},{entry['address']},{entry['flag']}\n")
