@@ -19,6 +19,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
         self.last_min_addr = 0
         self.last_max_addr = 0
         self.pc_update_callback = None
+        self.program_selector = None
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=0)  # título
@@ -32,6 +33,10 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
     def set_pc_update_callback(self, cb):
         """Permite inyectar el callback para refrescar PC en la UI."""
         self.pc_update_callback = cb
+
+    def set_program_selector(self, selector):
+        """Permite inyectar la referencia al selector de programas."""
+        self.program_selector = selector
 
     def __load_title_text(self):
         title = ctk.CTkLabel(
@@ -101,7 +106,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=8,
-            font=("Comic Sans MS", 12),
+            font=("Comic Sans MS", 16, "bold"),
             width=100,
             height=32,
         )
@@ -117,7 +122,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=8,
-            font=("Comic Sans MS", 12),
+            font=("Comic Sans MS", 16, "bold"),
             width=100,
             height=32,
         )
@@ -405,6 +410,10 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             CompilationRegistry.register_loaded_program(
                 program_name, min_addr, max_addr, pc, bin_path, map_path
             )
+
+            # Actualizar lista de programas en el selector
+            if self.program_selector is not None:
+                self.program_selector.update_program_list()
 
             # Actualizar vista RAM
             self.update_memory(self.memory, min_addr, max_addr)

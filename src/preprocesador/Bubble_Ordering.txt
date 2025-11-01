@@ -1,0 +1,30 @@
+
+/* Ordenamiento Burbuja (Bubble Ordering)
+   Código en el lenguaje de alto nivel usado en el proyecto.
+   Implementa bubble sort con arreglos, swaps y salida de resultados.
+*/
+
+#include "Bubble_Ordering_func_.txt"
+
+# Ejemplo de uso
+# Declaración e inicialización de un arreglo de 6 elementos
+int n = 6
+int arr[6]
+arr[0] = 64
+arr[1] = 34
+arr[2] = 25
+arr[3] = 12
+arr[4] = 22
+arr[5] = 11
+
+# Ejecutar el ordenamiento
+bubble_sort(arr, n)
+
+# Imprimir arreglo ordenado
+int k = 0
+while (k < n):
+    output arr[k]
+    k = k + 1
+endwhile
+
+

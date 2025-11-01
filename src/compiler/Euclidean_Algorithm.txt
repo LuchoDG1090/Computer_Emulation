@@ -3,7 +3,6 @@
     Versión iterativa
     Argumentos: int a0, b0
 */
-
 func maxcd(int a0,int b0):
     int a=a0 # Variable entera a
     int b=a0 # Variable entera b
@@ -18,4 +17,3 @@ x = 21
 y = 9
 m = maxcd(x,y)
     
-

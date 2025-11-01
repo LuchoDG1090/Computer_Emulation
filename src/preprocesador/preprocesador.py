@@ -38,7 +38,7 @@ def t_comment(t):
     pass
 
 def t_error(t):
-    print(f"Caracter ilegal '{t.value[0]}' en línea {t.lexer.lineno}")
+#    print(f"Caracter ilegal '{t.value[0]}' en línea {t.lexer.lineno}")
     t.lexer.skip(1)
 
 lexer = lex.lex()
@@ -117,7 +117,7 @@ class Preprocessor:
                 if len(parts) >= 3:
                     name = parts[1]
                     value = ' '.join(parts[2:])
-                    value = value.split('#')[0].strip() #Eliminamos comentarios que estén después del define
+                    value = value.split('/*')[0].strip() #Eliminamos comentarios que estén después del define
                     self.macros.add(name, value)
                 return None  # no imprime la línea define
 
@@ -138,7 +138,7 @@ class Preprocessor:
 if __name__ == "__main__":
     pre = Preprocessor()
     try:
-        result = pre.preprocess_file("src/compiler/prueba_1.txt") #aqui se coloca el archivo de prueba
+        result = pre.preprocess_file("src/preprocesador/Bubble_Ordering.txt") #aqui se coloca el archivo de prueba
         print("===== CÓDIGO PREPROCESADO =====\n")
         print(result)
     except Exception as e:

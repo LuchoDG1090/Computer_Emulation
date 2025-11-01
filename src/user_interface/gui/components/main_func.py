@@ -145,6 +145,10 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         if hasattr(self.ram_memory, "set_pc_update_callback"):
             self.ram_memory.set_pc_update_callback(self.pc_frame.update_pc)
 
+        # Conectar referencia al selector de programas en RAM
+        if hasattr(self.ram_memory, "set_program_selector"):
+            self.ram_memory.set_program_selector(self.program_selector)
+
         self.frame_second_column.grid(
             column=1, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
         )
