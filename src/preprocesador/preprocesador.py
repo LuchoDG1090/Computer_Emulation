@@ -135,7 +135,7 @@ class Preprocessor:
 if __name__ == "__main__":
     pre = Preprocessor()
     try:
-        result = pre.preprocess_file("src/compiler/Bubble_Ordering.txt") #aqui se coloca el archivo de prueba
+        result = pre.preprocess_file("src/preprocesador/Bubble_Ordering.txt") #aqui se coloca el archivo de prueba
         print("===== CÓDIGO PREPROCESADO =====\n")
         print(result)
     except Exception as e:
