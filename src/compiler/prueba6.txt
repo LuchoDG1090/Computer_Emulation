@@ -1,6 +1,0 @@
-
-UNAL_A = 10
-
-if(UNAL_A >= 10):
-    out(colombia) &% @
-endif

@@ -14,7 +14,8 @@ reserved = {
     'output': 'OUTPUT', 'input': 'INPUT',
     'int': 'INT_TYPE', 'float': 'FLOAT_TYPE', 'string': 'STRING_TYPE',
     'bool': 'BOOL_TYPE', 'char': 'CHAR_TYPE', 'void': 'VOID_TYPE',
-    'true': 'TRUE', 'false': 'FALSE'
+    'true': 'TRUE', 'false': 'FALSE',
+    'adt': 'ADT', 'endadt': 'ENDADT', 'private': 'PRIVATE', 'public': 'PUBLIC'
 }
 
 class MyLexer:
@@ -144,13 +145,13 @@ class MyLexer:
     # -------------------------------
 
     def t_KW(self, t):
-        r'if|endif|then|else|while|endwhile|break|continue|for|endfor|func|endfunc|return|output|input|int|float|string|bool|char|void|true|false|in|out'
+        r'if|endif|then|else|while|endwhile|break|continue|for|endfor|func|endfunc|return|output|input|int|float|string|bool|char|void|true|false|in|out|adt|endadt|private|public'
         self.kw_count += 1
         return t
     
     def t_ID(self, t):
         r'[A-Za-z_][A-Za-z0-9_]*'
-        prefijo = 'UNAL'
+        prefijo = ''
         if t.value[:len(prefijo)] != prefijo:
             print(f"Error léxico: Cadena ilegal '{t.value}' en línea {t.lineno}")
             print(f'Sugerencia: "{prefijo}_{t.value}"')

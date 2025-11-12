@@ -1,0 +1,7 @@
+adt Pila
+public
+    func push(x: int);
+    func pop();
+private
+    x = 0;
+endadt
