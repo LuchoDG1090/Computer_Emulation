@@ -7,7 +7,7 @@ import lex
 # Palabras reservadas y sus tipos
 # -------------------------------
 reserved = {
-    'if': 'IF', 'endif': 'ENDIF', 'then': 'THEN', 'else': 'ELSE',
+    'if': 'IF', 'endif': 'ENDIF', 'else': 'ELSE',
     'while': 'WHILE', 'endwhile': 'ENDWHILE', 'break': 'BREAK', 'continue': 'CONTINUE',
     'for': 'FOR', 'endfor': 'ENDFOR',
     'func': 'FUNC', 'endfunc': 'ENDFUNC', 'return': 'RETURN',
@@ -41,8 +41,6 @@ class MyLexer:
         'BIT_AND', 'BIT_OR', 'BIT_XOR', 'BIT_NOT', 'SHIFT_LEFT', 'SHIFT_RIGHT',
         'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
         'COMMA', 'COLON', 'SEMI', 'DOT', 'RANGE',
-        'COMMENT_SL','KW',
-        # 'GENERAL_ERROR'
     ) + tuple(reserved.values())
 
     # -------------------------------
@@ -53,15 +51,11 @@ class MyLexer:
         t.lexer.begin('comment')
         self.matched_count += 1
         self.whitespace_count += len(t.value)
-        # print("Matched /* count:", self.matched_count)
-        # print("Estado actual:", t.lexer.current_state())
 
     def t_comment_COMMENT_START(self, t):
         r'/\*'
         self.matched_count += 1
         self.whitespace_count += len(t.value)
-        # print("Matched /* count:", self.matched_count)
-        # print("Estado actual:", t.lexer.current_state())
 
     def t_comment_COMMENT_END(self, t):
         r'\*/'
@@ -72,7 +66,6 @@ class MyLexer:
             self.matched_count = 0
         if self.matched_count == 0: 
             t.lexer.begin('INITIAL')
-        # print("Matched /* count:", self.matched_count)
 
     def t_comment_newline(self, t):
         r'\n+'
@@ -138,27 +131,27 @@ class MyLexer:
     t_SEMI = r';'
     t_DOT = r'\.'
     t_RANGE = r'\.\.'
-    # t_GENERAL_ERROR = r'.' 
 
     # -------------------------------
     # Identificadores y palabras reservadas
     # -------------------------------
-
-    def t_KW(self, t):
-        r'if|endif|then|else|while|endwhile|break|continue|for|endfor|func|endfunc|return|output|input|int|float|string|bool|char|void|true|false|in|out|adt|endadt|private|public'
-        self.kw_count += 1
-        return t
-    
     def t_ID(self, t):
         r'[A-Za-z_][A-Za-z0-9_]*'
-        prefijo = ''
-        if t.value[:len(prefijo)] != prefijo:
-            print(f"Error léxico: Cadena ilegal '{t.value}' en línea {t.lineno}")
-            print(f'Sugerencia: "{prefijo}_{t.value}"')
+        # Verificar si es una palabra reservada
+        t.type = reserved.get(t.value, 'ID')
+        
+        if t.type == 'ID':
+            prefijo = ''
+            if t.value[:len(prefijo)] != prefijo:
+                print(f"Error léxico: Cadena ilegal '{t.value}' en línea {t.lineno}")
+                print(f'Sugerencia: "{prefijo}_{t.value}"')
+            else:
+                self.id_count += 1
         else:
-            self.id_count += 1
+            # Es una palabra reservada
+            self.kw_count += 1
+        
         return t
-    
 
     # Números
     def t_NUMBER(self, t):
@@ -228,7 +221,6 @@ class MyLexer:
     # -------------------------------
     # Error léxico
     # -------------------------------
-
     def t_error(self, t):
         print(f"Error lexico: Caracter ilegal '{t.value[0]}' en linea {t.lineno}")
         t.lexer.skip(1)
