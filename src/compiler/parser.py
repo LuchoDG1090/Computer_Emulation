@@ -5,6 +5,8 @@ from lexer import tokens
 # 1. ESTRUCTURA DEL PROGRAMA
 # ----------------------------------------
 
+#Las {} representan repetición
+
 def p_program(p):
     """program : declaration program
             | func_decl program
@@ -62,7 +64,7 @@ def p_func_decl(p):
     pass
 
 def p_param_list(p):
-    """param_list : param ',' param"""
+    """param_list : param"""
     pass
 
 def p_param(p):
@@ -80,29 +82,69 @@ def p_param_opc(p):
 # ----------------------------------------
 
 def p_adt_decl(p):
-    """adt_decl : ADT ID '(' param_list ')' ':' atd_body ENDADT  """
+    """adt_decl : ADT ID '(' param_list ')' ':' atd_body ENDADT"""
     pass
 
 def p_adt_body(p):
     """adt_body : visibility_block adt_body
             | attribute_decl adt_body
             | func_decl atd_body
-            | visibiluty_block
-            | atribute_decl
+            | visibility_block
+            | attribute_decl
             | func_decl 
             """
     pass
 
 def p_visibility_block(p):
-    """visibility_block : PRIVATE : block
-            | PULIC : block"""
+    """visibility_block : PRIVATE ':' block
+            | PUBLIC ':' block"""
     pass
 
 def p_attribute_decl(p):
-    """atribute_decl : type ID array_opc"""
+    """attribute_decl : type ID array_opc"""
     pass
 
 # ----------------------------------------
 # 6. BLOQUES Y SENTENCIAS
+# ----------------------------------------
+
+def p_block(p):
+    """block : statement"""
+    pass
+
+def p_statement(p):
+    """statement :   declaration 
+    | assign_stmt
+    | if_stmt
+    | while_stmt           
+    | for_stmt             
+    | func_call            
+    | return_stmt          
+    | BREAK             
+    | CONTINUE           
+    | output_stmt          
+    | input_stmt """
+    pass
+
+# ----------------------------------------
+# 7. ASIGNACIÓN
+# ----------------------------------------
+
+def p_assign_stmt(p):
+    """assign_stmt : lvalue '=' exp """
+    pass
+
+def p_lvalue(p):
+    """lvalue : ID lvalue2"""
+    pass
+
+def p_lvalue2(p):
+    """lvalue2 : '[' exp ']' lvalue2
+            | '.' ID lvalue2
+            | """
+    pass
+
+# ----------------------------------------
+# 8. ENTRADA / SALIDA
 # ----------------------------------------
 
