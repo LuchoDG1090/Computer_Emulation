@@ -46,7 +46,7 @@ def p_array_opc(p):
     pass
 
 def p_init_opc(p):
-    """init_opc : '=' exp
+    """init_opc : ASSIGN exp
             | """
     pass
 
@@ -60,7 +60,7 @@ def p_array_suffix(p):
 # ----------------------------------------
 
 def p_func_decl(p):
-    """func_decl : FUNC ID '(' param_list ')' ':' block ENDFUNC"""
+    """func_decl : FUNC ID LPAREN param_list RPAREN COLON block ENDFUNC"""
     pass
 
 def p_param_list(p):
@@ -82,7 +82,7 @@ def p_param_opc(p):
 # ----------------------------------------
 
 def p_adt_decl(p):
-    """adt_decl : ADT ID '(' param_list ')' ':' atd_body ENDADT"""
+    """adt_decl : ADT ID LPAREN param_list RPAREN COLON atd_body ENDADT"""
     pass
 
 def p_adt_body(p):
@@ -96,8 +96,8 @@ def p_adt_body(p):
     pass
 
 def p_visibility_block(p):
-    """visibility_block : PRIVATE ':' block
-            | PUBLIC ':' block"""
+    """visibility_block : PRIVATE COLON block
+            | PUBLIC COLON block"""
     pass
 
 def p_attribute_decl(p):
@@ -131,7 +131,7 @@ def p_statement(p):
 # ----------------------------------------
 
 def p_assign_stmt(p):
-    """assign_stmt : lvalue '=' exp """
+    """assign_stmt : lvalue ASSIGN exp """
     pass
 
 def p_lvalue(p):
@@ -148,3 +148,27 @@ def p_lvalue2(p):
 # 8. ENTRADA / SALIDA
 # ----------------------------------------
 
+def output_stmt(p):
+    """output_smtm : OUTPUT exp"""
+    pass
+
+def input_stmt(p):
+    """input_stmt : INPUT lvalue"""
+    pass
+
+# ----------------------------------------
+# 9. ESTRUCTURAS DE CONTROL
+# ----------------------------------------
+
+def if_stmt(p):
+    """if_stmt : IF LPAREN exp RPAREN COLON block else_opc ENDIF"""
+    pass
+
+def else_opc(p):
+    """else_opc : ELSE COLON block
+        | """
+    pass
+
+def while_stmt(p):
+    """while_stmt : WHILE LPAREN exp RPAREN COLON block else_opc ENDWHILE"""
+    pass
