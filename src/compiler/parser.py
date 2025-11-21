@@ -51,8 +51,8 @@ def p_init_opc(p):
     pass
 
 def p_array_suffix(p):
-    """array_suffix : '[' exp ']' array_suffix
-            |  '[' exp ']' """
+    """array_suffix : LBRACKET exp RBRACKET array_suffix
+            |  LBRACKET exp RBRACKET """
     pass
 
 # ----------------------------------------
@@ -139,7 +139,7 @@ def p_lvalue(p):
     pass
 
 def p_lvalue2(p):
-    """lvalue2 : '[' exp ']' lvalue2
+    """lvalue2 : LBRACKET exp RBRACKET lvalue2
             | '.' ID lvalue2
             | """
     pass
@@ -170,5 +170,6 @@ def else_opc(p):
     pass
 
 def while_stmt(p):
-    """while_stmt : WHILE LPAREN exp RPAREN COLON block else_opc ENDWHILE"""
+    """while_stmt : WHILE LPAREN exp RPAREN COLON block ENDWHILE"""
     pass
+
