@@ -13,6 +13,7 @@ class Routes:
     HOME_PATH = r"src\user_interface\gui\resources\home.png"
     HELP_PATH = r"src\user_interface\gui\resources\help.png"
     INFO_PATH = r"src\user_interface\gui\resources\information.png"
+    ACCESIBILITY_PATH = r"src\user_interface\gui\resources\accesibilidad.png"
     COMPILE_ICON_PATH = r"src\user_interface\gui\resources\compilador.png"
     UPLOAD_ICON_PATH = r"src\user_interface\gui\resources\upload.png"
     ASSEMBLE_ICON_PATH = r"src\user_interface\gui\resources\assemble.png"
@@ -25,7 +26,8 @@ class Routes:
 class MainFrame(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title = "Euclid-64 emulation"
+        self._set_appearance_mode("dark")
+        self.title("Euclid-64 emulation")
         self.width = self.winfo_screenwidth()
         self.height = self.winfo_screenheight()
         self.geometry(f"{self.width}x{self.height}")
@@ -47,6 +49,7 @@ class MainFrame(ctk.CTk):
             home=Routes.HOME_PATH,
             help=Routes.HELP_PATH,
             info=Routes.INFO_PATH,
+            accesibilidad=Routes.ACCESIBILITY_PATH,
             image_width=self.__return_percentage_relation(self.height, 10),
             image_height=self.__return_percentage_relation(self.height, 10),
         )

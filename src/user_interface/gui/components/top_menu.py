@@ -8,13 +8,16 @@ Versión: 1.0
 """
 
 import customtkinter as ctk
+from . import design_variable_elements as design
+from .accesibility_pane import AccesibilityPanel
 from PIL import Image
 
 
 class TopMenuTitleOptions(ctk.CTkFrame):
     def __init__(self, parent, height, width, **kwargs):
         super().__init__(parent, width=width, height=height, fg_color="transparent")
-
+        self.parent = parent
+        design.Fonts.init_fonts()
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
@@ -23,7 +26,9 @@ class TopMenuTitleOptions(ctk.CTkFrame):
         self.home = kwargs.get("home")
         self.help = kwargs.get("help")
         self.info = kwargs.get("info")
-        self.iconos_menu = [self.home, self.help, self.info]
+        self.accesibilidad = kwargs.get("accesibilidad")
+        self.iconos_menu = [self.home, self.help, self.info, self.accesibilidad]
+        self.commands_for_menu = [None, None, None, self.__open_accesibility]
         self.logo_width = kwargs.get("image_width", 40)
         self.logo_height = kwargs.get("image_height", 40)
 
@@ -50,8 +55,7 @@ class TopMenuTitleOptions(ctk.CTkFrame):
         title_label = ctk.CTkLabel(
             contenedor_titulo,
             text="ΣUCLID-64",
-            font=("Comic Sans MS", 30, "bold"),
-            text_color="white",
+            font=("Comic Sans MS", 30, "bold")
         )
         title_label.grid(row=0, column=1, sticky="w")
 
@@ -80,16 +84,22 @@ class TopMenuTitleOptions(ctk.CTkFrame):
                     dark_image=Image.open(self.iconos_menu[_]),
                     size=(self.logo_width, self.logo_height),
                 )
-                icon_label = ctk.CTkLabel(
+                btn_menu = ctk.CTkButton(
                     contenedor_opciones,
+                    text = "",
                     image=icon_img,
-                    text="",
+                    width=self.logo_width,
+                    command=self.commands_for_menu[_],
                     fg_color="transparent",
-                    cursor="hand2",
+                    hover_color="#0C1826"
                 )
-                icon_label.image = icon_img
-                icon_label.grid(row=0, column=_, padx=45)
+                btn_menu.grid(row=0, column=_, padx=45)
+
             except:
                 pass
+    
 
         contenedor_opciones.grid(row=0, column=1, sticky="e", padx=(0, 35))
+    
+    def __open_accesibility(self):
+        AccesibilityPanel(master=self.parent)

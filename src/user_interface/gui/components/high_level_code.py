@@ -22,7 +22,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
         text = ctk.CTkLabel(
             self,
             text = 'Código en alto nivel',
-            font=("Comic Sans MS", 14),
+            font=("Roboto", 14),
             text_color="white"
         )
         text.grid(row = 0, column = 0)
