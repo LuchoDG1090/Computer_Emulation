@@ -5,7 +5,7 @@ import re
 
 import src.ply.lex as lex
 from src.assembler.exceptions import LexerError
-from src.isa.isa import Opcodes
+from src.cpu.isa import Opcodes
 
 # Lista de nombres de todas las instrucciones válidas
 INSTRUCTION_NAMES = [opcode.name for opcode in Opcodes]

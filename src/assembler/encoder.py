@@ -2,7 +2,7 @@
 
 import struct
 
-from src.isa.isa import InstructionType, Opcodes, opcode_to_type
+from src.cpu.isa import InstructionType, Opcodes, opcode_to_type
 
 
 class InstructionEncoder:

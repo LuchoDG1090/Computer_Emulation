@@ -8,7 +8,7 @@ from src.cpu.core import ALU, ALUOperation
 from src.cpu.io_ports import IOPorts
 from src.cpu.memory_ops import MemoryOperations
 from src.cpu.registers import RegisterFile
-from src.isa.isa import Opcodes
+from src.cpu.isa import Opcodes
 
 
 class DataTransferExecutor:

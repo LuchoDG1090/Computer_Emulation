@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from src.cpu.core import ALU, ALUOperation, FloatALU
 from src.cpu.registers import RegisterFile
-from src.isa.isa import Opcodes
+from src.cpu.isa import Opcodes
 
 
 class ALUExecutor:

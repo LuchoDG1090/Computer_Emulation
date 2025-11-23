@@ -16,7 +16,7 @@ from src.cpu.io_ports import IOPorts
 from src.cpu.memory_ops import MemoryOperations
 from src.cpu.registers import RegisterFile
 from src.cpu.stack_ops import StackOperations
-from src.isa.isa import Opcodes
+from src.cpu.isa import Opcodes
 from src.memory.memory import Memory
 
 
