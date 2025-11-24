@@ -2,7 +2,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from src.user_interface.gui.func import assembly as func
-
+from .design_variable_elements import Fonts
 
 class AssemblyCodeFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color="#0C1826", **kwargs):
@@ -24,7 +24,7 @@ class AssemblyCodeFrame(ctk.CTkFrame):
 
     def __build_text(self):
         text = ctk.CTkLabel(
-            self, text="Código assembly", font=("Comic Sans MS", 14), text_color="white"
+            self, text="Código assembly", font=Fonts.get_font(""), text_color="white"
         )
         text.grid(row=0, column=0)
 
@@ -53,7 +53,7 @@ class AssemblyCodeFrame(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command=lambda: func.assemble(
                 self.text_entry, self.funcion_set_reloc, self.loaded_file_path
             ),
@@ -73,7 +73,7 @@ class AssemblyCodeFrame(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command=lambda: self.__load_file(),
         )
         boton_subir.grid(row=0, column=1)
@@ -91,7 +91,7 @@ class AssemblyCodeFrame(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command=lambda: func.clean_content(self.text_entry),
         )
         boton_limpiar.grid(row=0, column=2)

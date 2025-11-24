@@ -1,6 +1,7 @@
 from tkinter import messagebox
 
 import customtkinter as ctk
+from .design_variable_elements import Fonts
 
 
 class ConsoleFrame(ctk.CTkFrame):
@@ -22,7 +23,7 @@ class ConsoleFrame(ctk.CTkFrame):
 
     def __build_title(self):
         text = ctk.CTkLabel(
-            self, text="Consola", font=("Comic Sans MS", 14), text_color="white"
+            self, text="Consola", font=Fonts.get_font("global_mini"), text_color="white"
         )
         text.grid(column=0, row=0, sticky="nsew")
 

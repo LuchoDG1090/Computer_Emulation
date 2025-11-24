@@ -1,5 +1,5 @@
 import customtkinter as ctk
-
+from .design_variable_elements import Fonts
 
 class GeneralPurposeRegisterFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color="#0C1826", **kwargs):
@@ -20,7 +20,7 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
         text = ctk.CTkLabel(
             self,
             text="Registros de propósito general",
-            font=("Comic Sans MS", 14),
+            font=Fonts.get_font("global_mini"),
             text_color="white",
         )
         text.grid(row=0, column=0)
@@ -36,7 +36,7 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
                 text=header,
                 fg_color="#2b2b2b",
                 corner_radius=4,
-                font=("Consolas", 11, "bold"),
+                font=Fonts.get_font("consolas"),
             )
             lbl.grid(row=0, column=j, sticky="ew", padx=5, pady=5)
 
@@ -49,7 +49,7 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
                 text=reg_name,
                 fg_color="#2b2b2b",
                 corner_radius=4,
-                font=("Consolas", 10),
+                font=Fonts.get_font("consolas"),
             )
             name_lbl.grid(row=i + 1, column=0, sticky="ew", padx=5, pady=2)
 
@@ -57,7 +57,7 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
                 scrollable_frame,
                 fg_color="#1a1a1a",
                 corner_radius=4,
-                font=("Consolas", 10),
+                font=Fonts.get_font("consolas"),
             )
             hex_entry.insert(0, "0x0000000000000000")
             hex_entry.grid(row=i + 1, column=1, sticky="ew", padx=5, pady=2)
@@ -68,7 +68,7 @@ class GeneralPurposeRegisterFrame(ctk.CTkFrame):
                 scrollable_frame,
                 fg_color="#1a1a1a",
                 corner_radius=4,
-                font=("Consolas", 10),
+                font=Fonts.get_font("consolas"),
             )
             dec_entry.insert(0, "0")
             dec_entry.grid(row=i + 1, column=2, sticky="ew", padx=5, pady=2)

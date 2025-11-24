@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from .design_variable_elements import Fonts
 
 
 class FlagRegisterFrame(ctk.CTkFrame):
@@ -18,7 +19,7 @@ class FlagRegisterFrame(ctk.CTkFrame):
 
     def __build_text(self):
         title = ctk.CTkLabel(
-            self, text="Flag register", font=("Comic Sans MS", 14), text_color="white"
+            self, text="Flag register", font=Fonts.get_font("global_mini"), text_color="white"
         )
         title.grid(row=0, column=0)
 
@@ -33,7 +34,7 @@ class FlagRegisterFrame(ctk.CTkFrame):
                 text=header,
                 fg_color="#2b2b2b",
                 corner_radius=4,
-                font=("Consolas", 12, "bold"),
+                font=Fonts.get_font("consolas"),
             )
             lbl.grid(row=0, column=j, sticky="ew", padx=5, pady=5)
 
@@ -45,7 +46,7 @@ class FlagRegisterFrame(ctk.CTkFrame):
                 text=flag_name,
                 fg_color="#2b2b2b",
                 corner_radius=4,
-                font=("Consolas", 11),
+                font=Fonts.get_font("consolas_mini"),
             )
             name_lbl.grid(row=i + 1, column=0, sticky="ew", padx=5, pady=2)
 
@@ -53,7 +54,7 @@ class FlagRegisterFrame(ctk.CTkFrame):
                 scrollable_frame,
                 fg_color="#1a1a1a",
                 corner_radius=4,
-                font=("Consolas", 11),
+                font=Fonts.get_font("consolas_mini"),
             )
             value_entry.insert(0, "0")
             value_entry.grid(row=i + 1, column=1, sticky="ew", padx=5, pady=2)

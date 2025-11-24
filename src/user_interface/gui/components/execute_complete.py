@@ -2,6 +2,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from ..func import cpu_control
+from .design_variable_elements import Fonts
 
 class CompleteExecute(ctk.CTkFrame):
     def __init__(self, parent, fg_color = 'transparent', **kwargs):
@@ -28,7 +29,7 @@ class CompleteExecute(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command=self.__complete_execute
         )
         self.ejecutar_completo.grid(column=0, row=0, sticky="nsew", pady = 5)

@@ -4,6 +4,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from src.assembler.assembler import Assembler
+from .design_variable_elements import Fonts
 
 
 class DinamicRandomAccessMemory(ctk.CTkFrame):
@@ -42,14 +43,14 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
         title = ctk.CTkLabel(
             self,
             text="Memoria principal - DRAM",
-            font=("Comic Sans MS", 14),
+            font=Fonts.get_font("global_mini"),
             text_color="white",
         )
         title.grid(column=0, row=0, sticky="w", padx=12, pady=(4, 0))
 
     def __load_memory_table(self):
         self.memory_textbox = ctk.CTkTextbox(
-            self, fg_color="#2b2b2b", font=("Consolas", 12)
+            self, fg_color="#2b2b2b", font=Fonts.get_font("consolas")
         )
         self.memory_textbox.grid(column=0, row=1, sticky="nsew", padx=12, pady=(4, 4))
 
@@ -106,7 +107,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=8,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font("global_plus"),
             width=100,
             height=32,
         )
@@ -122,7 +123,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=8,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font("global_plus"),
             width=100,
             height=32,
         )

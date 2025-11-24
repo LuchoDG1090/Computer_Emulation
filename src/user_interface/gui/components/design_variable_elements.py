@@ -12,13 +12,19 @@ MIN_FONT_SIZE = 8
 MAX_FONT_SIZE = 60
 
 global_font = "Arial"
-global_size = 30
+global_size = 16
 global_weight = "bold"
 global_text_color = "white"
 
 
 class Fonts:
+    # FUENTES
     global_font = None
+    global_font_plus = None
+    consolas_mini = None
+    consolas = None
+    global_font_mini = None
+    # SPECS
     family = global_font
     size = global_size
     weight = global_weight
@@ -29,6 +35,26 @@ class Fonts:
         Fonts.global_font = ctk.CTkFont(
             family=Fonts.family,
             size=Fonts.size,
+            weight=Fonts.weight
+        )
+        Fonts.global_font_plus = ctk.CTkFont(
+            family = Fonts.family,
+            size=Fonts.size + 2,
+            weight=Fonts.weight
+        )
+        Fonts.consolas = ctk.CTkFont(
+            family = "Consolas",
+            size = 12,
+            weight = "normal"
+        )
+        Fonts.consolas_mini = ctk.CTkFont(
+            family = "Consolas", 
+            size = 10,
+            weight =  "normal"
+        )
+        Fonts.global_font_mini = ctk.CTkFont(
+            family = Fonts.family,
+            size=Fonts.size - 2,
             weight=Fonts.weight
         )
 
@@ -55,8 +81,20 @@ class Fonts:
             Fonts.global_font.configure(weight=weight)
 
     @staticmethod
-    def get_font():
+    def get_font(tipo: str|None) -> ctk.CTkFont:
         """Devuelve la fuente global para usar en widgets."""
         if Fonts.global_font is None:
             Fonts.init_fonts()
-        return Fonts.global_font
+        if tipo:
+            if tipo == "global_mini":
+                return Fonts.global_font_mini
+            elif tipo == "global_plus":
+                return Fonts.global_font_plus
+            elif tipo == "consolas":
+                return Fonts.consolas
+            elif tipo == "consolas_mini":
+                return Fonts.consolas_mini
+            else:
+                return Fonts.global_font
+        else:
+            return Fonts.global_font

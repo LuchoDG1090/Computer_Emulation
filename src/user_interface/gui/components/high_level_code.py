@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from PIL import Image
 from src.user_interface.gui.func import high_level_code as func
+from .design_variable_elements import Fonts
 
 class HighLevelCodeFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color = '#0C1826', **kwargs):
@@ -22,7 +23,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
         text = ctk.CTkLabel(
             self,
             text = 'Código en alto nivel',
-            font=("Roboto", 14),
+            font=Fonts.get_font(""),
             text_color="white"
         )
         text.grid(row = 0, column = 0)
@@ -58,7 +59,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             fg_color='#4C44AC',
             text_color='white',
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold") 
+            font=Fonts.get_font("")
         )
         boton_compilar.grid(row = 0, column = 0)
 
@@ -75,7 +76,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             fg_color='#4C44AC',
             text_color='white',
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command = lambda: func.load_content(self.text_entry)
         )
         boton_subir.grid(row = 0, column = 1)
@@ -93,7 +94,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             fg_color='#4C44AC',
             text_color='white',
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command = lambda: func.clean_content(self.text_entry)
         )
         boton_limpiar.grid(row = 0, column = 2)

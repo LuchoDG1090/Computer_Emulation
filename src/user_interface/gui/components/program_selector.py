@@ -1,7 +1,7 @@
 import customtkinter as ctk
 
 from ..func.compilation_registry import CompilationRegistry
-
+from .design_variable_elements import Fonts
 
 class ProgramSelectorFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color="#0c1826", **kwargs):
@@ -28,7 +28,7 @@ class ProgramSelectorFrame(ctk.CTkFrame):
             self,
             text="Programa a ejecutar:",
             text_color="white",
-            font=("Comic Sans MS", 12),
+            font=Fonts.get_font("global_mini"),
         )
         label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
 
@@ -50,7 +50,7 @@ class ProgramSelectorFrame(ctk.CTkFrame):
             fg_color="#DC3545",
             text_color="white",
             width=30,
-            font=("Comic Sans MS", 12, "bold"),
+            font=Fonts.get_font("global_mini"),
             command=self.__unload_selected_program,
         )
         unload_button.grid(row=0, column=2, padx=5, pady=5)

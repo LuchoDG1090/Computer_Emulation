@@ -2,6 +2,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from ..func import cpu_control
+from .design_variable_elements import Fonts
 
 
 class BotonesAcciones(ctk.CTkFrame):
@@ -37,7 +38,7 @@ class BotonesAcciones(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command=self.__execute_step,
         )
         self.boton_siguiente.grid(column=0, row=0, sticky="nsew", pady = 5)
@@ -56,7 +57,7 @@ class BotonesAcciones(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font(""),
             command=self.__reset_cpu,
         )
         boton_reiniciar.grid(column=0, row=1, sticky="nsew", pady = 5)

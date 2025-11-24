@@ -2,7 +2,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from src.user_interface.gui.func import reloc as func
-
+from .design_variable_elements import Fonts
 
 class RelocCodeFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color="#0C1826", **kwargs):
@@ -28,7 +28,7 @@ class RelocCodeFrame(ctk.CTkFrame):
         text = ctk.CTkLabel(
             self,
             text="Código relocalizable",
-            font=("Comic Sans MS", 14),
+            font=Fonts.get_font(""),
             text_color="white",
         )
         text.grid(row=0, column=0)
@@ -48,13 +48,13 @@ class RelocCodeFrame(ctk.CTkFrame):
         label = ctk.CTkLabel(
             addr_frame,
             text="Dirección base (decimal):",
-            font=("Comic Sans MS", 12),
+            font=Fonts.get_font("global_mini"),
             text_color="white",
         )
         label.grid(row=0, column=0, sticky="e", padx=5)
 
         self.address_entry = ctk.CTkEntry(
-            addr_frame, placeholder_text="0 (suma a direcciones)", font=("Consolas", 11)
+            addr_frame, placeholder_text="0 (suma a direcciones)", font=Fonts.get_font("consolas")
         )
         self.address_entry.grid(row=0, column=1, sticky="ew", padx=5)
 
@@ -62,13 +62,13 @@ class RelocCodeFrame(ctk.CTkFrame):
         name_label = ctk.CTkLabel(
             addr_frame,
             text="Nombre:",
-            font=("Comic Sans MS", 12),
+            font=Fonts.get_font("global_mini"),
             text_color="white",
         )
         name_label.grid(row=0, column=2, sticky="e", padx=5)
 
         self.program_name_entry = ctk.CTkEntry(
-            addr_frame, placeholder_text="Opcional", font=("Consolas", 11)
+            addr_frame, placeholder_text="Opcional", font=Fonts.get_font("consolas")
         )
         self.program_name_entry.grid(row=0, column=3, sticky="ew", padx=5)
 
@@ -93,7 +93,7 @@ class RelocCodeFrame(ctk.CTkFrame):
             fg_color="#4C44AC",
             text_color="white",
             corner_radius=50,
-            font=("Comic Sans MS", 16, "bold"),
+            font=Fonts.get_font("global_plus"),
             command=lambda: self.__link_load_and_update(),
         )
         boton_enlazar_cargar.grid(row=0, column=0)

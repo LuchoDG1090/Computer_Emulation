@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from .design_variable_elements import Fonts
 
 class ControlUnitFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color = '#0c1826', **kwargs):
@@ -16,7 +17,7 @@ class ControlUnitFrame(ctk.CTkFrame):
             self,
             text = 'Unidad de control', 
             text_color = 'white',
-            font=("Comic Sans MS", 14)
+            font=Fonts.get_font("global_mini")
         )
         control_unit_tiltle.grid(column = 0, row = 0)
 

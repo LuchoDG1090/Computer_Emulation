@@ -8,10 +8,9 @@ Versión: 1.0
 """
 
 import customtkinter as ctk
+from PIL import Image
 from . import design_variable_elements as design
 from .accesibility_pane import AccesibilityPanel
-from PIL import Image
-
 
 class TopMenuTitleOptions(ctk.CTkFrame):
     def __init__(self, parent, height, width, **kwargs):

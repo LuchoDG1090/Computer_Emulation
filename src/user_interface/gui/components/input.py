@@ -1,7 +1,7 @@
 from tkinter import simpledialog
 
 import customtkinter as ctk
-
+from .design_variable_elements import Fonts
 
 class userInputBox(ctk.CTkFrame):
     def __init__(self, parent, fg_color="#0C1826", **kwargs):
@@ -15,7 +15,7 @@ class userInputBox(ctk.CTkFrame):
         self.__build_text_box_area()
 
     def __build_title(self):
-        title = ctk.CTkLabel(self, text="Input", font=("Comic Sans MS", 14, "bold"))
+        title = ctk.CTkLabel(self, text="Input", font=Fonts.get_font("global_mini"))
         title.grid(column=0, row=0, sticky="nsew")
 
     def __build_text_box_area(self):

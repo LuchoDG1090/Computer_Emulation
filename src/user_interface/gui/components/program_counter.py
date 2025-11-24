@@ -1,5 +1,5 @@
 import customtkinter as ctk
-
+from .design_variable_elements import Fonts
 
 class ProgramCounterFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color="#0c1826", **kwargs):
@@ -14,13 +14,13 @@ class ProgramCounterFrame(ctk.CTkFrame):
 
     def __build_widgets(self):
         label = ctk.CTkLabel(
-            self, text="PC:", font=("Consolas", 14, "bold"), text_color="white"
+            self, text="PC:", font=Fonts.get_font("consolas"), text_color="white"
         )
         label.grid(row=0, column=0, sticky="e", padx=5)
 
         self.pc_entry = ctk.CTkEntry(
             self,
-            font=("Consolas", 14),
+            font=Fonts.get_font("consolas"),
             text_color="#00FF00",
             fg_color="#1a1a1a",
             border_width=1,

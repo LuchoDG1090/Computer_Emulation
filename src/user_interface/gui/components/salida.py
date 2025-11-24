@@ -1,5 +1,5 @@
 import customtkinter as ctk
-
+from .design_variable_elements import Fonts
 
 class SalidaFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color="#0c1826", **kwargs):
@@ -15,7 +15,7 @@ class SalidaFrame(ctk.CTkFrame):
 
     def __build_text(self):
         text = ctk.CTkLabel(
-            self, text="Salida", font=("Comic Sans MS", 14), text_color="white"
+            self, text="Salida", font=Fonts.get_font(""), text_color="white"
         )
         text.grid(column=0, row=0, sticky="nsew")
 
