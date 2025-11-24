@@ -1,0 +1,23 @@
+/* Algoritmo de Euclides:
+    Máximo comun divisor entre dos numeros enteros > 0: a y b
+    Versión iterativa
+    Argumentos: int a0, b0
+*/
+func maxcd(int a0, int b0):
+    int a = a0; # Variable entera a
+    int b = b0; # Variable entera b
+    while (a != b):
+        if (a > b):
+            a = a - b;
+        else :
+            b = b - a;
+        endif
+    endwhile
+    return a;
+endfunc
+
+int x = 21;
+int y = 9;
+int m = maxcd(x, y);
+output m;
+    

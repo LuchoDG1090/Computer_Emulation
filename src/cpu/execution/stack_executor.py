@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from src.cpu.registers import RegisterFile
 from src.cpu.stack_ops import StackOperations
-from src.isa.isa import Opcodes
+from src.cpu.isa import Opcodes
 
 
 class StackExecutor:
