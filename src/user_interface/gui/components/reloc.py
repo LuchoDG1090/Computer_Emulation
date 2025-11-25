@@ -36,6 +36,9 @@ class RelocCodeFrame(ctk.CTkFrame):
     def __build_entry_text(self):
         self.text_entry = ctk.CTkTextbox(self, fg_color="#2b2b2b")
         self.text_entry.grid(row=1, column=0, sticky="nsew", padx=12)
+        self.text_entry.configure(
+            font = Fonts.get_font("")
+        )
 
     def __build_address_input(self):
         """Campo para especificar dirección base de carga"""

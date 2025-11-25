@@ -1,5 +1,6 @@
 """Funciones de control de ejecución del CPU"""
 
+import time
 from .compilation_registry import CompilationRegistry
 
 
@@ -90,3 +91,24 @@ def complete_execute(cpu, update_callback = None):
         print("Programa terminado")
 
         # return should_continue
+
+def tempo_execute(cpu, segundos = 5 ,update_callback = None):
+    ins = True
+    if not cpu.running:
+        cpu.running = True
+    while ins:
+        time.sleep(segundos)
+        try:
+            ins = cpu.step()
+
+            if update_callback:
+                update_callback(cpu.get_state())
+        except Exception as e:
+            cpu.running = False
+            print(f"Error en ejecución: {e}")
+            return False
+
+    if not ins:
+        cpu.running = False
+        print("Programa terminado")
+

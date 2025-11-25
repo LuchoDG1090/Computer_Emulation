@@ -50,7 +50,7 @@ class DinamicRandomAccessMemory(ctk.CTkFrame):
 
     def __load_memory_table(self):
         self.memory_textbox = ctk.CTkTextbox(
-            self, fg_color="#2b2b2b", font=Fonts.get_font("consolas")
+            self, fg_color="#2b2b2b", font=Fonts.get_font("")
         )
         self.memory_textbox.grid(column=0, row=1, sticky="nsew", padx=12, pady=(4, 4))
 

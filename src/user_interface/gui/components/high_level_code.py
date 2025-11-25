@@ -34,6 +34,9 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             fg_color = '#2b2b2b'
         )
         self.text_entry.grid(row = 1, column = 0, sticky = 'nsew', padx = 12)
+        self.text_entry.configure(
+            font = Fonts.get_font("")
+        )
 
     def __build_buttons(self):
         button_frame = ctk.CTkFrame(

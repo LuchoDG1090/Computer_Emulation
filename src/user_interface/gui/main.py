@@ -22,7 +22,7 @@ class Routes:
     REINICIAR_ICON_PATH = r"src\user_interface\gui\resources\restart.png"
     CLEAN_ICON_PATH = r"src\user_interface\gui\resources/clean.png"
 
-
+ctk.set_appearance_mode("dark")
 class MainFrame(ctk.CTk):
     def __init__(self):
         super().__init__()
