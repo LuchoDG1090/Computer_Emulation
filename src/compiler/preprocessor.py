@@ -88,19 +88,42 @@ class Preprocessor:
 
         self.processed_files.add(filename)
 
-        try:
-            with open(filename, 'r', encoding='utf-8') as f:
-                content = f.read()
-        except FileNotFoundError:
+        if not os.path.exists(filename):
             raise Exception(f"Archivo no encontrado: {filename}")
 
-        output_lines = []
+        # If .bin file — return raw bytes
+        if filename.lower().endswith('.bin'):
+            with open(filename, 'rb') as bf:
+                return bf.read()
+
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        produced = []  # elements are str or bytes
         for line in content.split('\n'):
             processed = self._process_line(line, base_dir)
             if processed is not None:
-                output_lines.append(processed)
+                produced.append(processed)
 
-        return '\n'.join(output_lines)
+        # If any produced element is bytes, assemble a bytes result with raw binary inserts
+        if any(isinstance(p, (bytes, bytearray)) for p in produced):
+            out_parts = []
+            for i, part in enumerate(produced):
+                next_part = produced[i+1] if i+1 < len(produced) else None
+
+                if isinstance(part, (bytes, bytearray)):
+                    out_parts.append(bytes(part))
+                    # Do not insert extra newlines around binary blocks to keep them verbatim
+                else:
+                    # encode text; add newline between text pieces (but not around binary)
+                    out_parts.append(part.encode('utf-8'))
+                    if isinstance(next_part, str):
+                        out_parts.append(b'\n')
+
+            return b''.join(out_parts)
+
+        # All text — join with newlines as before
+        return '\n'.join(map(str, produced))
 
     def _process_line(self, line, base_dir):
         lexer.input(line)
@@ -127,12 +150,41 @@ class Preprocessor:
 
     def _handle_include(self, filename, base_dir, system_file):
         search_dirs = self.include_paths if system_file else [base_dir] + self.include_paths
-
         for d in search_dirs:
             path = os.path.join(d, filename)
-            if os.path.exists(path):
-                return self._process_file(path, os.path.dirname(path))
 
+            # Prefer a binary counterpart (e.g., Foo.bin) if present — even
+            # when a text file with the included name exists. This enforces the
+            # teacher's requirement that included files be binary.
+            base, _ext = os.path.splitext(path)
+            bin_candidate = base + '.bin'
+            if os.path.exists(bin_candidate):
+                path = bin_candidate
+            elif not os.path.exists(path):
+                # If neither exact filename nor .bin exists, continue searching
+                # other include directories.
+                continue
+
+            if os.path.exists(path):
+                # If the file is a binary file (ends with .bin) or cannot be
+                # decoded as UTF-8, read it as bytes and include it verbatim
+                # into the preprocessed output so that includes become raw
+                # binary code in the result.
+                if path.lower().endswith('.bin'):
+                    with open(path, 'rb') as bf:
+                        raw = bf.read()
+                    # Return raw bytes for binary includes — inline verbatim
+                    return raw
+
+                # Otherwise treat as text and recurse into it
+                try:
+                    # Try opening in text mode. If decoding fails, fall back to
+                    # binary handling above.
+                    return self._process_file(path, os.path.dirname(path))
+                except UnicodeDecodeError:
+                    with open(path, 'rb') as bf:
+                        raw = bf.read()
+                    return raw
         raise Exception(f"Archivo incluido no encontrado: {filename}")
 
 
@@ -152,10 +204,17 @@ def preprocess_file_cli(input_path: str, output_dir: str) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     base_name = os.path.splitext(os.path.basename(input_path))[0]
-    output_file = os.path.join(output_dir, base_name + "_preprocessed.txt")
 
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(processed_code)
+    # If the processed result is bytes, write a binary output file. Otherwise
+    # write a text output (same behavior as before).
+    if isinstance(processed_code, (bytes, bytearray)):
+        output_file = os.path.join(output_dir, base_name + "_preprocessed.bin")
+        with open(output_file, 'wb') as f:
+            f.write(processed_code)
+    else:
+        output_file = os.path.join(output_dir, base_name + "_preprocessed.txt")
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(processed_code)
 
     return output_file
 
@@ -177,8 +236,15 @@ def main():
 
         if args.show:
             print("\n======= CÓDIGO PREPROCESADO =======\n")
-            with open(output_path, 'r', encoding='utf-8') as f:
-                print(f.read())
+            # If the preprocessed file is binary, show a short preview instead
+            # of trying to decode the whole thing as text.
+            if output_path.lower().endswith('.bin'):
+                with open(output_path, 'rb') as f:
+                    data = f.read(256)
+                print(f"<binary file: {len(data)} bytes shown (first 256 bytes)>\n", data)
+            else:
+                with open(output_path, 'r', encoding='utf-8') as f:
+                    print(f.read())
 
     except Exception as e:
         print(f"Error: {e}")

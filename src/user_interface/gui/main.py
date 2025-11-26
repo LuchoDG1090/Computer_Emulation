@@ -9,18 +9,19 @@ from src.user_interface.gui.components import main_func, top_menu
 
 
 class Routes:
-    LOGO_PATH = r"src\user_interface\gui\resources\logo_sin_fondo.png"
-    HOME_PATH = r"src\user_interface\gui\resources\home.png"
-    HELP_PATH = r"src\user_interface\gui\resources\help.png"
-    INFO_PATH = r"src\user_interface\gui\resources\information.png"
-    ACCESIBILITY_PATH = r"src\user_interface\gui\resources\accesibilidad.png"
-    COMPILE_ICON_PATH = r"src\user_interface\gui\resources\compilador.png"
-    UPLOAD_ICON_PATH = r"src\user_interface\gui\resources\upload.png"
-    ASSEMBLE_ICON_PATH = r"src\user_interface\gui\resources\assemble.png"
-    RELOC_ICON_PATH = r"src\user_interface\gui\resources\enlazar-cargar.png"
-    SIGUIENTE_ICON_PATH = r"src\user_interface\gui\resources\next.png"
-    REINICIAR_ICON_PATH = r"src\user_interface\gui\resources\restart.png"
-    CLEAN_ICON_PATH = r"src\user_interface\gui\resources/clean.png"
+    LOGO_PATH = r"src/user_interface/gui/resources/logo_sin_fondo.png"
+    HOME_PATH = r"src/user_interface/gui/resources/home.png"
+    HELP_PATH = r"src/user_interface/gui/resources/help.png"
+    INFO_PATH = r"src/user_interface/gui/resources/information.png"
+    ACCESIBILITY_PATH = r"src/user_interface/gui/resources/accesibilidad.png"
+    COMPILE_ICON_PATH = r"src/user_interface/gui/resources/compilador.png"
+    UPLOAD_ICON_PATH = r"src/user_interface/gui/resources/upload.png"
+    ASSEMBLE_ICON_PATH = r"src/user_interface/gui/resources/assemble.png"
+    RELOC_ICON_PATH = r"src/user_interface/gui/resources/enlazar-cargar.png"
+    SIGUIENTE_ICON_PATH = r"src/user_interface/gui/resources/next.png"
+    REINICIAR_ICON_PATH = r"src/user_interface/gui/resources/restart.png"
+    CLEAN_ICON_PATH = r"src/user_interface/gui/resources/clean.png"
+
 
 ctk.set_appearance_mode("dark")
 class MainFrame(ctk.CTk):
