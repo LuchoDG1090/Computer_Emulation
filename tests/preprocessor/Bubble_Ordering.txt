@@ -4,7 +4,7 @@
    Implementa bubble sort con arreglos, swaps y salida de resultados.
 */
 
-#include "Bubble_Ordering_func_.txt"
+#include "Bubble_Ordering_func_.bin"
 
 # Ejemplo de uso
 # Declaración e inicialización de un arreglo de 6 elementos

@@ -73,10 +73,13 @@ class MacroTable:
 
 
 class Preprocessor:
-    def __init__(self):
+    def __init__(self, prefer_text_for_bin: bool = False):
         self.macros = MacroTable()
         self.include_paths = ['.', 'includes']
         self.processed_files = set()
+        # When True, prefer a text (.txt) fallback for includes that point at
+        # a binary (.bin) sibling. If False, inline binary data verbatim.
+        self.prefer_text_for_bin = prefer_text_for_bin
 
     def preprocess_file(self, filename):
         self.processed_files.clear()
@@ -158,8 +161,34 @@ class Preprocessor:
             # teacher's requirement that included files be binary.
             base, _ext = os.path.splitext(path)
             bin_candidate = base + '.bin'
+            txt_candidate = base + '.txt'
+
+            # If the include explicitly names a .bin file, treat it as
+            # a binary include — inline it verbatim (don't prefer text)
+            if filename.lower().endswith('.bin'):
+                if os.path.exists(path):
+                    return self._inline_binary_file(path)
+                else:
+                    # explicit .bin requested but not found here; continue
+                    continue
+
+            # If the bin counterpart exists, and we prefer text, try to
+            # find a .txt fallback first (either alongside or inside backups).
             if os.path.exists(bin_candidate):
-                path = bin_candidate
+                if self.prefer_text_for_bin:
+                    # Look for .txt in the same search directory
+                    if os.path.exists(txt_candidate):
+                        path = txt_candidate
+                    else:
+                        # Look for a global backup copy if present
+                        bak = os.path.join(os.path.dirname(__file__), '..', '..', 'backups', 'preprocessor_txt', os.path.basename(txt_candidate))
+                        if os.path.exists(bak):
+                            path = bak
+                        else:
+                            # No .txt fallback — use the .bin
+                            path = bin_candidate
+                else:
+                    path = bin_candidate
             elif not os.path.exists(path):
                 # If neither exact filename nor .bin exists, continue searching
                 # other include directories.
@@ -171,10 +200,7 @@ class Preprocessor:
                 # into the preprocessed output so that includes become raw
                 # binary code in the result.
                 if path.lower().endswith('.bin'):
-                    with open(path, 'rb') as bf:
-                        raw = bf.read()
-                    # Return raw bytes for binary includes — inline verbatim
-                    return raw
+                    return self._inline_binary_file(path)
 
                 # Otherwise treat as text and recurse into it
                 try:
@@ -187,15 +213,20 @@ class Preprocessor:
                     return raw
         raise Exception(f"Archivo incluido no encontrado: {filename}")
 
+    def _inline_binary_file(self, path: str) -> bytes:
+        """Read a binary include and return its raw bytes."""
+        with open(path, 'rb') as bf:
+            return bf.read()
+
 
 # -------------------------------------------------------
 # NUEVA FUNCIÓN PARA EJECUCIÓN TIPO "PIPELINE"
 # -------------------------------------------------------
-def preprocess_file_cli(input_path: str, output_dir: str) -> str:
+def preprocess_file_cli(input_path: str, output_dir: str, prefer_text_for_bin: bool = True) -> str:
     if not os.path.isfile(input_path):
         raise FileNotFoundError(f"Archivo no encontrado: {input_path}")
 
-    pre = Preprocessor()
+    pre = Preprocessor(prefer_text_for_bin=prefer_text_for_bin)
     try:
         processed_code = pre.preprocess_file(input_path)
     except Exception as e:
@@ -226,12 +257,23 @@ def main():
     parser = argparse.ArgumentParser(description="Preprocesador de archivos con includes y macros")
     parser.add_argument("input", help="Ruta del archivo a preprocesar")
     parser.add_argument("--outdir", default="preprocessed", help="Directorio de salida")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--force-binary", action="store_true", help="Inline binary includes verbatim (no text fallback)")
+    group.add_argument("--prefer-text", action="store_true", help="Prefer text fallbacks for binary-capable includes (overrides default)")
     parser.add_argument("--show", action="store_true", help="Mostrar resultado por consola")
 
     args = parser.parse_args()
 
     try:
-        output_path = preprocess_file_cli(args.input, args.outdir)
+        # Default behavior: prefer binary includes (prefer_text_for_bin=False)
+        if args.prefer_text:
+            prefer_text = True
+        elif args.force_binary:
+            prefer_text = False
+        else:
+            prefer_text = False
+
+        output_path = preprocess_file_cli(args.input, args.outdir, prefer_text_for_bin=prefer_text)
         print(f"Preprocesado exitoso. Archivo generado: {output_path}")
 
         if args.show:

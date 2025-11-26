@@ -2,7 +2,7 @@
    Uso de arreglos planos (row-major) y funciones/while del lenguaje de alto nivel.
 */
 
-#include "Matrix_Multiplication_matmul.txt"ya
+#include "Matrix_Multiplication_matmul.bin"
 
 # Definición de dimensiones
 int rowsA = 3
@@ -15,7 +15,7 @@ int A[6]
 int B[8]
 int C[12]   # resultado 3x4
 
-# Inicializar A (3x2) fila por fila: [ [1,2], [3,4], [5,6] ]
+# Inicializar A (3x2) fila por fila: [ [1,2],2 [3,4], [5,6] ]
 A[0] = 1
 A[1] = 2
 A[2] = 3
