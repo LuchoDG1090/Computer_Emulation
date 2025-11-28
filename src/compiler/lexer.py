@@ -15,7 +15,8 @@ reserved = {
     'int': 'INT_TYPE', 'float': 'FLOAT_TYPE', 'string': 'STRING_TYPE',
     'bool': 'BOOL_TYPE', 'char': 'CHAR_TYPE', 'void': 'VOID_TYPE',
     'true': 'TRUE', 'false': 'FALSE',
-    'adt': 'ADT', 'endadt': 'ENDADT', 'private': 'PRIVATE', 'public': 'PUBLIC'
+    'adt': 'ADT', 'endadt': 'ENDADT', 'private': 'PRIVATE', 'public': 'PUBLIC',
+    'in': 'IN'
 }
 
 class MyLexer:
@@ -35,11 +36,11 @@ class MyLexer:
     # -------------------------------
     tokens = (
         'ID', 'INTEGER', 'FLOAT', 'STRING',
-        'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MOD', 'POWER', 'INCREMENT', 'DECREMENT',
+        'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MOD', 'INCREMENT', 'DECREMENT',
         'EQ', 'NEQ', 'LT', 'LE', 'GT', 'GE',
         'ASSIGN', 'AND', 'OR', 'NOT',
         'BIT_AND', 'BIT_OR', 'BIT_XOR', 'BIT_NOT', 'SHIFT_LEFT', 'SHIFT_RIGHT',
-        'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
+        'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET',
         'COMMA', 'COLON', 'SEMI', 'DOT', 'RANGE',
     ) + tuple(reserved.values())
 
@@ -102,7 +103,6 @@ class MyLexer:
     t_TIMES = r'\*'
     t_DIVIDE = r'/'
     t_MOD = r'%'
-    t_POWER = r'\*\*'
     t_INCREMENT = r'\+\+'
     t_DECREMENT = r'--'
     t_EQ = r'=='
@@ -124,8 +124,6 @@ class MyLexer:
     t_RPAREN = r'\)'
     t_LBRACKET = r'\['
     t_RBRACKET = r'\]'
-    t_LBRACE = r'\{'
-    t_RBRACE = r'\}'
     t_COMMA = r','
     t_COLON = r':'
     t_SEMI = r';'

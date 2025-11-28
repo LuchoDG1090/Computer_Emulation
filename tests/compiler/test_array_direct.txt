@@ -1,0 +1,6 @@
+# Test simple sin función - modificar array directo
+int nums[3];
+nums[0] = 10;
+output nums[0];
+nums[0] = 99;
+output nums[0];

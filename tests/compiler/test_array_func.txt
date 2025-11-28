@@ -1,0 +1,19 @@
+# Test simple de función con array
+func test(int arr[], int size):
+    int i = 0;
+    while (i < size):
+        arr[i] = i * 2;
+        i = i + 1;
+    endwhile
+endfunc
+
+int nums[5];
+int s = 5;
+
+test(nums, s);
+
+int j = 0;
+while (j < s):
+    output nums[j];
+    j = j + 1;
+endwhile

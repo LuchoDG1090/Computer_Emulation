@@ -1,0 +1,87 @@
+ORG 0
+MOVI R0, 3.5
+ST R0, [var_a_1]
+MOVI R0, 2.5
+ST R0, [var_b_2]
+LD R0, [var_a_1]
+PUSH R0
+LD R0, [var_b_2]
+POP R1
+FADD R0, R1, R0
+ST R0, [var_c_3]
+MOVI R0, STR_1
+OUTS R0, 0xFFFF0008
+LD R0, [var_a_1]
+OUT R0, 0xFFFF0008, 6
+MOVI R0, STR_2
+OUTS R0, 0xFFFF0008
+MOVI R0, STR_3
+OUTS R0, 0xFFFF0008
+LD R0, [var_b_2]
+OUT R0, 0xFFFF0008, 6
+MOVI R0, STR_4
+OUTS R0, 0xFFFF0008
+MOVI R0, STR_5
+OUTS R0, 0xFFFF0008
+LD R0, [var_c_3]
+OUT R0, 0xFFFF0008, 6
+MOVI R0, STR_6
+OUTS R0, 0xFFFF0008
+LD R0, [var_a_1]
+PUSH R0
+LD R0, [var_b_2]
+POP R1
+FSUB R0, R1, R0
+ST R0, [var_d_4]
+MOVI R0, STR_7
+OUTS R0, 0xFFFF0008
+LD R0, [var_d_4]
+OUT R0, 0xFFFF0008, 6
+MOVI R0, STR_8
+OUTS R0, 0xFFFF0008
+LD R0, [var_a_1]
+PUSH R0
+LD R0, [var_b_2]
+POP R1
+FMUL R0, R1, R0
+ST R0, [var_e_5]
+MOVI R0, STR_9
+OUTS R0, 0xFFFF0008
+LD R0, [var_e_5]
+OUT R0, 0xFFFF0008, 6
+MOVI R0, STR_10
+OUTS R0, 0xFFFF0008
+LD R0, [var_a_1]
+PUSH R0
+LD R0, [var_b_2]
+POP R1
+FDIV R0, R1, R0
+ST R0, [var_f_6]
+MOVI R0, STR_11
+OUTS R0, 0xFFFF0008
+LD R0, [var_f_6]
+OUT R0, 0xFFFF0008, 6
+MOVI R0, STR_12
+OUTS R0, 0xFFFF0008
+HALT
+
+var_a_1: DW 0
+var_b_2: DW 0
+var_c_3: DW 0
+STR_1: DB "a = ", 0
+STR_2: DB "\n", 0
+STR_3: DB "b = ", 0
+STR_4: DB "\n", 0
+STR_5: DB "c = a + b = ", 0
+STR_6: DB "\n", 0
+var_d_4: DW 0
+STR_7: DB "d = a - b = ", 0
+STR_8: DB "\n", 0
+var_e_5: DW 0
+STR_9: DB "e = a * b = ", 0
+STR_10: DB "\n", 0
+var_f_6: DW 0
+STR_11: DB "f = a / b = ", 0
+STR_12: DB "\n", 0
+__HEAP_PTR: DW __HEAP_START
+__HEAP_START: DW 0

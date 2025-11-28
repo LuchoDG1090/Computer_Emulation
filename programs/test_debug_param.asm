@@ -1,0 +1,19 @@
+ORG 0
+JMP __MAIN
+FUNC_debug:
+POP R14
+POP R0
+ST R0, [param_x_1]
+PUSH R14
+LD R0, [param_x_1]
+OUT R0, 0xFFFF0008
+RET
+__MAIN:
+MOVI R0, 42
+ST R0, [var_val_2]
+HALT
+
+param_x_1: DW 0
+var_val_2: DW 0
+__HEAP_PTR: DW __HEAP_START
+__HEAP_START: DW 0

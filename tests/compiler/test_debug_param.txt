@@ -1,0 +1,7 @@
+# Test para depuración - solo verificar que el valor se pasa correctamente
+func debug(int x):
+    output x;
+endfunc
+
+int val = 42;
+debug(val);

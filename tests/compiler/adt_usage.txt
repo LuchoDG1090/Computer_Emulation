@@ -1,0 +1,44 @@
+# ADT comprehensive test: definition, instance usage, visibility error
+adt Point():
+    private:
+        int secret;
+    public:
+        int x;
+        int y;
+
+        func setSecret(int value):
+            secret = value;
+        endfunc
+
+        func printSecret():
+            output secret;
+        endfunc
+
+    private:
+        int hola;
+    public:
+        func sethola(int value):
+            hola = value;
+        endfunc
+
+        func printhola():
+            output hola;
+        endfunc
+
+endadt
+
+Point p;
+
+p.x = 10;
+p.y = 20;
+output p.x;
+output p.y;
+
+p.setSecret(40);
+p.printSecret();
+
+p.sethola(70);
+p.printhola();
+
+# Intento ilegal de acceso a miembro privado (debe disparar error y emitir 0)
+# output p.secret;

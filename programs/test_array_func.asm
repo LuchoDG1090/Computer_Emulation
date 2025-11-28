@@ -1,0 +1,98 @@
+ORG 0
+JMP __MAIN
+FUNC_test:
+POP R14
+POP R0
+ST R0, [param_arr_1]
+POP R0
+ST R0, [param_size_2]
+PUSH R14
+MOVI R0, 0
+ST R0, [var_i_3]
+L7:
+LD R0, [var_i_3]
+PUSH R0
+LD R0, [param_size_2]
+POP R1
+CMP R1, R0
+JS L4
+MOVI R0, 0
+JMP L5
+L4:
+MOVI R0, 1
+L5:
+MOVI R1, 0
+CMP R0, R1
+JZ L8
+LD R0, [var_i_3]
+MOVI R1, 8
+MUL R1, R0, R1
+LD R2, [param_arr_1]
+ADD R15, R2, R1
+PUSH R15
+LD R0, [var_i_3]
+PUSH R0
+MOVI R0, 2
+POP R1
+MUL R0, R1, R0
+POP R15
+ST R0, R15, 0
+LD R0, [var_i_3]
+PUSH R0
+MOVI R0, 1
+POP R1
+ADD R0, R1, R0
+ST R0, [var_i_3]
+JMP L7
+L8:
+RET
+__MAIN:
+MOVI R0, 5
+ST R0, [var_s_10]
+LD R0, [var_s_10]
+PUSH R0
+MOVI R0, arr_nums_9
+PUSH R0
+CALL FUNC_test
+MOVI R0, 0
+ST R0, [var_j_11]
+L15:
+LD R0, [var_j_11]
+PUSH R0
+LD R0, [var_s_10]
+POP R1
+CMP R1, R0
+JS L12
+MOVI R0, 0
+JMP L13
+L12:
+MOVI R0, 1
+L13:
+MOVI R1, 0
+CMP R0, R1
+JZ L16
+LD R0, [var_j_11]
+MOVI R1, 8
+MUL R1, R0, R1
+MOVI R2, arr_nums_9
+ADD R15, R2, R1
+LD R0, R15, 0
+OUT R0, 0xFFFF0008
+LD R0, [var_j_11]
+PUSH R0
+MOVI R0, 1
+POP R1
+ADD R0, R1, R0
+ST R0, [var_j_11]
+JMP L15
+L16:
+HALT
+
+param_arr_1: DW 0
+param_size_2: DW 0
+var_i_3: DW 0
+arr_nums_9: DW 0 0 0 0 0
+var_s_10: DW 0
+var_j_11: DW 0
+__HEAP_PTR: DW __HEAP_START
+__HEAP_START: DW 0

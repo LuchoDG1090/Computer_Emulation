@@ -1,0 +1,19 @@
+ORG 0
+MOVI R0, 3.14
+PUSH R0
+MOVI R0, 5
+POP R1
+FDIV R0, R1, R0
+PUSH R0
+MOVI R0, 10
+POP R1
+FMUL R0, R1, R0
+ST R0, [var_y_1]
+MOVI R0, 1
+ST R0, [var_flag_2]
+HALT
+
+var_y_1: DW 0
+var_flag_2: DW 0
+__HEAP_PTR: DW __HEAP_START
+__HEAP_START: DW 0

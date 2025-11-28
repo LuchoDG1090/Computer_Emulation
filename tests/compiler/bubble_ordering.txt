@@ -26,24 +26,33 @@ func bubble_sort(int arr[], int n):
 endfunc
 
 # Ejemplo de uso
-# Declaración e inicialización de un arreglo de 6 elementos
-int n = 6;
-int arr[6];
-arr[0] = 64;
-arr[1] = 34;
-arr[2] = 25;
-arr[3] = 12;
-arr[4] = 22;
-arr[5] = 11;
+output "Ingrese la cantidad de elementos:";
+int n = 0;
+input n;
+
+# Declaramos un arreglo con capacidad dinámica
+int arr[n];
+
+output "Ingrese los elementos separados por espacio:";
+int k = 0;
+int val = 0;
+while (k < n):
+    input val;
+    arr[k] = val;
+    k = k + 1;
+endwhile
 
 # Ejecutar el ordenamiento
 bubble_sort(arr, n);
 
 # Imprimir arreglo ordenado
-int k = 0;
+output "Arreglo ordenado:";
+k = 0;
 while (k < n):
-    output arr[k];
+    print(arr[k]);
+    output " ";
     k = k + 1;
 endwhile
+output "\n";
 
 
