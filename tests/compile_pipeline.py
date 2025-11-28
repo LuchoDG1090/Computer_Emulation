@@ -34,7 +34,11 @@ def compile_file(input_path: str, output_dir: str) -> str:
     # 3. Parser
     parser = MyParser(MyLexer.tokens)
     try:
-        asm_code = parser.parse(preprocessed_code, lexer_instance.lexer)
+        result = parser.parse(preprocessed_code, lexer_instance.lexer)
+        if result:
+            asm_code, ast = result
+        else:
+            asm_code = None
     except Exception as e:
         raise RuntimeError(f"Error en parser: {e}")
 

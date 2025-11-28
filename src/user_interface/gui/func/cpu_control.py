@@ -74,8 +74,6 @@ def complete_execute(cpu, update_callback = None):
     if not cpu.running:
         cpu.running = True
     while ins:
-        ins = cpu.step()
-
         try:
             ins = cpu.step()
 

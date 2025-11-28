@@ -22,6 +22,11 @@ class AssemblyCodeFrame(ctk.CTkFrame):
         self.__build_entry_text()
         self.__build_buttons()
 
+    def set_text(self, text):
+        """Establece el texto en el área de código assembly"""
+        self.text_entry.delete("1.0", "end")
+        self.text_entry.insert("1.0", text)
+
     def __build_text(self):
         text = ctk.CTkLabel(
             self, text="Código assembly", font=Fonts.get_font(""), text_color="white"

@@ -1,7 +1,13 @@
 import customtkinter as ctk
+import tempfile
+import os
 from PIL import Image
 from src.user_interface.gui.func import high_level_code as func
+from src.compiler.preprocessor import Preprocessor
+from src.compiler.lexer import MyLexer
+from src.compiler.parser import MyParser
 from .design_variable_elements import Fonts
+from .compiler_phases_window import CompilerPhasesWindow
 
 class HighLevelCodeFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color = '#0C1826', **kwargs):
@@ -14,10 +20,93 @@ class HighLevelCodeFrame(ctk.CTkFrame):
         self.compile_icon = kwargs.get('compile_icon', '')
         self.upload_icon = kwargs.get('upload_icon', '')
         self.clean_icon = kwargs.get('clean_icon', '')
+        self.assembly_callback = None
+        self.compiler_window = None
 
         self.__build_text()
         self.__build_entry_text()
         self.__build_buttons()
+
+    def set_assembly_callback(self, callback):
+        self.assembly_callback = callback
+
+    def open_compiler_phases(self):
+        code = self.text_entry.get("0.0", "end")
+        if not code.strip():
+            return
+        
+        try:
+            # 1. Preprocesar
+            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.txt') as tmp:
+                tmp.write(code)
+                tmp_path = tmp.name
+            
+            preprocessor = Preprocessor()
+            preprocessed_code = preprocessor.preprocess_file(tmp_path)
+            os.unlink(tmp_path)
+
+            # 2. Lexer (Generar lista de tokens para UI y para Parser)
+            lexer = MyLexer()
+            lexer.build()
+            lexer.reset_counters()
+            lexer.lexer.input(preprocessed_code)
+            
+            tokens_list = []
+            while True:
+                tok = lexer.lexer.token()
+                if not tok:
+                    break
+                tokens_list.append(tok)
+            
+            lexer_stats = {
+                'num_count': lexer.num_count,
+                'string_count': lexer.string_count,
+                'id_count': lexer.id_count,
+                'kw_count': lexer.kw_count
+            }
+
+            # 3. Parser (ASM Generator + AST)
+            # Necesitamos un iterador de tokens para el parser, ya que consumimos el lexer original
+            class ListLexer:
+                def __init__(self, tokens):
+                    self.tokens = iter(tokens)
+                    self.lineno = 1 # Dummy
+                    self.lexpos = 0 # Dummy
+                def token(self):
+                    try:
+                        return next(self.tokens)
+                    except StopIteration:
+                        return None
+                def input(self, data): pass
+
+            token_iterator = ListLexer(tokens_list)
+            parser = MyParser(MyLexer.tokens)
+            
+            # Pasamos el iterador personalizado
+            result = parser.parse(preprocessed_code, lexer=token_iterator)
+            
+            asm_code = ""
+            ast_tree = None
+            
+            if result:
+                asm_code, ast_tree = result
+                if self.assembly_callback:
+                    self.assembly_callback(asm_code)
+            else:
+                if self.assembly_callback:
+                    self.assembly_callback("; Error en compilación")
+
+            # 4. Abrir ventana de fases con datos pre-calculados
+            if self.compiler_window is None or not self.compiler_window.winfo_exists():
+                self.compiler_window = CompilerPhasesWindow(self, preprocessed_code, tokens_list, lexer_stats, ast_tree)
+            else:
+                self.compiler_window.update_data(preprocessed_code, tokens_list, lexer_stats, ast_tree)
+
+        except Exception as e:
+            if self.assembly_callback:
+                self.assembly_callback(f"; Error: {str(e)}")
+            # Aún así intentamos abrir la ventana para mostrar hasta donde llegó (opcional)
+            # CompilerPhasesWindow(self, preprocessed_code if 'preprocessed_code' in locals() else "", [], {}, None)
 
     def __build_text(self):
         text = ctk.CTkLabel(
@@ -62,7 +151,8 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             fg_color='#4C44AC',
             text_color='white',
             corner_radius=50,
-            font=Fonts.get_font("")
+            font=Fonts.get_font(""),
+            command=self.open_compiler_phases
         )
         boton_compilar.grid(row = 0, column = 0)
 

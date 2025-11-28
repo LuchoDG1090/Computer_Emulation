@@ -71,6 +71,9 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             funcion_set=self.reloc_code.set_text,
         )
         assembly_frame.grid(column=0, row=1, sticky="nsew", pady=12)
+        
+        # Conectar el callback de compilación para actualizar el frame de assembly
+        high_level_code_section.set_assembly_callback(assembly_frame.set_text)
 
         frame_first_column.grid(
             column=0, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)

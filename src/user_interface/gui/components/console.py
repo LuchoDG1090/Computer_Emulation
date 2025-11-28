@@ -17,6 +17,7 @@ class ConsoleFrame(ctk.CTkFrame):
         self.input_type = None
         self.input_result = None
         self.input_start_pos = None
+        self.input_buffer = []
 
         self.__build_title()
         self.__build_console()
@@ -68,9 +69,17 @@ class ConsoleFrame(ctk.CTkFrame):
                 self.input_result = 0
         elif self.input_type == "int":
             try:
-                self.input_result = int(user_input.strip())
+                parts = user_input.strip().split()
+                if not parts:
+                    raise ValueError
+                
+                values = [int(x) for x in parts]
+                self.input_result = values[0]
+                
+                if len(values) > 1:
+                    self.input_buffer.extend(values[1:])
             except ValueError:
-                messagebox.showerror("Error", "Debe ingresar un número válido")
+                messagebox.showerror("Error", "Debe ingresar números válidos")
                 self.console_textbox.delete(self.input_start_pos, "end")
                 return "break"
         elif self.input_type == "line":
@@ -123,6 +132,9 @@ class ConsoleFrame(ctk.CTkFrame):
 
     def request_int(self) -> int:
         """Solicita un entero del usuario"""
+        if self.input_buffer:
+            return self.input_buffer.pop(0)
+
         self.input_type = "int"
         self.input_result = None
         self.waiting_for_input = True
@@ -178,3 +190,4 @@ class ConsoleFrame(ctk.CTkFrame):
         self.waiting_for_input = False
         self.input_result = None
         self.input_start_pos = None
+        self.input_buffer = []

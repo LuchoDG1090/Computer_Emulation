@@ -31,6 +31,7 @@ class MainFrame(ctk.CTk):
         self.width = self.winfo_screenwidth()
         self.height = self.winfo_screenheight()
         self.geometry(f"{self.width}x{self.height}")
+        self.after(0, lambda: self.state('zoomed'))
         # Memoria de 1 MB para soportar programas más grandes
         self.memory = Memory(1024 * 1024)
         self.cpu = CPU(1024 * 1024, memory=self.memory)

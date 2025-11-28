@@ -88,7 +88,7 @@ class MyParser:
     
     def p_program(self, p):
         """program : statements"""
-        code = p[1]
+        code, ast = p[1]
         
         # Añadir Puntero al Heap
         self.data_section.append("__HEAP_PTR: DW __HEAP_START")
@@ -97,7 +97,7 @@ class MyParser:
         data_section_str = "\n".join(self.data_section)
         
         if 'FUNC_' not in code:
-             p[0] = f"ORG 0\n{code}\nHALT\n\n{data_section_str}"
+             p[0] = (f"ORG 0\n{code}\nHALT\n\n{data_section_str}", {"type": "Program", "body": ast})
              return
 
         # Separar funciones del código principal
@@ -121,15 +121,24 @@ class MyParser:
         func_section = "\n".join(functions)
         main_section = "\n".join(main_code)
         
-        p[0] = f"ORG 0\nJMP __MAIN\n{func_section}\n__MAIN:\n{main_section}\nHALT\n\n{data_section_str}"
+        p[0] = (f"ORG 0\nJMP __MAIN\n{func_section}\n__MAIN:\n{main_section}\nHALT\n\n{data_section_str}", {"type": "Program", "body": ast})
 
     def p_statements(self, p):
         """statements : statement statements
                       | statement"""
         if len(p) == 3:
-            p[0] = f"{p[1]}\n{p[2]}"
+            s1_code, s1_ast = p[1]
+            s2_code, s2_ast = p[2]
+            
+            if isinstance(s2_ast, list):
+                final_ast = [s1_ast] + s2_ast
+            else:
+                final_ast = [s1_ast, s2_ast]
+                
+            p[0] = (f"{s1_code}\n{s2_code}", final_ast)
         else:
-            p[0] = p[1]
+            s1_code, s1_ast = p[1]
+            p[0] = (s1_code, [s1_ast])
 
     # ==========================================================================
     # 5. SENTENCIAS
@@ -151,11 +160,15 @@ class MyParser:
                      | continue_stmt
                      | adt_decl"""
         if p[1] is None:
-            p[0] = ""
-        elif isinstance(p[1], tuple): # Manejar tupla func_decl (nombre, código)
-            p[0] = p[1][1]
+            p[0] = ("", None)
+        elif isinstance(p[1], tuple):
+            # Handle expression tuple (code, type, ast)
+            if len(p[1]) == 3:
+                p[0] = (p[1][0], p[1][2])
+            else:
+                p[0] = p[1]
         else:
-            p[0] = p[1]
+            p[0] = (p[1], None)
 
     # ==========================================================================
     # 2. DECLARACIONES
@@ -183,8 +196,9 @@ class MyParser:
             }
             self.data_section.append(f"{label}: DW 0")
             expr = p[4]
-            expr_code = expr[0] if isinstance(expr, tuple) else expr
-            p[0] = f"{expr_code}\nST R0, [{label}]"
+            expr_code = expr[0]
+            expr_ast = expr[2]
+            p[0] = (f"{expr_code}\nST R0, [{label}]", {"type": "Declaration", "var_type": var_type, "name": name, "init": expr_ast})
             return
 
         # Declaración de instancia TDA (el tipo existe en type_table)
@@ -217,13 +231,14 @@ class MyParser:
             }
             # Añadir todas las líneas de miembros a data_section
             self.data_section.extend(data_lines)
-            p[0] = ""  # Las declaraciones no emiten código en tiempo de ejecución
+            p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
             return
 
         # Declaración de array
         if is_array_decl:
             size_expr = p[4]
-            size_code = size_expr[0] if isinstance(size_expr, tuple) else size_expr
+            size_code = size_expr[0]
+            size_ast = size_expr[2]
             base_label = self._new_label(f"arr_{name}")
             
             # Comprobar si el tamaño es un literal entero estático (optimización)
@@ -231,6 +246,8 @@ class MyParser:
             import re
             match = re.match(r"MOVI R0, (\d+)", size_code)
             
+            ast_node = {"type": "ArrayDeclaration", "var_type": var_type, "name": name, "size": size_ast}
+
             if match:
                 # Asignación estática
                 size = int(match.group(1))
@@ -244,7 +261,7 @@ class MyParser:
                 }
                 words = ' '.join(['0' for _ in range(size)])
                 self.data_section.append(f"{base_label}: DW {words}")
-                p[0] = ""
+                p[0] = ("", ast_node)
             else:
                 # Asignación dinámica
                 self.symbol_table[name] = {
@@ -268,7 +285,7 @@ class MyParser:
                 ADD R1, R1, R0
                 ST R1, [__HEAP_PTR]
                 """
-                p[0] = alloc_code
+                p[0] = (alloc_code, ast_node)
         else:
             label = self._new_label(f"var_{name}")
             self.symbol_table[name] = {
@@ -278,7 +295,7 @@ class MyParser:
                 'is_adt': False
             }
             self.data_section.append(f"{label}: DW 0")
-            p[0] = ""
+            p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
 
     # ==========================================================================
     # 3. TIPOS DE DATOS
@@ -320,13 +337,17 @@ class MyParser:
         expr1 = p[1]
         expr2 = p[3]
         
-        code1 = expr1[0] if isinstance(expr1, tuple) else expr1
-        type1 = expr1[1] if isinstance(expr1, tuple) else 'int'
+        code1 = expr1[0]
+        type1 = expr1[1]
+        ast1 = expr1[2]
         
-        code2 = expr2[0] if isinstance(expr2, tuple) else expr2
-        type2 = expr2[1] if isinstance(expr2, tuple) else 'int'
+        code2 = expr2[0]
+        type2 = expr2[1]
+        ast2 = expr2[2]
         
         is_float = (type1 == 'float' or type2 == 'float')
+        
+        ast_node = {"type": "BinaryOp", "op": op, "left": ast1, "right": ast2}
         
         # Diccionario para operaciones aritméticas y bitwise simples
         simple_ops = {
@@ -342,10 +363,10 @@ class MyParser:
         if op in simple_ops:
             if is_float and op in float_ops:
                 asm_op = float_ops[op]
-                p[0] = (f"{code1}\nPUSH R0\n{code2}\nPOP R1\n{asm_op} R0, R1, R0", 'float')
+                p[0] = (f"{code1}\nPUSH R0\n{code2}\nPOP R1\n{asm_op} R0, R1, R0", 'float', ast_node)
             else:
                 asm_op = simple_ops[op]
-                p[0] = (f"{code1}\nPUSH R0\n{code2}\nPOP R1\n{asm_op} R0, R1, R0", 'int')
+                p[0] = (f"{code1}\nPUSH R0\n{code2}\nPOP R1\n{asm_op} R0, R1, R0", 'int', ast_node)
             return
 
         # Lógica de comparación
@@ -375,7 +396,7 @@ class MyParser:
         elif op in comparisons:
              compare_logic += comparisons[op][0]
 
-        p[0] = (f"{code1}\nPUSH R0\n{code2}\nPOP R1\n{compare_logic}\nMOVI R0, 0\nJMP {lbl_end}\n{lbl_true}:\nMOVI R0, 1\n{lbl_end}:", 'bool')
+        p[0] = (f"{code1}\nPUSH R0\n{code2}\nPOP R1\n{compare_logic}\nMOVI R0, 0\nJMP {lbl_end}\n{lbl_true}:\nMOVI R0, 1\n{lbl_end}:", 'bool', ast_node)
 
     def p_expression_unary(self, p):
         """expression : MINUS expression
@@ -385,38 +406,34 @@ class MyParser:
                       | DECREMENT expression"""
         op = p[1]
         expr = p[2]
-        code = expr[0] if isinstance(expr, tuple) else expr
-        type_ = expr[1] if isinstance(expr, tuple) else 'int'
+        code = expr[0]
+        type_ = expr[1]
+        ast = expr[2]
+        
+        ast_node = {"type": "UnaryOp", "op": op, "operand": ast}
         
         if op == '-':
             # Negar: 0 - R0
             if type_ == 'float':
-                # FSUB 0 - R0? No, necesitamos 0.0
-                # O simplemente multiplicar por -1.0?
-                # O usar FSUB con un registro cero?
-                # Asumamos que podemos cargar 0.0 y restar.
-                # Pero no tenemos una forma rápida de cargar 0.0 sin un literal.
-                # Hack: MOVI R1, 0.0 -> FSUB R1, R0, R0 (R0 = 0 - R0)
-                # Espera, FSUB dest, src1, src2 -> dest = src1 - src2
-                p[0] = (f"{code}\nMOVI R1, 0.0\nFSUB R0, R1, R0", 'float')
+                p[0] = (f"{code}\nMOVI R1, 0.0\nFSUB R0, R1, R0", 'float', ast_node)
             else:
-                p[0] = (f"{code}\nMOVI R1, 0\nSUB R0, R1, R0", 'int')
+                p[0] = (f"{code}\nMOVI R1, 0\nSUB R0, R1, R0", 'int', ast_node)
         elif op == '!':
             lbl_true = self.get_new_label()
             lbl_end = self.get_new_label()
-            p[0] = (f"{code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_true}\nMOVI R0, 0\nJMP {lbl_end}\n{lbl_true}:\nMOVI R0, 1\n{lbl_end}:", 'bool')
+            p[0] = (f"{code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_true}\nMOVI R0, 0\nJMP {lbl_end}\n{lbl_true}:\nMOVI R0, 1\n{lbl_end}:", 'bool', ast_node)
         elif op == '~':
-            p[0] = (f"{code}\nNOT R0, R0, R0", 'int')
+            p[0] = (f"{code}\nNOT R0, R0, R0", 'int', ast_node)
         elif op == '++':
             if type_ == 'float':
-                 p[0] = (f"{code}\nMOVI R1, 1.0\nFADD R0, R0, R1", 'float')
+                 p[0] = (f"{code}\nMOVI R1, 1.0\nFADD R0, R0, R1", 'float', ast_node)
             else:
-                 p[0] = (f"{code}\nMOVI R1, 1\nADD R0, R0, R1", 'int')
+                 p[0] = (f"{code}\nMOVI R1, 1\nADD R0, R0, R1", 'int', ast_node)
         elif op == '--':
             if type_ == 'float':
-                 p[0] = (f"{code}\nMOVI R1, 1.0\nFSUB R0, R0, R1", 'float')
+                 p[0] = (f"{code}\nMOVI R1, 1.0\nFSUB R0, R0, R1", 'float', ast_node)
             else:
-                 p[0] = (f"{code}\nMOVI R1, 1\nSUB R0, R0, R1", 'int')
+                 p[0] = (f"{code}\nMOVI R1, 1\nSUB R0, R0, R1", 'int', ast_node)
 
     def p_expression_group(self, p):
         """expression : LPAREN expression RPAREN"""
@@ -427,9 +444,9 @@ class MyParser:
                       | FLOAT"""
         val = p[1]
         if isinstance(val, float):
-             p[0] = (f"MOVI R0, {val}", 'float')
+             p[0] = (f"MOVI R0, {val}", 'float', {"type": "Literal", "value": val})
         else:
-             p[0] = (f"MOVI R0, {val}", 'int')
+             p[0] = (f"MOVI R0, {val}", 'int', {"type": "Literal", "value": val})
 
     def p_expression_id(self, p):
         """expression : ID
@@ -442,10 +459,11 @@ class MyParser:
 
         if is_array_access:
             index_expr = p[3]
-            index_code = index_expr[0] if isinstance(index_expr, tuple) else index_expr
-            p[0] = (self._generate_array_access(var_name, index_code, p), var_type)
+            index_code = index_expr[0]
+            index_ast = index_expr[2]
+            p[0] = (self._generate_array_access(var_name, index_code, p), var_type, {"type": "ArrayAccess", "array": var_name, "index": index_ast})
         else:
-            p[0] = (self._generate_var_access(var_name, p), var_type)
+            p[0] = (self._generate_var_access(var_name, p), var_type, {"type": "Identifier", "name": var_name})
 
     def p_expression_member(self, p):
         """expression : ID DOT ID"""
@@ -454,35 +472,35 @@ class MyParser:
         
         if obj not in self.symbol_table:
             self._error(f"Instancia TDA '{obj}' no declarada", p)
-            p[0] = ("MOVI R0, 0", 'int')
+            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
             return
             
         inst = self.symbol_table[obj]
         if not (isinstance(inst, dict) and inst.get('is_adt')):
             self._error(f"'{obj}' no es una instancia TDA", p)
-            p[0] = ("MOVI R0, 0", 'int')
+            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
             return
             
         members = inst.get('members', {})
         if member not in members:
             self._error(f"Miembro '{member}' no encontrado en instancia TDA '{obj}'", p)
-            p[0] = ("MOVI R0, 0", 'int')
+            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
             return
             
         meta = members[member]
         if meta.get('visibility') == 'private' and self.current_context is None:
             self._error(f"Acceso ilegal a miembro privado '{member}' de '{obj}'", p)
-            p[0] = ("MOVI R0, 0", 'int')
+            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
             return
             
-        p[0] = (f"LD R0, [{meta['label']}]", meta.get('type', 'int'))
+        p[0] = (f"LD R0, [{meta['label']}]", meta.get('type', 'int'), {"type": "MemberAccess", "object": obj, "member": member})
 
     def p_expression_func_call(self, p):
         """expression : func_call"""
         # func_call devuelve cadena de código. Necesitamos inferir el tipo.
         # Por ahora, asumir 'int' a menos que rastreemos tipos de retorno de funciones.
         # TODO: Rastrear tipos de retorno de funciones en tabla de símbolos.
-        p[0] = (p[1], 'int')
+        p[0] = (p[1][0], 'int', p[1][1])
 
     def p_expression_string(self, p):
         """expression : STRING"""
@@ -496,12 +514,13 @@ class MyParser:
         self.data_section.append(f'{str_label}: DB "{string_content}", 0')
         
         # Devolver código para cargar dirección de cadena en R0
-        p[0] = (f"MOVI R0, {str_label}", 'string')
+        p[0] = (f"MOVI R0, {str_label}", 'string', {"type": "Literal", "value": string_content})
 
     def p_expression_bool(self, p):
         """expression : TRUE
                       | FALSE"""
-        p[0] = ("MOVI R0, 1" if p[1] == 'true' else "MOVI R0, 0", 'bool')
+        val = True if p[1] == 'true' else False
+        p[0] = ("MOVI R0, 1" if val else "MOVI R0, 0", 'bool', {"type": "Literal", "value": val})
 
     # Lista de parámetros (restaurar reglas perdidas)
     def p_param_list_opt(self, p):
@@ -534,10 +553,11 @@ class MyParser:
                        | RETURN SEMI"""
         if len(p) == 4:
             expr = p[2]
-            expr_code = expr[0] if isinstance(expr, tuple) else expr
-            p[0] = f"{expr_code}\nRET" # Resultado en R0
+            expr_code = expr[0]
+            expr_ast = expr[2]
+            p[0] = (f"{expr_code}\nRET", {"type": "Return", "value": expr_ast}) # Resultado en R0
         else:
-            p[0] = "RET"
+            p[0] = ("RET", {"type": "Return", "value": None})
 
     def p_func_call_stmt(self, p):
         """func_call_stmt : func_call SEMI"""
@@ -552,36 +572,38 @@ class MyParser:
             func_name = p[1]
             args = p[3] if p[3] else []
             
+            ast_node = {"type": "Call", "function": func_name, "args": [arg[2] for arg in args]}
+
             # Función especial incorporada 'print' para imprimir sin nueva línea
             if func_name == 'print':
                 if not args:
-                    p[0] = ""
+                    p[0] = ("", ast_node)
                     return
                 
                 # Solo soportar 1 argumento por ahora
-                arg_code, arg_type = args[0]
+                arg_code, arg_type, arg_ast = args[0]
                 
                 # Si es una cadena
                 if arg_type == 'string':
-                     p[0] = f"{arg_code}\nOUTS R0, 0xFFFF0008" # Las cadenas no fuerzan nueva línea de todos modos
+                     p[0] = (f"{arg_code}\nOUTS R0, 0xFFFF0008", ast_node)
                 elif arg_type == 'float':
                      # Float sin nueva línea: func=6 (subop=3)
-                     p[0] = f"{arg_code}\nOUT R0, 0xFFFF0008, 6"
+                     p[0] = (f"{arg_code}\nOUT R0, 0xFFFF0008, 6", ast_node)
                 else:
                      # Int sin nueva línea: func=4 (subop=2)
-                     p[0] = f"{arg_code}\nOUT R0, 0xFFFF0008, 4"
+                     p[0] = (f"{arg_code}\nOUT R0, 0xFFFF0008, 4", ast_node)
                 return
 
             # Construir código de empuje de argumentos - empujar en orden inverso para que el primer arg esté arriba
             args_code = ""
             if args:
-                for arg_code, arg_type in reversed(args):
+                for arg_code, arg_type, arg_ast in reversed(args):
                     # Asegurar que arg_code termina con nueva línea
                     if not arg_code.endswith('\n'):
                         arg_code += '\n'
                     args_code += f"{arg_code}PUSH R0\n"
             
-            p[0] = f"{args_code}CALL FUNC_{func_name}"
+            p[0] = (f"{args_code}CALL FUNC_{func_name}", ast_node)
             
         else:
             # Llamada a método: obj.method(args)
@@ -589,15 +611,17 @@ class MyParser:
             method_name = p[3]
             args = p[5] if p[5] else []
             
+            ast_node = {"type": "MethodCall", "object": obj_name, "method": method_name, "args": [arg[2] for arg in args]}
+            
             if obj_name not in self.symbol_table:
                 self._error(f"Objeto '{obj_name}' no declarado", p)
-                p[0] = ""
+                p[0] = ("", ast_node)
                 return
             
             obj_entry = self.symbol_table[obj_name]
             if not obj_entry.get('is_adt'):
                 self._error(f"'{obj_name}' no es una instancia TDA", p)
-                p[0] = ""
+                p[0] = ("", ast_node)
                 return
             
             adt_type = obj_entry['type']
@@ -605,13 +629,13 @@ class MyParser:
             
             if not adt_info:
                 self._error(f"Tipo TDA desconocido '{adt_type}'", p)
-                p[0] = ""
+                p[0] = ("", ast_node)
                 return
             
             methods = adt_info.get('methods', {})
             if method_name not in methods:
                 self._error(f"Método '{method_name}' no encontrado en TDA '{adt_type}'", p)
-                p[0] = ""
+                p[0] = ("", ast_node)
                 return
             
             method_info = methods[method_name]
@@ -621,14 +645,14 @@ class MyParser:
                 # Permitir si dentro del mismo contexto TDA
                 if self.current_context != adt_type:
                     self._error(f"Acceso ilegal a método privado '{method_name}' de '{adt_type}'", p)
-                    p[0] = ""
+                    p[0] = ("", ast_node)
                     return
             
             # Preparar argumentos
             # Empujar args en orden inverso
             args_code = ""
             if args:
-                for arg_code, arg_type in reversed(args):
+                for arg_code, arg_type, arg_ast in reversed(args):
                     if not arg_code.endswith('\n'):
                         arg_code += '\n'
                     args_code += f"{arg_code}PUSH R0\n"
@@ -638,7 +662,7 @@ class MyParser:
             this_code = f"MOVI R0, {obj_label}\nPUSH R0\n"
             
             mangled_label = method_info['label']
-            p[0] = f"{args_code}{this_code}CALL {mangled_label}"
+            p[0] = (f"{args_code}{this_code}CALL {mangled_label}", ast_node)
 
     # ==========================================================================
     # 6. FUNCIONES
@@ -646,7 +670,7 @@ class MyParser:
     def p_func_decl(self, p):
         """func_decl : func_start statements ENDFUNC"""
         func_name, params, param_setup, param_names, original_name = p[1]
-        body_code = p[2]
+        body_code, body_ast = p[2]
         
         result = f"FUNC_{func_name}:\n{param_setup}{body_code}\nRET"
         
@@ -655,7 +679,8 @@ class MyParser:
             if pname in self.symbol_table:
                 del self.symbol_table[pname]
         
-        p[0] = (original_name, result)
+        ast_node = {"type": "FunctionDecl", "name": original_name, "params": params, "body": body_ast}
+        p[0] = (result, ast_node)
     
     def p_func_start(self, p):
         """func_start : FUNC ID LPAREN param_list_opt RPAREN COLON"""
@@ -741,9 +766,10 @@ class MyParser:
               | expression"""
         # Siempre usar el resultado de la expresión (que maneja búsqueda de ID vía _generate_var_access)
         expr = p[1]
-        expr_code = expr[0] if isinstance(expr, tuple) else expr
-        expr_type = expr[1] if isinstance(expr, tuple) else 'int'
-        p[0] = (expr_code, expr_type)
+        expr_code = expr[0]
+        expr_type = expr[1]
+        expr_ast = expr[2]
+        p[0] = (expr_code, expr_type, expr_ast)
 
     # ==========================================================================
     # 7. TIPOS DE DATOS ABSTRACTOS (TDAs)
@@ -764,15 +790,17 @@ class MyParser:
         
         members_dict = {}
         method_code_list = []
+        methods_ast = []
+        members_ast = []
         
         for item in raw_members:
             name = item[0]
-            if item[1] == 'method':
-                # La visibilidad del método ya está actualizada en self.current_adt_methods por p_visibility_block
-                # Recolectar código
+            if len(item) >= 2 and item[1] == 'method':
+                # ('method', name, code, visibility, ast)
                 method_code_list.append(item[2])
+                methods_ast.append(item[4])
             else:
-                # Variable
+                # Variable (name, type, visibility)
                 mtype = item[1]
                 vis = item[2]
                 if name in self.current_adt_members:
@@ -782,6 +810,7 @@ class MyParser:
                         'type': mtype,
                         'offset': offset
                     }
+                members_ast.append({"name": name, "type": mtype, "visibility": vis})
         
         self.type_table[adt_name] = {
             'members': members_dict,
@@ -793,8 +822,9 @@ class MyParser:
         self.current_adt_methods = {}
         self.current_adt_offset = 0
         
+        ast_node = {"type": "ADTDecl", "name": adt_name, "members": members_ast, "methods": methods_ast}
         # Devolver el código de método acumulado
-        p[0] = "\n".join(method_code_list)
+        p[0] = ("\n".join(method_code_list), ast_node)
 
     def p_adt_body(self, p):
         """adt_body : visibility_block adt_body
@@ -812,13 +842,15 @@ class MyParser:
         for item in p[3]:
             if item is not None:
                 if item[0] == 'method':
+                    # item is ('method', name, code, ast)
                     name = item[1]
+                    code = item[2]
+                    ast = item[3]
                     # Actualizar visibilidad en current_adt_methods
                     if name in self.current_adt_methods:
                         self.current_adt_methods[name]['visibility'] = visibility
-                    # Pasar a través (name, 'method', code, visibility)
-                    # Espera, item es ('method', name, code)
-                    annotated.append((name, 'method', item[2], visibility))
+                    
+                    annotated.append(('method', name, code, visibility, ast))
                 else:
                     name, mtype = item
                     annotated.append((name, mtype, visibility))
@@ -847,8 +879,11 @@ class MyParser:
                 self.current_adt_offset += 1
             p[0] = (name, mtype)  # (name,type)
         else:
-            # p[1] es (original_name, code)
-            p[0] = ('method', p[1][0], p[1][1])
+            # p[1] es (code, ast)
+            code = p[1][0]
+            ast = p[1][1]
+            name = ast['name']
+            p[0] = ('method', name, code, ast)
 
     # ----------------------------------------
     # Asignaciones
@@ -857,57 +892,88 @@ class MyParser:
         """assignment : lvalue ASSIGN expression SEMI"""
         target = p[1]
         expr = p[3]
-        expr_code = expr[0] if isinstance(expr, tuple) else expr
+        expr_code = expr[0]
+        expr_ast = expr[2]
         
-        if isinstance(target, tuple):
-            kind = target[0]
-            if kind == 'array':
-                p[0] = self._generate_array_assignment(target[1], target[2], expr_code, p)
-            elif kind == 'member':
-                p[0] = self._generate_member_assignment(target[1], target[2], expr_code, p)
-            else:
-                p[0] = ""
-        elif isinstance(target, str):
-            p[0] = self._generate_var_assignment(target, expr_code, p)
+        kind = target[0]
+        
+        if kind == 'array':
+            # target: ('array', arr_name, index_code, index_ast, lvalue_ast)
+            arr_name = target[1]
+            index_code = target[2]
+            index_ast = target[3]
+            
+            code = self._generate_array_assignment(arr_name, index_code, expr_code, p)
+            ast = {"type": "ArrayAssignment", "target": arr_name, "index": index_ast, "value": expr_ast}
+            p[0] = (code, ast)
+            
+        elif kind == 'member':
+            # target: ('member', obj_name, member_name, lvalue_ast)
+            obj_name = target[1]
+            member_name = target[2]
+            
+            code = self._generate_member_assignment(obj_name, member_name, expr_code, p)
+            ast = {"type": "MemberAssignment", "object": obj_name, "member": member_name, "value": expr_ast}
+            p[0] = (code, ast)
+            
+        elif kind == 'var':
+            # target: ('var', name, lvalue_ast)
+            name = target[1]
+            
+            code = self._generate_var_assignment(name, expr_code, p)
+            ast = {"type": "Assignment", "target": name, "value": expr_ast}
+            p[0] = (code, ast)
+            
         else:
             self._error("Objetivo de asignación inválido", p)
-            p[0] = ""
+            p[0] = ("", None)
 
     def p_lvalue(self, p):
         """lvalue : ID
                   | ID DOT ID
                   | ID LBRACKET expression RBRACKET"""
         if len(p) == 2:
-            p[0] = p[1]
+            # ID
+            p[0] = ('var', p[1], {"type": "Identifier", "name": p[1]})
         elif len(p) == 4 and p[2] == '.':
+            # ID.ID
             obj_name = p[1]
             member_name = p[3]
-            # Representar objetivo miembro como tupla para manejo de asignación posterior
-            p[0] = ('member', obj_name, member_name)
+            p[0] = ('member', obj_name, member_name, {"type": "MemberAccess", "object": obj_name, "member": member_name})
         elif len(p) == 5:
-            # Indexación de array
+            # ID[expr]
             arr_name = p[1]
             index_expr = p[3]
-            index_code = index_expr[0] if isinstance(index_expr, tuple) else index_expr
-            p[0] = ('array', arr_name, index_code)
+            # index_expr is (code, type, ast)
+            index_code = index_expr[0]
+            index_ast = index_expr[2]
+            p[0] = ('array', arr_name, index_code, index_ast, {"type": "ArrayAccess", "array": arr_name, "index": index_ast})
 
     # ----------------------------------------
     # Flujo de Control (Extendido)
     # ----------------------------------------
     def p_for_stmt(self, p):
         """for_stmt : for_header statements ENDFOR"""
-        init_code, check_code, inc_code, lbl_start, lbl_end = p[1]
+        init_code, check_code, inc_code, lbl_start, lbl_end, var_name, start_ast, end_ast = p[1]
         body = p[2]
-        p[0] = f"{init_code}\n{lbl_start}:\n{check_code}\n{body}\n{inc_code}\nJMP {lbl_start}\n{lbl_end}:"
+        body_code = body[0]
+        body_ast = body[1]
+        
+        code = f"{init_code}\n{lbl_start}:\n{check_code}\n{body_code}\n{inc_code}\nJMP {lbl_start}\n{lbl_end}:"
+        ast = {"type": "For", "variable": var_name, "start": start_ast, "end": end_ast, "body": body_ast}
+        p[0] = (code, ast)
         self.loop_stack.pop()
 
     def p_for_header(self, p):
         """for_header : FOR LPAREN ID IN expression RANGE expression RPAREN COLON"""
         var_name = p[3]
         start_expr = p[5]
-        start_code = start_expr[0] if isinstance(start_expr, tuple) else start_expr
+        start_code = start_expr[0]
+        start_ast = start_expr[2]
+        
         end_expr = p[7]
-        end_code = end_expr[0] if isinstance(end_expr, tuple) else end_expr
+        end_code = end_expr[0]
+        end_ast = end_expr[2]
         
         if var_name not in self.symbol_table:
             self.symbol_table[var_name] = var_name
@@ -921,25 +987,27 @@ class MyParser:
         check_code = f"{end_code}\nPUSH R0\nLD R0, [{var_name}]\nPOP R1\nCMP R0, R1\nJS {lbl_start}_cont\nJMP {lbl_end}\n{lbl_start}_cont:"
         inc_code = f"LD R0, [{var_name}]\nMOVI R1, 1\nADD R0, R0, R1\nST R0, [{var_name}]"
         
-        p[0] = (init_code, check_code, inc_code, lbl_start, lbl_end)
+        p[0] = (init_code, check_code, inc_code, lbl_start, lbl_end, var_name, start_ast, end_ast)
 
     def p_break_stmt(self, p):
         """break_stmt : BREAK SEMI"""
+        ast = {"type": "Break"}
         if self.loop_stack:
             _, lbl_end = self.loop_stack[-1]
-            p[0] = f"JMP {lbl_end}"
+            p[0] = (f"JMP {lbl_end}", ast)
         else:
             print("Error: break fuera de bucle")
-            p[0] = ""
+            p[0] = ("", ast)
 
     def p_continue_stmt(self, p):
         """continue_stmt : CONTINUE SEMI"""
+        ast = {"type": "Continue"}
         if self.loop_stack:
             lbl_start, _ = self.loop_stack[-1]
-            p[0] = f"JMP {lbl_start}"
+            p[0] = (f"JMP {lbl_start}", ast)
         else:
             print("Error: continue fuera de bucle")
-            p[0] = ""
+            p[0] = ("", ast)
 
     # ----------------------------------------
     # Flujo de Control (Básico)
@@ -949,70 +1017,92 @@ class MyParser:
                    | IF LPAREN expression RPAREN COLON statements ELSE COLON statements ENDIF"""
         
         cond = p[3]
-        cond_code = cond[0] if isinstance(cond, tuple) else cond
+        cond_code = cond[0]
+        cond_ast = cond[2]
+        
         true_block = p[6]
+        true_code = true_block[0]
+        true_ast = true_block[1]
         
         lbl_else = self.get_new_label()
         lbl_end = self.get_new_label()
         
         if len(p) == 8: # Sin else
-            p[0] = f"{cond_code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_end}\n{true_block}\n{lbl_end}:"
+            code = f"{cond_code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_end}\n{true_code}\n{lbl_end}:"
+            ast = {"type": "If", "condition": cond_ast, "then": true_ast, "else": None}
+            p[0] = (code, ast)
         else: # Con else
             else_block = p[9]
-            p[0] = f"{cond_code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_else}\n{true_block}\nJMP {lbl_end}\n{lbl_else}:\n{else_block}\n{lbl_end}:"
+            else_code = else_block[0]
+            else_ast = else_block[1]
+            
+            code = f"{cond_code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_else}\n{true_code}\nJMP {lbl_end}\n{lbl_else}:\n{else_code}\n{lbl_end}:"
+            ast = {"type": "If", "condition": cond_ast, "then": true_ast, "else": else_ast}
+            p[0] = (code, ast)
 
     def p_while_stmt(self, p):
         """while_stmt : WHILE LPAREN expression RPAREN COLON statements ENDWHILE"""
         cond = p[3]
-        cond_code = cond[0] if isinstance(cond, tuple) else cond
-        body_code = p[6]
+        cond_code = cond[0]
+        cond_ast = cond[2]
+        
+        body = p[6]
+        body_code = body[0]
+        body_ast = body[1]
         
         lbl_start = self.get_new_label()
         lbl_end = self.get_new_label()
         self.loop_stack.append((lbl_start, lbl_end))
         
-        p[0] = f"{lbl_start}:\n{cond_code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_end}\n{body_code}\nJMP {lbl_start}\n{lbl_end}:"
+        code = f"{lbl_start}:\n{cond_code}\nMOVI R1, 0\nCMP R0, R1\nJZ {lbl_end}\n{body_code}\nJMP {lbl_start}\n{lbl_end}:"
+        ast = {"type": "While", "condition": cond_ast, "body": body_ast}
+        p[0] = (code, ast)
         self.loop_stack.pop()
 
     def p_output_stmt(self, p):
         """output_stmt : OUTPUT expression SEMI"""
         expr = p[2]
-        expr_code = expr[0] if isinstance(expr, tuple) else expr
-        expr_type = expr[1] if isinstance(expr, tuple) else 'int'
+        expr_code = expr[0]
+        expr_type = expr[1]
+        expr_ast = expr[2]
         
-        # Comprobar si la expresión es una cadena (carga dirección con MOVI R0, STR_*)
+        ast = {"type": "Output", "value": expr_ast}
+        
         if expr_type == 'string':
             # Usar OUTS para salida de cadena
-            p[0] = f"{expr_code}\nOUTS R0, 0xFFFF0008"
+            p[0] = (f"{expr_code}\nOUTS R0, 0xFFFF0008", ast)
         elif expr_type == 'float':
              # Usar OUT con func=6 (subop=3 -> print float)
              # 6 = (3 << 1) | 0
-             p[0] = f"{expr_code}\nOUT R0, 0xFFFF0008, 6"
+             p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008, 6", ast)
         else:
             # Usar OUT para salida numérica
-            p[0] = f"{expr_code}\nOUT R0, 0xFFFF0008"
+            p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008", ast)
 
     def p_print_stmt(self, p):
         """statement : ID LPAREN expression RPAREN SEMI"""
         # Comprobar sintaxis "print(expr)" para imprimir sin nueva línea
         if p[1] == 'print':
             expr = p[3]
-            expr_code = expr[0] if isinstance(expr, tuple) else expr
-            expr_type = expr[1] if isinstance(expr, tuple) else 'int'
+            expr_code = expr[0]
+            expr_type = expr[1]
+            expr_ast = expr[2]
+            
+            ast = {"type": "Call", "function": "print", "args": [expr_ast]}
             
             if expr_type == 'float':
                  # Usar OUT con func=6 (subop=3 -> print float)
-                 p[0] = f"{expr_code}\nOUT R0, 0xFFFF0008, 6"
+                 p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008, 6", ast)
             else:
                  # Usar OUT con func=4 (subop=2 -> print int sin nueva línea)
                  # 4 = (2 << 1) | 0
-                 p[0] = f"{expr_code}\nOUT R0, 0xFFFF0008, 4"
+                 p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008, 4", ast)
         else:
             # Retroceder a lógica de llamada a función normal si no es 'print'
             # Pero espera, p_statement ya maneja func_call_stmt.
             # Esta regla podría entrar en conflicto.
             # Mejor añadir 'print' como palabra clave o manejarlo en func_call.
-            p[0] = "" 
+            p[0] = ("", None)
             
     # Manejaremos 'print' como una llamada a función especial en p_func_call
 
@@ -1020,13 +1110,15 @@ class MyParser:
     def p_input_stmt(self, p):
         """input_stmt : INPUT ID SEMI"""
         var_name = p[2]
+        ast = {"type": "Input", "variable": var_name}
+        
         if var_name not in self.symbol_table:
              print(f"Error: Variable {var_name} no declarada.")
-             p[0] = ""
+             p[0] = ("", ast)
              return
         entry = self.symbol_table[var_name]
         label = entry['label'] if isinstance(entry, dict) and 'label' in entry else var_name
-        p[0] = f"IN R0, 0xFFFF0018\nST R0, [{label}]"
+        p[0] = (f"IN R0, 0xFFFF0018\nST R0, [{label}]", ast)
 
     def p_empty(self, p):
         """empty :"""
@@ -1167,3 +1259,5 @@ class MyParser:
             return ""
             
         return f"{expr_code}\nST R0, {meta['label']}"
+
+
