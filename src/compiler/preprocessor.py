@@ -4,11 +4,17 @@ import sys
 import argparse
 
 # Asegurar que el directorio 'src' esté en sys.path para usar el paquete local 'ply'
+# Y también el directorio raíz para importar 'src.compiler.library_loader'
+ROOT_DIR = os.path.join(os.path.dirname(__file__), '..', '..')
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 SRC_DIR = os.path.join(os.path.dirname(__file__), '..')
 if SRC_DIR not in sys.path:
     sys.path.append(SRC_DIR)
 
 import ply.lex as lex
+from src.compiler.library_loader import LibraryLoader
 
 tokens = [
     'INCLUDE_QUOTED',
@@ -77,9 +83,12 @@ class Preprocessor:
         self.macros = MacroTable()
         self.include_paths = ['.', 'includes']
         self.processed_files = set()
+        self.library_loader = LibraryLoader()
+        self.smart_includes = [] # Lista de rutas de librerías ASM detectadas
 
     def preprocess_file(self, filename):
         self.processed_files.clear()
+        self.smart_includes.clear()
         return self._process_file(filename, os.path.dirname(filename))
 
     def _process_file(self, filename, base_dir):
@@ -132,8 +141,54 @@ class Preprocessor:
             path = os.path.join(d, filename)
             if os.path.exists(path):
                 return self._process_file(path, os.path.dirname(path))
+            
+            # Si es un include de sistema (<lib>), intentar buscar versión .asm para smart include
+            if system_file:
+                asm_path = os.path.join(d, filename + ".asm")
+                if os.path.exists(asm_path):
+                    self.smart_includes.append(asm_path)
+                    return "" # Eliminar la línea de include del código fuente
 
         raise Exception(f"Archivo incluido no encontrado: {filename}")
+
+    def get_smart_includes_asm(self, source_code):
+        """
+        Escanea el código fuente en busca de funciones definidas en las librerías incluidas
+        y devuelve el código ASM correspondiente.
+        """
+        combined_asm = []
+        
+        for lib_path in self.smart_includes:
+            available_funcs = self.library_loader.get_defined_functions(lib_path)
+            
+            for func in available_funcs:
+                # Manejar convención FUNC_
+                # Si la función en ASM es FUNC_pow, buscamos 'pow(' en el código fuente
+                search_name = func
+                if func.startswith("FUNC_"):
+                    search_name = func[5:]
+
+                # Buscar uso de la función en el código (e.g., "func(")
+                # Usamos regex simple para detectar llamadas
+                pattern = r'\b' + re.escape(search_name) + r'\s*\('
+                if re.search(pattern, source_code):
+                    asm_code = self.library_loader.get_function_code(lib_path, func)
+                    combined_asm.append(f"# --- Begin {search_name} from {os.path.basename(lib_path)} ---")
+                    combined_asm.append(asm_code)
+                    combined_asm.append(f"# --- End {search_name} ---")
+                    
+        return "\n".join(combined_asm)
+
+    def get_available_library_functions(self):
+        """
+        Devuelve un conjunto con los nombres de todas las funciones disponibles
+        en las librerías incluidas (smart includes).
+        """
+        available_funcs = set()
+        for lib_path in self.smart_includes:
+            funcs = self.library_loader.get_defined_functions(lib_path)
+            available_funcs.update(funcs)
+        return available_funcs
 
 
 # -------------------------------------------------------

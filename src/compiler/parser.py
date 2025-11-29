@@ -7,9 +7,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import ply.yacc as yacc
 
 class MyParser:
-    def __init__(self, tokens):
+    def __init__(self, tokens, library_functions=None):
         self.tokens = tokens
         self.parser = yacc.yacc(module=self)
+        self.library_functions = library_functions if library_functions else set()
+        self.called_functions = set()
 
         # Tabla de símbolos: nombre -> {
         #   'type': <nombre_tipo>,
@@ -96,6 +98,7 @@ class MyParser:
         
         data_section_str = "\n".join(self.data_section)
         
+        # Si no hay funciones definidas, todo es código principal
         if 'FUNC_' not in code:
              p[0] = (f"ORG 0\n{code}\nHALT\n\n{data_section_str}", {"type": "Program", "body": ast})
              return
@@ -108,14 +111,16 @@ class MyParser:
         
         for line in lines:
             stripped = line.strip()
+            # Detectar inicio de función
             if stripped.startswith('FUNC_'):
                 in_function = True
             
             if in_function:
                 functions.append(line)
+                # Detectar fin de función (RET)
                 if stripped == 'RET':
                     in_function = False
-            elif stripped and stripped != 'RET': # Saltar líneas vacías y RETs sueltos en main
+            elif stripped: # Líneas que no son funciones ni vacías van al main
                 main_code.append(line)
         
         func_section = "\n".join(functions)
@@ -603,6 +608,9 @@ class MyParser:
                         arg_code += '\n'
                     args_code += f"{arg_code}PUSH R0\n"
             
+            # Registrar llamada para validación posterior
+            self.called_functions.add(func_name)
+            
             p[0] = (f"{args_code}CALL FUNC_{func_name}", ast_node)
             
         else:
@@ -672,6 +680,8 @@ class MyParser:
         func_name, params, param_setup, param_names, original_name = p[1]
         body_code, body_ast = p[2]
         
+        # Asegurar que el cuerpo de la función no se mezcle con el código principal
+        # Marcamos el inicio y fin claramente para el separador en p_program
         result = f"FUNC_{func_name}:\n{param_setup}{body_code}\nRET"
         
         # Eliminar parámetros de la tabla de símbolos (fin del ámbito de función)
@@ -1138,8 +1148,19 @@ class MyParser:
         self.symbol_table = {}
         self.data_section = []
         self.error_count = 0
+        self.called_functions = set()
         result = self.parser.parse(code, lexer=lexer)
         
+        # Validar llamadas a funciones
+        for func_name in self.called_functions:
+            func_label = f"FUNC_{func_name}"
+            is_defined = func_label in self.symbol_table
+            is_library = func_label in self.library_functions
+            
+            if not is_defined and not is_library:
+                print(f"[Error del Parser] Función '{func_name}' llamada pero no definida ni encontrada en librerías.")
+                self.error_count += 1
+
         if self.error_count > 0:
             return None
         return result

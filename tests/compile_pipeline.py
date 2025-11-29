@@ -23,6 +23,8 @@ def compile_file(input_path: str, output_dir: str) -> str:
     pre = Preprocessor()
     try:
         preprocessed_code = pre.preprocess_file(input_path)
+        # Obtener ASM de librerías incluidas (smart includes)
+        library_asm = pre.get_smart_includes_asm(preprocessed_code)
     except Exception as e:
         raise RuntimeError(f"Error en preprocesador: {e}")
 
@@ -31,12 +33,18 @@ def compile_file(input_path: str, output_dir: str) -> str:
     lexer_instance.build()
     lexer_instance.lexer.input(preprocessed_code)
 
+    # Obtener funciones disponibles en librerías
+    library_funcs = pre.get_available_library_functions()
+
     # 3. Parser
-    parser = MyParser(MyLexer.tokens)
+    parser = MyParser(MyLexer.tokens, library_functions=library_funcs)
     try:
         result = parser.parse(preprocessed_code, lexer_instance.lexer)
         if result:
             asm_code, ast = result
+            # Agregar código de librerías al final
+            if library_asm:
+                asm_code += "\n\n# --- Library Functions ---\n" + library_asm
         else:
             asm_code = None
     except Exception as e:

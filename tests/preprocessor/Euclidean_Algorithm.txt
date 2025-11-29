@@ -6,6 +6,7 @@
     Versión iterativa
     Argumentos: int a0, b0
 */
-m = maxcd(x,y)
+int m = maxcd(x,y);
+output m;
     
 

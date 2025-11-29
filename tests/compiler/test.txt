@@ -1,2 +1,11 @@
-UNAL_a = 10
-if(a >= 5): a = a + 1
+#include <math>
+
+func main():
+    int a = pow(2, 3);
+    output a;
+
+    int b = abs(-10);
+    output b;
+endfunc
+
+main();
