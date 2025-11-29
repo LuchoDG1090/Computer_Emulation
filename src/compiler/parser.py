@@ -805,7 +805,7 @@ class MyParser:
         
         for item in raw_members:
             name = item[0]
-            if len(item) >= 2 and item[1] == 'method':
+            if len(item) == 5 and item[0] == 'method':
                 # ('method', name, code, visibility, ast)
                 method_code_list.append(item[2])
                 methods_ast.append(item[4])
