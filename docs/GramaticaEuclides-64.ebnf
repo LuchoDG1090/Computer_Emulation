@@ -1,0 +1,132 @@
+/* Program Structure */
+program ::= statements
+
+statements ::= statement | statement statements
+
+/* Statements */
+statement ::= declaration
+            | assignment
+            | expression ';'
+            | if_stmt
+            | while_stmt
+            | for_stmt
+            | output_stmt
+            | input_stmt
+            | func_decl
+            | return_stmt
+            | func_call_stmt
+            | break_stmt
+            | continue_stmt
+            | adt_decl
+            | ID '(' expression ')' ';'
+
+/* Declarations */
+declaration ::= type ID ';'
+              | type ID '=' expression ';'
+              | type ID '[' expression ']' ';'
+
+/* Types */
+type ::= 'int' | 'float' | 'string' | 'bool' | 'char' | 'void' | ID
+
+/* Expressions */
+expression ::= expression '+' expression
+             | expression '-' expression
+             | expression '*' expression
+             | expression '/' expression
+             | expression '%' expression
+             | expression '&&' expression
+             | expression '||' expression
+             | expression '==' expression
+             | expression '!=' expression
+             | expression '<' expression
+             | expression '<=' expression
+             | expression '>' expression
+             | expression '>=' expression
+             | expression '&' expression
+             | expression '|' expression
+             | expression '^' expression
+             | expression '<<' expression
+             | expression '>>' expression
+             | '-' expression
+             | '!' expression
+             | '~' expression
+             | '++' expression
+             | '--' expression
+             | '(' expression ')'
+             | INTEGER
+             | FLOAT
+             | ID
+             | ID '[' expression ']'
+             | ID '.' ID
+             | func_call
+             | STRING
+             | 'true'
+             | 'false'
+
+/* Assignments */
+assignment ::= lvalue '=' expression ';'
+
+lvalue ::= ID | ID '.' ID | ID '[' expression ']'
+
+/* Functions */
+func_decl ::= func_start statements 'endfunc'
+
+func_start ::= 'func' ID '(' param_list_opt ')' ':'
+
+param_list_opt ::= param_list | 
+
+param_list ::= param | param ',' param_list
+
+param ::= type ID | type ID '[' ']'
+
+func_call_stmt ::= func_call ';'
+
+func_call ::= ID '(' arg_list_opt ')'
+            | ID '.' ID '(' arg_list_opt ')'
+
+arg_list_opt ::= arg_list | 
+
+arg_list ::= arg | arg ',' arg_list
+
+arg ::= ID | expression
+
+return_stmt ::= 'return' expression ';' | 'return' ';'
+
+/* ADTs */
+adt_decl ::= adt_head adt_body 'endadt'
+
+adt_head ::= 'adt' ID '(' param_list_opt ')' ':'
+
+adt_body ::= visibility_block adt_body | visibility_block
+
+visibility_block ::= 'private' ':' member_list
+                   | 'public' ':' member_list
+
+member_list ::= member_decl member_list | member_decl
+
+member_decl ::= type ID ';' | func_decl
+
+/* Control Flow */
+if_stmt ::= 'if' '(' expression ')' ':' statements 'endif'
+          | 'if' '(' expression ')' ':' statements 'else' ':' statements 'endif'
+
+while_stmt ::= 'while' '(' expression ')' ':' statements 'endwhile'
+
+for_stmt ::= for_header statements 'endfor'
+
+for_header ::= 'for' '(' ID 'in' expression 'range' expression ')' ':'
+
+break_stmt ::= 'break' ';'
+
+continue_stmt ::= 'continue' ';'
+
+/* I/O */
+output_stmt ::= 'output' expression ';'
+
+input_stmt ::= 'input' ID ';'
+
+/* Terminal definitions - SIMPLIFIED */
+ID ::= [a-zA-Z][a-zA-Z0-9_]*
+INTEGER ::= [0-9]+
+FLOAT ::= [0-9]+ '.' [0-9]+
+STRING ::= '"' [^"]* '"'
