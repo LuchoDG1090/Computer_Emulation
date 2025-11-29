@@ -49,6 +49,9 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
         # self.deiconify()
         # self.lift()
 
+    # Ya no es necesario update_fonts manual porque usamos CTkFont objects que se actualizan solos
+    # al llamar a Fonts.configure() desde la configuración global.
+
     def setup_preprocessor_tab(self):
         self.tab_preprocessor.grid_columnconfigure(0, weight=1)
         self.tab_preprocessor.grid_columnconfigure(1, weight=1)
@@ -71,7 +74,7 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
         self.asm_frame.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(self.asm_frame, text="Assembly Importado", text_color="white").grid(row=0, column=0, sticky="w")
-        self.library_asm_text = ctk.CTkTextbox(self.asm_frame, font=("Consolas", 12))
+        self.library_asm_text = ctk.CTkTextbox(self.asm_frame, font=Fonts.get_font("consolas"))
         self.library_asm_text.grid(row=1, column=0, sticky="nsew")
         
     def setup_lexer_tab(self):
@@ -79,14 +82,14 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
         self.tab_lexer.grid_rowconfigure(0, weight=1)
         
         # Usar fuente monoespaciada para que la tabla se alinee correctamente
-        self.lexer_text = ctk.CTkTextbox(self.tab_lexer, font=("Consolas", 12))
+        self.lexer_text = ctk.CTkTextbox(self.tab_lexer, font=Fonts.get_font("consolas"))
         self.lexer_text.grid(row=0, column=0, sticky="nsew")
         
     def setup_parser_tab(self):
         self.tab_parser.grid_columnconfigure(0, weight=1)
         self.tab_parser.grid_rowconfigure(0, weight=1)
         
-        self.parser_text = ctk.CTkTextbox(self.tab_parser, font=("Consolas", 12))
+        self.parser_text = ctk.CTkTextbox(self.tab_parser, font=Fonts.get_font("consolas"))
         self.parser_text.grid(row=0, column=0, sticky="nsew")
 
     def render_tree(self, node, prefix="", is_last=True, is_root=True):

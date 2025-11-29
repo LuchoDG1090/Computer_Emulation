@@ -44,12 +44,12 @@ class Fonts:
         )
         Fonts.consolas = ctk.CTkFont(
             family = "Consolas",
-            size = 12,
+            size = Fonts.size,
             weight = "normal"
         )
         Fonts.consolas_mini = ctk.CTkFont(
             family = "Consolas", 
-            size = 10,
+            size = Fonts.size - 2,
             weight =  "normal"
         )
         Fonts.global_font_mini = ctk.CTkFont(
@@ -75,6 +75,14 @@ class Fonts:
         if size is not None:
             Fonts.size = size
             Fonts.global_font.configure(size=size)
+            if Fonts.global_font_plus:
+                Fonts.global_font_plus.configure(size=size + 2)
+            if Fonts.global_font_mini:
+                Fonts.global_font_mini.configure(size=size - 2)
+            if Fonts.consolas:
+                Fonts.consolas.configure(size=size)
+            if Fonts.consolas_mini:
+                Fonts.consolas_mini.configure(size=size - 2)
 
         if weight is not None:
             Fonts.weight = weight
