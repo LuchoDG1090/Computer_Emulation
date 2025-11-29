@@ -158,6 +158,7 @@ class IOPorts:
             # Imprimir carácter por carácter
             for ch in float_str:
                 self.output_char_callback(ord(ch))
+            self.output_char_callback(ord("\n"))
         else:
             # Fallback: agregar a buffer
             self.output_buffer += float_str
@@ -481,6 +482,7 @@ class IOPorts:
         if self.output_char_callback:
             for ch in text:
                 self.output_char_callback(ord(ch))
+            self.output_char_callback(ord("\n"))
         else:
             self.output_buffer += text
 

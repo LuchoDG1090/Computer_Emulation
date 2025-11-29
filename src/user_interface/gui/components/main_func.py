@@ -159,7 +159,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
     def __build_third_column(self):
         frame_third_column = ctk.CTkFrame(self, fg_color="transparent")
 
-        frame_third_column.rowconfigure(0, weight=5)
+        frame_third_column.rowconfigure(0, weight=6)
         frame_third_column.rowconfigure(1, weight=5)
         frame_third_column.rowconfigure(2, weight=5)
         frame_third_column.rowconfigure(3, weight=0)
@@ -169,6 +169,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         frame_third_column.columnconfigure(0, weight=1)
 
         self.console_frame = console.ConsoleFrame(frame_third_column)
+        self.console_frame.configure(height = 300)
 
         self.flag_register_frame = flag_register.FlagRegisterFrame(
             frame_third_column, cpu=self.cpu
@@ -192,7 +193,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             clear_programs_callback=self.program_selector.update_program_list,
         )
 
-        self.console_frame.grid(column=0, row=0, sticky="ew", pady=12)
+        self.console_frame.grid(column=0, row=0, sticky="nsew", pady=12)
         self.flag_register_frame.grid(column=0, row=1, sticky="ew", pady=12)
         self.gen_purpose_regs.grid(column=0, row=2, sticky="ew", pady=12)
         # program_selector y pc_frame se ubican en la segunda columna (bloque inferior)

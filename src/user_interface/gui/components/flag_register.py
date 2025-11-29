@@ -21,7 +21,7 @@ class FlagRegisterFrame(ctk.CTkFrame):
         title = ctk.CTkLabel(
             self, text="Flag register", font=Fonts.get_font("global_mini"), text_color="white"
         )
-        title.grid(row=0, column=0)
+        title.grid(row=0, column=0, pady = 0)
 
     def __build_table(self):
         scrollable_frame = ctk.CTkScrollableFrame(self, fg_color="#1a1a1a")
@@ -34,9 +34,10 @@ class FlagRegisterFrame(ctk.CTkFrame):
                 text=header,
                 fg_color="#2b2b2b",
                 corner_radius=4,
-                font=Fonts.get_font("consolas"),
+                font=Fonts.get_font("consolas_mini"),
+                height=18
             )
-            lbl.grid(row=0, column=j, sticky="ew", padx=5, pady=5)
+            lbl.grid(row=0, column=j, sticky="ew", padx=3, pady=2)
 
         # Crear etiquetas para cada flag
         flag_names = ["ZF", "SF", "CF", "OF"]

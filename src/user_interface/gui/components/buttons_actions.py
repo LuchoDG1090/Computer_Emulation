@@ -28,7 +28,7 @@ class BotonesAcciones(ctk.CTkFrame):
         siguiente_image = ctk.CTkImage(
             light_image=Image.open(self.imagen_siguiente),
             dark_image=Image.open(self.imagen_siguiente),
-            size=(40, 40),
+            size=(28,28),
         )
         self.boton_siguiente = ctk.CTkButton(
             self,
@@ -47,7 +47,7 @@ class BotonesAcciones(ctk.CTkFrame):
         reiniciar_imagen = ctk.CTkImage(
             light_image=Image.open(self.imagen_reiniciar),
             dark_image=Image.open(self.imagen_reiniciar),
-            size=(40, 40),
+            size=(28,28),
         )
         boton_reiniciar = ctk.CTkButton(
             self,

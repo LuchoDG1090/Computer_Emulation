@@ -1,5 +1,4 @@
 from tkinter import messagebox
-
 import customtkinter as ctk
 from .design_variable_elements import Fonts
 
@@ -9,8 +8,10 @@ class ConsoleFrame(ctk.CTkFrame):
         super().__init__(parent, fg_color=fg_color)
 
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=0)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(0, weight=0)  
+        self.rowconfigure(1, weight=1)  
+        self.rowconfigure(2, weight=0)  
+        self.rowconfigure(3, weight=1)
         self.grid_propagate(False)
 
         self.waiting_for_input = False
@@ -22,82 +23,103 @@ class ConsoleFrame(ctk.CTkFrame):
         self.__build_title()
         self.__build_console()
 
+    # -----------------------------------------------------------
+    # TITULOS
+    # -----------------------------------------------------------
     def __build_title(self):
         text = ctk.CTkLabel(
             self, text="Consola", font=Fonts.get_font("global_mini"), text_color="white"
         )
         text.grid(column=0, row=0, sticky="nsew")
 
+        text2 = ctk.CTkLabel(
+            self, text="Entrada de usuario", font=Fonts.get_font("global_mini"), text_color="white"
+        )
+        text2.grid(column=0, row=2, sticky="nsew")
+
+    # -----------------------------------------------------------
+    # CONSTRUCCIÓN DE CONSOLAS
+    # -----------------------------------------------------------
     def __build_console(self):
+        # Salida (stdout)
         self.console_textbox = ctk.CTkTextbox(self, fg_color="#2b2b2b", wrap="word")
+        self.console_textbox.configure(state="disabled")
+
+        # Entrada (stdin)
+        self.entrada_textbox = ctk.CTkTextbox(self, fg_color="#2b2b2b", wrap="word")
+        self.entrada_textbox.configure(state="disabled")
+
         self.console_textbox.grid(column=0, row=1, sticky="nsew", pady=5, padx=5)
+        self.entrada_textbox.grid(column=0, row=3, sticky="nsew", pady=5, padx=5)
 
-        # Bind para manejar entrada del usuario
-        self.console_textbox.bind("<Return>", self.__on_enter)
-        self.console_textbox.bind("<Key>", self.__on_key)
+        # Eventos
+        self.entrada_textbox.bind("<Return>", self.__on_enter)
+        self.entrada_textbox.bind("<Key>", self.__on_key)
 
+    # -----------------------------------------------------------
+    # MANEJO DE EDICIÓN EN ENTRADA
+    # -----------------------------------------------------------
     def __on_key(self, event):
-        """Prevenir edición del texto del programa"""
         if not self.waiting_for_input:
             return "break"
 
-        # Permitir solo edición después de la marca de inicio
+        # Permitir cualquier tecla válida
         if self.input_start_pos:
-            current_pos = self.console_textbox.index("insert")
-            if self.console_textbox.compare(current_pos, "<", self.input_start_pos):
+            current_pos = self.entrada_textbox.index("insert")
+            if self.entrada_textbox.compare(current_pos, "<", self.input_start_pos):
                 return "break"
 
-        # Bloquear teclas de navegación que moverían el cursor antes del inicio
+        # Evitar borrar antes del inicio
         if event.keysym in ["BackSpace", "Left"]:
-            current_pos = self.console_textbox.index("insert")
-            if self.console_textbox.compare(current_pos, "<=", self.input_start_pos):
+            current_pos = self.entrada_textbox.index("insert")
+            if self.entrada_textbox.compare(current_pos, "<=", self.input_start_pos):
                 return "break"
 
+    # -----------------------------------------------------------
+    # PROCESAR ENTER
+    # -----------------------------------------------------------
     def __on_enter(self, event):
-        """Manejar entrada del usuario al presionar Enter"""
         if not self.waiting_for_input:
             return "break"
 
-        # Obtener texto desde la posición de inicio
-        user_input = self.console_textbox.get(self.input_start_pos, "end-1c")
+        user_input = self.entrada_textbox.get("1.0", "end-1c").strip()
 
-        # Procesar según el tipo de entrada
+        # Tipo char
         if self.input_type == "char":
-            if user_input:
-                self.input_result = ord(user_input[0])
-            else:
-                self.input_result = 0
+            self.input_result = ord(user_input[0]) if user_input else 0
+
+        # Tipo int
         elif self.input_type == "int":
             try:
-                parts = user_input.strip().split()
-                if not parts:
+                if not user_input:
                     raise ValueError
-                
-                values = [int(x) for x in parts]
-                self.input_result = values[0]
-                
-                if len(values) > 1:
-                    self.input_buffer.extend(values[1:])
+                parts = [int(x) for x in user_input.split()]
+                self.input_result = parts[0]
+                if len(parts) > 1:
+                    self.input_buffer.extend(parts[1:])
             except ValueError:
                 messagebox.showerror("Error", "Debe ingresar números válidos")
-                self.console_textbox.delete(self.input_start_pos, "end")
+                self.entrada_textbox.delete("1.0", "end")
                 return "break"
+
+        # Tipo línea
         elif self.input_type == "line":
-            # Para líneas, simplemente devolver el texto ingresado
-            self.input_result = user_input.strip()
+            self.input_result = user_input
 
-        # Agregar newline
-        self.console_textbox.insert("end", "\n")
-        self.console_textbox.see("end")
+        # Limpiar entrada
+        self.entrada_textbox.delete("1.0", "end")
+        self.entrada_textbox.configure(state="disabled")
 
-        # Marcar como no esperando entrada
         self.waiting_for_input = False
-        self.input_start_pos = None
 
         return "break"
 
+    # -----------------------------------------------------------
+    # MÉTODOS DE SALIDA (stdout)
+    # -----------------------------------------------------------
+
     def append_char(self, char_code: int):
-        """Agrega un carácter a la consola"""
+        self.console_textbox.configure(state="normal")
         try:
             char = chr(char_code)
         except Exception:
@@ -105,88 +127,75 @@ class ConsoleFrame(ctk.CTkFrame):
 
         self.console_textbox.insert("end", char)
         self.console_textbox.see("end")
+        self.console_textbox.configure(state="disabled")
 
     def append_int(self, value: int):
-        """Agrega un entero a la consola (sin newline automático)"""
+        self.console_textbox.configure(state="normal")
         self.console_textbox.insert("end", str(value))
         self.console_textbox.see("end")
+        self.console_textbox.configure(state="disabled")
 
+    # -----------------------------------------------------------
+    # MÉTODOS DE ENTRADA (stdin)
+    # -----------------------------------------------------------
     def request_char(self) -> int:
-        """Solicita un carácter del usuario"""
-        self.input_type = "char"
-        self.input_result = None
-        self.waiting_for_input = True
-
-        # Marcar posición de inicio de entrada
-        self.input_start_pos = self.console_textbox.index("end-1c")
-
-        # Poner foco en la consola
-        self.console_textbox.focus()
-
-        # Esperar entrada del usuario
-        self.console_textbox.wait_variable(self.__create_wait_var())
-
-        result = self.input_result if self.input_result is not None else 0
-        self.input_result = None
-        return result
+        self.__activate_stdin("char")
+        self.__wait_for_input()
+        return self.input_result or 0
 
     def request_int(self) -> int:
-        """Solicita un entero del usuario"""
         if self.input_buffer:
             return self.input_buffer.pop(0)
 
-        self.input_type = "int"
-        self.input_result = None
-        self.waiting_for_input = True
-
-        # Marcar posición de inicio de entrada
-        self.input_start_pos = self.console_textbox.index("end-1c")
-
-        # Poner foco en la consola
-        self.console_textbox.focus()
-
-        # Esperar entrada del usuario
-        self.console_textbox.wait_variable(self.__create_wait_var())
-
-        result = self.input_result if self.input_result is not None else 0
-        self.input_result = None
-        return result
+        self.__activate_stdin("int")
+        self.__wait_for_input()
+        return self.input_result or 0
 
     def request_line(self) -> str:
-        """Solicita una línea completa del usuario (para arrays de enteros)"""
-        self.input_type = "line"
+        self.__activate_stdin("line")
+        self.__wait_for_input()
+        return self.input_result or ""
+
+    # -----------------------------------------------------------
+    # ACTIVACION REAL DE STDIN
+    # -----------------------------------------------------------
+    def __activate_stdin(self, t):
+        self.input_type = t
         self.input_result = None
         self.waiting_for_input = True
 
-        # Marcar posición de inicio de entrada
-        self.input_start_pos = self.console_textbox.index("end-1c")
+        self.entrada_textbox.configure(state="normal")
+        self.entrada_textbox.delete("1.0", "end")
+        self.entrada_textbox.focus()
 
-        # Poner foco en la consola
-        self.console_textbox.focus()
+        self.input_start_pos = self.entrada_textbox.index("end-1c")
 
-        # Esperar entrada del usuario
-        self.console_textbox.wait_variable(self.__create_wait_var())
-
-        result = self.input_result if self.input_result is not None else ""
-        self.input_result = None
-        return result
-
-    def __create_wait_var(self):
-        """Crea una variable para esperar entrada"""
+    # -----------------------------------------------------------
+    # ESPERA BLOQUEANTE
+    # -----------------------------------------------------------
+    def __wait_for_input(self):
         var = ctk.StringVar()
 
-        def check_input():
+        def check():
             if not self.waiting_for_input:
                 var.set("ready")
             else:
-                self.after(50, check_input)
+                self.after(50, check)
 
-        check_input()
-        return var
+        check()
+        self.console_textbox.wait_variable(var)
 
+    # -----------------------------------------------------------
+    # UTILIDADES
+    # -----------------------------------------------------------
     def clear_console(self):
-        """Limpia la consola"""
+        self.console_textbox.configure(state="normal")
         self.console_textbox.delete("1.0", "end")
+        self.console_textbox.configure(state="disabled")
+
+        self.entrada_textbox.configure(state="disabled")
+        self.entrada_textbox.delete("1.0", "end")
+
         self.waiting_for_input = False
         self.input_result = None
         self.input_start_pos = None

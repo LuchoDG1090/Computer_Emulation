@@ -2,10 +2,17 @@ import customtkinter as ctk
 from .design_variable_elements import Fonts
 
 class CompilerPhasesWindow(ctk.CTkToplevel):
-    def __init__(self, parent, preprocessed_code, tokens_list, lexer_stats, ast_tree):
-        super().__init__(parent)
+    def __init__(self, parent, preprocessed_code, tokens_list, lexer_stats, ast_tree, fg_color = '#0C1826', **kwargs):
+        super().__init__(parent, fg_color = fg_color)
         self.title("Fases del Compilador")
         self.geometry("1000x600")
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        x = (screen_width - 1000) // 2
+        y = (screen_height - 600) // 2
+
+        self.geometry(f"1000x600+{x}+{y}")
         self.iconify()
         
         self.preprocessed_code = preprocessed_code
@@ -43,8 +50,8 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
         self.populate_views()
         
         # Traer al frente si está minimizada o detrás
-        # self.deiconify()
-        # self.lift()
+        self.deiconify()
+        self.lift()
 
     def setup_preprocessor_tab(self):
         self.tab_preprocessor.grid_columnconfigure(0, weight=1)

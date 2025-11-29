@@ -16,7 +16,7 @@ class AccesibilityPanel(ctk.CTkToplevel):
         self.__font_family_selector()
         self.__font_size_slider()
         self.__font_weight()
-        self.__color_picker()
+        # self.__color_picker()
 
     def __font_family_selector(self):
         ctk.CTkLabel(self, text="Familia de la letra:").pack(pady=(10,5))
