@@ -22,6 +22,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
         self.clean_icon = kwargs.get('clean_icon', '')
         self.assembly_callback = None
         self.compiler_window = None
+        self.current_file_path = None
 
         self.__build_text()
         self.__build_entry_text()
@@ -29,6 +30,14 @@ class HighLevelCodeFrame(ctk.CTkFrame):
 
     def set_assembly_callback(self, callback):
         self.assembly_callback = callback
+
+    def load_file_wrapper(self):
+        path = func.select_file()
+        if path:
+            self.current_file_path = path
+            content = func.open_file(path)
+            self.text_entry.delete("1.0", "end")
+            self.text_entry.insert("1.0", content)
 
     def open_compiler_phases(self):
         code = self.text_entry.get("0.0", "end")
@@ -42,8 +51,19 @@ class HighLevelCodeFrame(ctk.CTkFrame):
                 tmp_path = tmp.name
             
             preprocessor = Preprocessor()
+            
+            # Agregar directorio del archivo original a los includes si existe
+            if self.current_file_path:
+                file_dir = os.path.dirname(self.current_file_path)
+                if file_dir not in preprocessor.include_paths:
+                    preprocessor.include_paths.append(file_dir)
+
             preprocessed_code = preprocessor.preprocess_file(tmp_path)
             os.unlink(tmp_path)
+            
+            # Obtener ASM de librerías incluidas (smart includes)
+            library_asm = preprocessor.get_smart_includes_asm(preprocessed_code)
+            available_funcs = preprocessor.get_available_library_functions()
 
             # 2. Lexer (Generar lista de tokens para UI y para Parser)
             lexer = MyLexer()
@@ -80,7 +100,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
                 def input(self, data): pass
 
             token_iterator = ListLexer(tokens_list)
-            parser = MyParser(MyLexer.tokens)
+            parser = MyParser(MyLexer.tokens, library_functions=available_funcs)
             
             # Pasamos el iterador personalizado
             result = parser.parse(preprocessed_code, lexer=token_iterator)
@@ -90,6 +110,11 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             
             if result:
                 asm_code, ast_tree = result
+                
+                # Agregar código de librerías al final
+                if library_asm:
+                    asm_code += "\n\n# --- Library Functions ---\n" + library_asm
+                
                 if self.assembly_callback:
                     self.assembly_callback(asm_code)
             else:
@@ -98,9 +123,9 @@ class HighLevelCodeFrame(ctk.CTkFrame):
 
             # 4. Abrir ventana de fases con datos pre-calculados
             if self.compiler_window is None or not self.compiler_window.winfo_exists():
-                self.compiler_window = CompilerPhasesWindow(self, preprocessed_code, tokens_list, lexer_stats, ast_tree)
+                self.compiler_window = CompilerPhasesWindow(self, preprocessed_code, tokens_list, lexer_stats, ast_tree, library_asm)
             else:
-                self.compiler_window.update_data(preprocessed_code, tokens_list, lexer_stats, ast_tree)
+                self.compiler_window.update_data(preprocessed_code, tokens_list, lexer_stats, ast_tree, library_asm)
 
         except Exception as e:
             if self.assembly_callback:
@@ -170,7 +195,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             text_color='white',
             corner_radius=50,
             font=Fonts.get_font(""),
-            command = lambda: func.load_content(self.text_entry)
+            command = self.load_file_wrapper
         )
         boton_subir.grid(row = 0, column = 1)
 

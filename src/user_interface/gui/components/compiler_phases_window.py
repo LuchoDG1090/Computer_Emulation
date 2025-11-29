@@ -2,7 +2,7 @@ import customtkinter as ctk
 from .design_variable_elements import Fonts
 
 class CompilerPhasesWindow(ctk.CTkToplevel):
-    def __init__(self, parent, preprocessed_code, tokens_list, lexer_stats, ast_tree, fg_color = '#0C1826', **kwargs):
+    def __init__(self, parent, preprocessed_code, tokens_list, lexer_stats, ast_tree, library_asm = "",fg_color = '#0C1826', **kwargs):
         super().__init__(parent, fg_color = fg_color)
         self.title("Fases del Compilador")
         self.geometry("1000x600")
@@ -19,6 +19,7 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
         self.tokens_list = tokens_list
         self.lexer_stats = lexer_stats
         self.ast_tree = ast_tree
+        self.library_asm = library_asm
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -36,14 +37,16 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
         
         self.populate_views()
 
-    def update_data(self, preprocessed_code, tokens_list, lexer_stats, ast_tree):
+    def update_data(self, preprocessed_code, tokens_list, lexer_stats, ast_tree, library_asm=""):
         self.preprocessed_code = preprocessed_code
         self.tokens_list = tokens_list
         self.lexer_stats = lexer_stats
         self.ast_tree = ast_tree
+        self.library_asm = library_asm
         
         # Limpiar vistas anteriores
         self.preprocessor_text.delete("0.0", "end")
+        self.library_asm_text.delete("0.0", "end")
         self.lexer_text.delete("0.0", "end")
         self.parser_text.delete("0.0", "end")
         
@@ -53,26 +56,47 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
         self.deiconify()
         self.lift()
 
+    # Ya no es necesario update_fonts manual porque usamos CTkFont objects que se actualizan solos
+    # al llamar a Fonts.configure() desde la configuración global.
+
     def setup_preprocessor_tab(self):
         self.tab_preprocessor.grid_columnconfigure(0, weight=1)
+        self.tab_preprocessor.grid_columnconfigure(1, weight=1)
         self.tab_preprocessor.grid_rowconfigure(0, weight=1)
         
-        self.preprocessor_text = ctk.CTkTextbox(self.tab_preprocessor, font=Fonts.get_font(""))
-        self.preprocessor_text.grid(row=0, column=0, sticky="nsew")
+        # Frame izquierdo: Código Preprocesado
+        self.pre_frame = ctk.CTkFrame(self.tab_preprocessor, fg_color="transparent")
+        self.pre_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        self.pre_frame.grid_columnconfigure(0, weight=1)
+        self.pre_frame.grid_rowconfigure(1, weight=1)
+        
+        ctk.CTkLabel(self.pre_frame, text="Código Preprocesado", text_color="white").grid(row=0, column=0, sticky="w")
+        self.preprocessor_text = ctk.CTkTextbox(self.pre_frame, font=Fonts.get_font(""))
+        self.preprocessor_text.grid(row=1, column=0, sticky="nsew")
+
+        # Frame derecho: Assembly Importado
+        self.asm_frame = ctk.CTkFrame(self.tab_preprocessor, fg_color="transparent")
+        self.asm_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        self.asm_frame.grid_columnconfigure(0, weight=1)
+        self.asm_frame.grid_rowconfigure(1, weight=1)
+
+        ctk.CTkLabel(self.asm_frame, text="Assembly Importado", text_color="white").grid(row=0, column=0, sticky="w")
+        self.library_asm_text = ctk.CTkTextbox(self.asm_frame, font=Fonts.get_font("consolas"))
+        self.library_asm_text.grid(row=1, column=0, sticky="nsew")
         
     def setup_lexer_tab(self):
         self.tab_lexer.grid_columnconfigure(0, weight=1)
         self.tab_lexer.grid_rowconfigure(0, weight=1)
         
         # Usar fuente monoespaciada para que la tabla se alinee correctamente
-        self.lexer_text = ctk.CTkTextbox(self.tab_lexer, font=("Consolas", 12))
+        self.lexer_text = ctk.CTkTextbox(self.tab_lexer, font=Fonts.get_font("consolas"))
         self.lexer_text.grid(row=0, column=0, sticky="nsew")
         
     def setup_parser_tab(self):
         self.tab_parser.grid_columnconfigure(0, weight=1)
         self.tab_parser.grid_rowconfigure(0, weight=1)
         
-        self.parser_text = ctk.CTkTextbox(self.tab_parser, font=("Consolas", 12))
+        self.parser_text = ctk.CTkTextbox(self.tab_parser, font=Fonts.get_font("consolas"))
         self.parser_text.grid(row=0, column=0, sticky="nsew")
 
     def render_tree(self, node, prefix="", is_last=True, is_root=True):
@@ -173,6 +197,11 @@ class CompilerPhasesWindow(ctk.CTkToplevel):
     def populate_views(self):
         # 1. Preprocessor
         self.preprocessor_text.insert("0.0", self.preprocessed_code)
+        
+        if self.library_asm:
+            self.library_asm_text.insert("0.0", self.library_asm)
+        else:
+            self.library_asm_text.insert("0.0", "; No se importaron funciones de librería")
 
         # 2. Lexer
         lexer_output = f"{'Tipo':<20} | {'Valor':<30} | {'Linea':<5} | {'Pos':<5}\n"
