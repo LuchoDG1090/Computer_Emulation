@@ -94,7 +94,7 @@ class MyParser:
         
         # Añadir Puntero al Heap
         self.data_section.append("__HEAP_PTR: DW __HEAP_START")
-        self.data_section.append("__HEAP_START: DW 0")
+        # __HEAP_START se añade al final del archivo en el pipeline para evitar sobrescritura por librerías
         
         data_section_str = "\n".join(self.data_section)
         
@@ -1141,7 +1141,7 @@ class MyParser:
         else:
             print("Error de sintaxis en EOF")
 
-    def parse(self, code, lexer):
+    def parse(self, code, lexer, library_asm=None):
         self.asm = ""
         self.label_count = 0
         self.string_count = 0
@@ -1163,6 +1163,18 @@ class MyParser:
 
         if self.error_count > 0:
             return None
+            
+        if result:
+            asm_code, ast = result
+            # Agregar código de librerías al final si existe
+            if library_asm:
+                asm_code += "\n\n# --- Library Functions ---\n" + library_asm
+            
+            # Definir inicio del Heap al final de todo el código (incluyendo librerías)
+            asm_code += "\n\n__HEAP_START: DW 0\n"
+            
+            return asm_code, ast
+            
         return result
 
     # ----------------------------------------

@@ -39,12 +39,9 @@ def compile_file(input_path: str, output_dir: str) -> str:
     # 3. Parser
     parser = MyParser(MyLexer.tokens, library_functions=library_funcs)
     try:
-        result = parser.parse(preprocessed_code, lexer_instance.lexer)
+        result = parser.parse(preprocessed_code, lexer_instance.lexer, library_asm=library_asm)
         if result:
             asm_code, ast = result
-            # Agregar código de librerías al final
-            if library_asm:
-                asm_code += "\n\n# --- Library Functions ---\n" + library_asm
         else:
             asm_code = None
     except Exception as e:

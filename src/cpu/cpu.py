@@ -197,6 +197,7 @@ class CPU:
         Returns:
             True si debe continuar, False si debe detenerse
         """
+        current_pc = self.pc
         try:
             instruction = self.fetch()
             decoded = self.decode(instruction)
@@ -210,7 +211,7 @@ class CPU:
             return should_continue
 
         except Exception as e:
-            raise RuntimeError(f"Error en ciclo CPU: {e}")
+            raise RuntimeError(f"Error en ciclo CPU @ 0x{current_pc:08X}: {e}")
 
     def run(self, max_cycles: int = None):
         """

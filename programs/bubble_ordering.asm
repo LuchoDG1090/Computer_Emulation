@@ -253,4 +253,5 @@ STR_3: DB "Arreglo ordenado:", 0
 STR_4: DB " ", 0
 STR_5: DB "\n", 0
 __HEAP_PTR: DW __HEAP_START
+
 __HEAP_START: DW 0

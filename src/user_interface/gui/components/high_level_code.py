@@ -102,18 +102,14 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             token_iterator = ListLexer(tokens_list)
             parser = MyParser(MyLexer.tokens, library_functions=available_funcs)
             
-            # Pasamos el iterador personalizado
-            result = parser.parse(preprocessed_code, lexer=token_iterator)
+            # Pasamos el iterador personalizado y el código de librerías
+            result = parser.parse(preprocessed_code, lexer=token_iterator, library_asm=library_asm)
             
             asm_code = ""
             ast_tree = None
             
             if result:
                 asm_code, ast_tree = result
-                
-                # Agregar código de librerías al final
-                if library_asm:
-                    asm_code += "\n\n# --- Library Functions ---\n" + library_asm
                 
                 if self.assembly_callback:
                     self.assembly_callback(asm_code)

@@ -205,6 +205,9 @@ class Assembler:
         for offset, value in enumerate(directive.args):
             resolved_value = self._resolve_value(value)
             if isinstance(resolved_value, str):
+                # Si es string, debe ser un placeholder {123}
+                if not (resolved_value.startswith("{") and resolved_value.endswith("}")):
+                     raise EncodingError(f"Símbolo no definido en DW: {value}")
                 binary_lines.append(resolved_value)
             else:
                 binary_lines.append(format(resolved_value & 0xFFFFFFFFFFFFFFFF, "064b"))
