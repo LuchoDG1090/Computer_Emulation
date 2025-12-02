@@ -100,8 +100,8 @@ def t_IMMEDIATE(t):
 
 
 def t_COMMENT(t):
-    r"\#.*"
-    pass  # Ignorar comentarios
+    r"[\#;].*"
+    pass  # Ignorar comentarios (# o ;)
 
 
 def t_NEWLINE(t):

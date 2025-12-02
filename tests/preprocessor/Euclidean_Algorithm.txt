@@ -1,4 +1,4 @@
-#include "Euclidean_Algorithm_maxcd.txt"
+#include <Euclidean_Algorithm_maxcd>
 #define x 21
 #define y 9
 /* Algoritmo de Euclides:

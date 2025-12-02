@@ -184,10 +184,17 @@ class Assembler:
             elif isinstance(op, str) and self.symbol_table.exists(op):
                 label = op
 
-            if label and self.symbol_table.exists(label):
-                placeholder = self._get_placeholder_for_label(label)
-                resolved.append(0)
-                relocations.append({"operand_index": index, "placeholder": placeholder})
+            if label:
+                if self.symbol_table.exists(label):
+                    # Resolver la dirección del símbolo
+                    address = self.symbol_table.get(label)
+                    placeholder = self._get_placeholder_for_label(label)
+                    resolved.append(address)
+                    relocations.append({"operand_index": index, "placeholder": placeholder})
+                else:
+                    # Si tiene corchetes pero no existe, lanzar error
+                    from src.assembler.exceptions import SymbolError
+                    raise SymbolError(f"Símbolo no definido: {label}")
             else:
                 resolved.append(op)
 
