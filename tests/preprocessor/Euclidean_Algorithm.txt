@@ -3,10 +3,8 @@
 */
 
 #include <Euclidean_Algorithm_maxcd>
-#define A 45
-#define B 18
-
-maxcd(A, B);
+#define A 21
+#define B 49
 
 # Imprimir resultado (el MCD está en 'a')
 output "El resultado es: ";
