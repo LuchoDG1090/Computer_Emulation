@@ -14,13 +14,12 @@ from src.user_interface.gui.components import (
     buttons_actions,
     console,
     execute_complete,
-    flag_register,
-    general_purpose_regs,
     high_level_code,
     program_counter,
     program_selector,
     ram,
     reloc,
+    registers_window,
 )
 
 
@@ -159,25 +158,16 @@ class MainFunctionalityMenu(ctk.CTkFrame):
     def __build_third_column(self):
         frame_third_column = ctk.CTkFrame(self, fg_color="transparent")
 
-        frame_third_column.rowconfigure(0, weight=6)
-        frame_third_column.rowconfigure(1, weight=5)
-        frame_third_column.rowconfigure(2, weight=5)
-        frame_third_column.rowconfigure(3, weight=0)
-        frame_third_column.rowconfigure(4, weight=0)
-        frame_third_column.rowconfigure(5, weight=0)
+        frame_third_column.rowconfigure(0, weight=1)
+        frame_third_column.rowconfigure(1, weight=0)
+        frame_third_column.rowconfigure(2, weight=0)
         frame_third_column.grid_propagate(False)
         frame_third_column.columnconfigure(0, weight=1)
 
         self.console_frame = console.ConsoleFrame(frame_third_column)
-        self.console_frame.configure(height = 300)
-
-        self.flag_register_frame = flag_register.FlagRegisterFrame(
-            frame_third_column, cpu=self.cpu
-        )
-
-        self.gen_purpose_regs = general_purpose_regs.GeneralPurposeRegisterFrame(
-            frame_third_column, cpu=self.cpu
-        )
+        
+        # Initialize registers window
+        self.registers_window = registers_window.RegistersWindow(self)
 
         self.reloc_code.program_selector = self.program_selector
 
@@ -192,12 +182,12 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             console_frame=self.console_frame,
             clear_programs_callback=self.program_selector.update_program_list,
         )
+        
+        btn_show_regs = ctk.CTkButton(frame_third_column, text="Ver Registros y Flags", command=self.registers_window.show)
 
         self.console_frame.grid(column=0, row=0, sticky="nsew", pady=12)
-        self.flag_register_frame.grid(column=0, row=1, sticky="ew", pady=12)
-        self.gen_purpose_regs.grid(column=0, row=2, sticky="ew", pady=12)
-        # program_selector y pc_frame se ubican en la segunda columna (bloque inferior)
-        botones_acciones.grid(column=0, row=5, sticky="ew", pady=12)
+        btn_show_regs.grid(column=0, row=1, sticky="ew", pady=(0, 12))
+        botones_acciones.grid(column=0, row=2, sticky="ew", pady=12)
 
         frame_third_column.grid(
             column=2, row=0, sticky="nsew", padx=(10, 10), pady=(10, 10)
@@ -225,13 +215,9 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         Args:
             state: Diccionario con el estado del CPU
         """
-        # Actualizar registros
-        if "registers" in state:
-            self.gen_purpose_regs.update_registers(state["registers"])
-
-        # Actualizar flags
-        if "flags" in state:
-            self.flag_register_frame.update_flags(state["flags"])
+        # Actualizar registros y flags en la nueva ventana
+        if hasattr(self, "registers_window") and self.registers_window:
+            self.registers_window.update_state(state)
 
         # Actualizar PC
         if "pc" in state:
