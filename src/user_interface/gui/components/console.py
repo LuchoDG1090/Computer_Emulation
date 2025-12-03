@@ -82,7 +82,9 @@ class ConsoleFrame(ctk.CTkFrame):
         if not self.waiting_for_input:
             return "break"
 
-        user_input = self.entrada_textbox.get("1.0", "end-1c").strip()
+        # Obtener solo el texto nuevo desde input_start_pos hasta el final
+        start_index = self.input_start_pos if self.input_start_pos else "1.0"
+        user_input = self.entrada_textbox.get(start_index, "end-1c").strip()
 
         # Tipo char
         if self.input_type == "char":
@@ -106,9 +108,13 @@ class ConsoleFrame(ctk.CTkFrame):
         elif self.input_type == "line":
             self.input_result = user_input
 
-        # Limpiar entrada
-        self.entrada_textbox.delete("1.0", "end")
+        # No borrar la entrada, solo deshabilitar y añadir separador
+        self.entrada_textbox.insert("end", "\n" + "-"*20 + "\n")
+        self.entrada_textbox.see("end")
         self.entrada_textbox.configure(state="disabled")
+        
+        # Actualizar posición de inicio para el próximo input
+        self.input_start_pos = self.entrada_textbox.index("end-1c")
 
         self.waiting_for_input = False
 
@@ -131,7 +137,14 @@ class ConsoleFrame(ctk.CTkFrame):
 
     def append_int(self, value: int):
         self.console_textbox.configure(state="normal")
-        self.console_textbox.insert("end", str(value))
+        # Añadir espacio automático para separar números si se imprimen varios seguidos
+        # Verificar si el último caracter es un espacio o salto de línea
+        last_char = self.console_textbox.get("end-2c", "end-1c")
+        prefix = ""
+        if last_char and last_char not in [" ", "\n", "\t"]:
+             prefix = " "
+             
+        self.console_textbox.insert("end", f"{prefix}{value}")
         self.console_textbox.see("end")
         self.console_textbox.configure(state="disabled")
 
@@ -165,7 +178,9 @@ class ConsoleFrame(ctk.CTkFrame):
         self.waiting_for_input = True
 
         self.entrada_textbox.configure(state="normal")
-        self.entrada_textbox.delete("1.0", "end")
+        # No borrar todo, solo asegurar que el cursor esté al final
+        self.entrada_textbox.mark_set("insert", "end")
+        self.entrada_textbox.see("end")
         self.entrada_textbox.focus()
 
         self.input_start_pos = self.entrada_textbox.index("end-1c")

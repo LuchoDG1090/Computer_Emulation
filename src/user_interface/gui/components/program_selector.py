@@ -38,6 +38,8 @@ class ProgramSelectorFrame(ctk.CTkFrame):
             values=["Ninguno"],
             state="readonly",
             command=self.__on_program_selected,
+            font=Fonts.get_font("global_mini"),
+            dropdown_font=Fonts.get_font("global_mini"),
         )
         self.selector.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
         self.selector.set("Ninguno")

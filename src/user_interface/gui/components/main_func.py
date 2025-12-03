@@ -21,6 +21,7 @@ from src.user_interface.gui.components import (
     reloc,
     registers_window,
 )
+from .design_variable_elements import Fonts
 
 
 class MainFunctionalityMenu(ctk.CTkFrame):
@@ -166,8 +167,8 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
         self.console_frame = console.ConsoleFrame(frame_third_column)
         
-        # Initialize registers window
-        self.registers_window = registers_window.RegistersWindow(self)
+        # Initialize registers window lazily
+        self.registers_window = None
 
         self.reloc_code.program_selector = self.program_selector
 
@@ -183,7 +184,15 @@ class MainFunctionalityMenu(ctk.CTkFrame):
             clear_programs_callback=self.program_selector.update_program_list,
         )
         
-        btn_show_regs = ctk.CTkButton(frame_third_column, text="Ver Registros y Flags", command=self.registers_window.show)
+        btn_show_regs = ctk.CTkButton(
+            frame_third_column, 
+            text="Ver Registros y Flags", 
+            command=self.__show_registers_window,
+            font=Fonts.get_font("global_mini"),
+            fg_color="#4C44AC",
+            text_color="white",
+            corner_radius=50
+        )
 
         self.console_frame.grid(column=0, row=0, sticky="nsew", pady=12)
         btn_show_regs.grid(column=0, row=1, sticky="ew", pady=(0, 12))
@@ -195,6 +204,11 @@ class MainFunctionalityMenu(ctk.CTkFrame):
 
         # Conectar callbacks de I/O del CPU
         self.__setup_io_callbacks()
+
+    def __show_registers_window(self):
+        if self.registers_window is None:
+            self.registers_window = registers_window.RegistersWindow(self)
+        self.registers_window.show()
 
     def __setup_io_callbacks(self):
         """Configura los callbacks de entrada/salida del CPU"""

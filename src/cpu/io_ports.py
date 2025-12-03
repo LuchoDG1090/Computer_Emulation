@@ -482,7 +482,6 @@ class IOPorts:
         if self.output_char_callback:
             for ch in text:
                 self.output_char_callback(ord(ch))
-            self.output_char_callback(ord("\n"))
         else:
             self.output_buffer += text
 

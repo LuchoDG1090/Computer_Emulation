@@ -29,7 +29,10 @@ class RegistersWindow(ctk.CTkToplevel):
         
         # Handle window closing
         self.protocol("WM_DELETE_WINDOW", self.__on_close)
-        self.is_open = True
+        
+        # Hide initially
+        self.withdraw()
+        self.is_open = False
 
     def __on_close(self):
         self.is_open = False
