@@ -3,19 +3,11 @@
 */
 
 #include <Euclidean_Algorithm_maxcd>
+#define A 45
+#define B 18
 
-# Leer primer número
-int a;
-output "Ingrese el primer numero: ";
-input a;
-
-# Leer segundo número
-int b;
-output "Ingrese el segundo numero: ";
-input b;
-
-a = maxcd(a, b);
+maxcd(A, B);
 
 # Imprimir resultado (el MCD está en 'a')
 output "El resultado es: ";
-output a;
+output maxcd(A, B);
