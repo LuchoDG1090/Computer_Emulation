@@ -1,10 +1,11 @@
-func maxcd(int a0,int b0):
-    int a=a0; # Variable entera a
-    int b=b0; # Variable entera b
-    while (a!=b):
-        if (a>b): a=a-b;
-        else: b=b-a;
+# Algoritmo de Euclides
+func maxcd(int c, int d):
+    while (c != d):
+        if (c > d):
+            c = c - d;
+        else:
+            d = d - c;
         endif
     endwhile
-    return a;
+    return c;
 endfunc
