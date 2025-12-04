@@ -1190,7 +1190,8 @@ class Parser:
         
         if expr_type == 'string':
             # Usar OUTS para salida de cadena
-            p[0] = (f"{expr_code}\nOUTS R0, 0xFFFF0008", ast)
+            # Se agrega un salto de linea (ASCII 10) al final para consistencia con output numerico
+            p[0] = (f"{expr_code}\nOUTS R0, 0xFFFF0008\nMOVI R0, 10\nOUT R0, 0xFFFF0000", ast)
         elif expr_type == 'float':
              # Usar OUT con func=6 (subop=3 -> print float)
              # 6 = (3 << 1) | 0
