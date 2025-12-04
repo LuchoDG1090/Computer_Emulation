@@ -1,0 +1,64 @@
+ORG 0
+JMP __MAIN
+FUNC_main:
+POP R14
+PUSH R14
+
+MOVI R0, 0
+MOVI R1, 16
+MUL R1, R0, R1
+MOVI R2, arr_puntos_1
+ADD R15, R2, R1
+PUSH R15
+MOVI R0, 10
+POP R15
+ST R0, R15, 0
+MOVI R0, 0
+MOVI R1, 16
+MUL R1, R0, R1
+MOVI R2, arr_puntos_1
+ADD R15, R2, R1
+PUSH R15
+MOVI R0, 20
+POP R15
+ST R0, R15, 8
+MOVI R0, 0
+MOVI R1, 16
+MUL R1, R0, R1
+MOVI R2, arr_puntos_1
+ADD R15, R2, R1
+LD R0, R15, 0
+OUT R0, 0xFFFF0008
+MOVI R0, STR_1
+OUTS R0, 0xFFFF0008
+MOVI R0, 10
+OUT R0, 0xFFFF0000
+MOVI R0, 0
+MOVI R1, 16
+MUL R1, R0, R1
+MOVI R2, arr_puntos_1
+ADD R15, R2, R1
+LD R0, R15, 8
+OUT R0, 0xFFFF0008
+MOVI R0, STR_2
+OUTS R0, 0xFFFF0008
+MOVI R0, 10
+OUT R0, 0xFFFF0000
+RET
+__MAIN:
+
+CALL FUNC_main
+HALT
+
+arr_puntos_1:
+arr_puntos_1_0:
+arr_puntos_1_0_x: DW 0
+arr_puntos_1_0_y: DW 0
+arr_puntos_1_1:
+arr_puntos_1_1_x: DW 0
+arr_puntos_1_1_y: DW 0
+STR_1: DB "\n", 0
+STR_2: DB "\n", 0
+__HEAP_PTR: DW __HEAP_START
+
+__HEAP_START: DW 0

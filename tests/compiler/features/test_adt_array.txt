@@ -1,0 +1,135 @@
+/* Test de Arrays de TDAs (Tipos Abstractos de Datos) */
+
+/* Definir un TDA simple: Punto2D */
+adt Punto():
+    public:
+        int x;
+        int y;
+endadt
+
+/* Definir un TDA mas complejo: Rectangulo */
+adt Rectangulo():
+    public:
+        int ancho;
+        int alto;
+        int area;
+endadt
+
+func main():
+    /* Test 1: Array estatico de TDA */
+    output "=== Test 1: Array Estatico de Puntos ===";
+    output "\n";
+    
+    Punto puntos[3];
+    int i;
+    
+    /* Inicializar puntos con valores */
+    puntos[0].x = 10;
+    puntos[0].y = 20;
+    
+    puntos[1].x = 30;
+    puntos[1].y = 40;
+    
+    puntos[2].x = 50;
+    puntos[2].y = 60;
+    
+    /* Leer y mostrar los puntos */
+    output "Puntos almacenados:";
+    output "\n";
+    for (i in 0 .. 3):
+        output "Punto ";
+        output i;
+        output ": (";
+        output puntos[i].x;
+        output ", ";
+        output puntos[i].y;
+        output ")";
+        output "\n";
+    endfor
+    
+    /* Test 2: Array estatico de Rectangulos */
+    output "\n";
+    output "=== Test 2: Array de Rectangulos ===";
+    output "\n";
+    
+    Rectangulo rects[2];
+    
+    /* Inicializar rectangulos */
+    rects[0].ancho = 5;
+    rects[0].alto = 10;
+    rects[0].area = rects[0].ancho * rects[0].alto;
+    
+    rects[1].ancho = 8;
+    rects[1].alto = 12;
+    rects[1].area = rects[1].ancho * rects[1].alto;
+    
+    /* Mostrar rectangulos */
+    for (i in 0 .. 2):
+        output "Rectangulo ";
+        output i;
+        output ": ";
+        output rects[i].ancho;
+        output " x ";
+        output rects[i].alto;
+        output " = ";
+        output rects[i].area;
+        output "\n";
+    endfor
+    
+    /* Test 3: Array dinamico de TDA */
+    output "\n";
+    output "=== Test 3: Array Dinamico de Puntos ===";
+    output "\n";
+    
+    int n;
+    n = 4;
+    Punto dinamicos[n];
+    
+    /* Inicializar con bucle */
+    for (i in 0 .. n):
+        dinamicos[i].x = i * 10;
+        dinamicos[i].y = i * 20;
+    endfor
+    
+    /* Mostrar array dinamico */
+    output "Puntos dinamicos:";
+    output "\n";
+    for (i in 0 range n):
+        output "Punto ";
+        output i;
+        output ": (";
+        output dinamicos[i].x;
+        output ", ";
+        output dinamicos[i].y;
+        output ")";
+        output "\n";
+    endfor
+    
+    /* Test 4: Modificar valores en bucle */
+    output "\n";
+    output "=== Test 4: Modificacion en Bucle ===";
+    output "\n";
+    
+    /* Duplicar las coordenadas */
+    for (i in 0 range 3):
+        puntos[i].x = puntos[i].x * 2;
+        puntos[i].y = puntos[i].y * 2;
+    endfor
+    
+    output "Puntos duplicados:";
+    output "\n";
+    for (i in 0 .. 3):
+        output "Punto ";
+        output i;
+        output ": (";
+        output puntos[i].x;
+        output ", ";
+        output puntos[i].y;
+        output ")";
+        output "\n";
+    endfor
+    
+    output "\n";
+    output "=== Todos los tests completados ===";
+    output "\n";
+endfunc

@@ -1,0 +1,19 @@
+/* Test simple de arrays de TDAs */
+
+adt Punto():
+    public:
+        int x;
+        int y;
+endadt
+
+func main():
+    Punto puntos[2];
+    
+    puntos[0].x = 10;
+    puntos[0].y = 20;
+    
+    output puntos[0].x;
+    output "\n";
+    output puntos[0].y;
+    output "\n";
+endfunc
