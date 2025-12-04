@@ -1606,4 +1606,3 @@ class Parser:
             
         return f"{expr_code}\nST R0, {meta['label']}"
 
-
