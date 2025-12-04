@@ -171,6 +171,7 @@ class MainFunctionalityMenu(ctk.CTkFrame):
         self.registers_window = None
 
         self.reloc_code.program_selector = self.program_selector
+        self.program_selector.set_clear_console_callback(self.console_frame.clear_console)
 
         botones_acciones = buttons_actions.BotonesAcciones(
             frame_third_column,

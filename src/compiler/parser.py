@@ -1,19 +1,19 @@
 import sys
 import os
 
-# Añadir directorio src al path para permitir 'import ply.yacc'
+# Anadir directorio src al path para permitir 'import ply.yacc'
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import ply.yacc as yacc
 
 class Parser:
     """
-    El Parser se encarga del análisis sintáctico y la generación de código ensamblador.
-    Utiliza la librería PLY (Python Lex-Yacc) para procesar los tokens.
+    El Parser se encarga del analisis sintactico y la generacion de codigo ensamblador.
+    Utiliza la libreria PLY (Python Lex-Yacc) para procesar los tokens.
     
-    Estrategia de Generación de Código:
-    - El código se genera en una sola pasada (Single-pass compiler).
-    - Las expresiones se evalúan utilizando una estrategia basada en Pila (Stack Machine):
+    Estrategia de Generacion de Codigo:
+    - El codigo se genera en una sola pasada (Single-pass compiler).
+    - Las expresiones se evaluan utilizando una estrategia basada en Pila (Stack Machine):
       se empujan operandos y los operadores consumen de la pila.
     - Las estructuras de control (if, while, for) generan etiquetas y saltos (JMP, JZ, etc.).
     """
@@ -23,19 +23,19 @@ class Parser:
         self.library_functions = library_functions if library_functions else set()
         self.called_functions = set()
 
-        # Tabla de Símbolos: Estructura central para el análisis semántico.
-        # Ahora implementada como una pila de ámbitos (scopes) para manejar variables locales.
-        # self.scopes[0] es el ámbito global.
+        # Tabla de Simbolos: Estructura central para el analisis semantico.
+        # Ahora implementada como una pila de ambitos (scopes) para manejar variables locales.
+        # self.scopes[0] es el ambito global.
         self.scopes = [{}]
 
-        # Sección de Datos: Almacena las directivas de memoria (DW, DB) que se
-        # emitirán al final del código ensamblador (después del HALT).
+        # Seccion de Datos: Almacena las directivas de memoria (DW, DB) que se
+        # emitiran al final del codigo ensamblador (despues del HALT).
         self.data_section = []
 
-        # Contador de etiquetas para etiquetas únicas
+        # Contador de etiquetas para etiquetas unicas
         self.label_count = 0
         
-        # Contador de cadenas para etiquetas de sección de datos
+        # Contador de cadenas para etiquetas de seccion de datos
         self.string_count = 0
 
         # Tabla de Tipos TDA: {
@@ -47,7 +47,7 @@ class Parser:
         # }
         self.type_table = {}
 
-        # Contexto actual: None o nombre de TDA mientras se parsea una operación TDA
+        # Contexto actual: None o nombre de TDA mientras se parsea una operacion TDA
         self.current_context = None
         self.current_adt_members = {}
         self.current_adt_offset = 0
@@ -61,7 +61,7 @@ class Parser:
         # Contador de errores
         self.error_count = 0
 
-    # Métodos de gestión de Scope (Ámbito)
+    # Metodos de gestion de Scope (Ambito)
     def _enter_scope(self):
         self.scopes.append({})
 
@@ -76,10 +76,10 @@ class Parser:
 
     def _declare(self, name, info, p):
         if name in self.scopes[-1]:
-            self._error(f"Identificador '{name}' ya declarado en este ámbito", p)
+            self._error(f"Identificador '{name}' ya declarado en este ambito", p)
         self.scopes[-1][name] = info
 
-    # Generador de etiquetas de utilidad usado por la nueva lógica de declaración
+    # Generador de etiquetas de utilidad usado por la nueva logica de declaracion
     def _new_label(self, prefix: str):
         self.label_count += 1
         return f"{prefix}_{self.label_count}"
@@ -117,23 +117,23 @@ class Parser:
         """program : statements"""
         # Esta regla define la estructura final del ejecutable.
         # 1. Inicializa el puntero al Heap (__HEAP_PTR).
-        # 2. Separa el código de funciones del código principal (Main).
+        # 2. Separa el codigo de funciones del codigo principal (Main).
         # 3. Genera el punto de entrada (ORG 0) y el salto al Main.
         
         code, ast = p[1]
         
-        # Añadir Puntero al Heap
+        # Anadir Puntero al Heap
         self.data_section.append("__HEAP_PTR: DW __HEAP_START")
-        # __HEAP_START se añade al final del archivo en el pipeline para evitar sobrescritura por librerías
+        # __HEAP_START se anade al final del archivo en el pipeline para evitar sobrescritura por librerias
         
         data_section_str = "\n".join(self.data_section)
         
-        # Si no hay funciones definidas, todo es código principal
+        # Si no hay funciones definidas, todo es codigo principal
         if 'FUNC_' not in code:
              p[0] = (f"ORG 0\n{code}\nHALT\n\n{data_section_str}", {"type": "Program", "body": ast})
              return
 
-        # Separar funciones del código principal
+        # Separar funciones del codigo principal
         lines = code.split('\n')
         functions = []
         main_code = []
@@ -141,22 +141,24 @@ class Parser:
         
         for line in lines:
             stripped = line.strip()
-            # Detectar inicio de función
+            # Detectar inicio de funcion
             if stripped.startswith('FUNC_'):
                 in_function = True
             
             if in_function:
-                functions.append(line)
-                # Detectar fin de función (RET)
-                if stripped == 'RET':
+                # Detectar fin de funcion (__END_FUNC__)
+                if stripped == '__END_FUNC__':
+                    functions.append('RET')
                     in_function = False
-            elif stripped: # Líneas que no son funciones ni vacías van al main
+                else:
+                    functions.append(line)
+            elif stripped: # Lineas que no son funciones ni vacias van al main
                 main_code.append(line)
         
         func_section = "\n".join(functions)
         main_section = "\n".join(main_code)
         
-        # Invocar automáticamente a main() si existe
+        # Invocar automaticamente a main() si existe
         if self._lookup("FUNC_main"):
             main_section += "\nCALL FUNC_main"
 
@@ -218,22 +220,22 @@ class Parser:
                         | type ID LBRACKET expression RBRACKET SEMI"""
         # Maneja la reserva de memoria para variables.
         # - Variables simples: Se crea una etiqueta y se reserva espacio con DW 0.
-        # - Arrays estáticos: Se reserva un bloque contiguo de memoria.
-        # - Arrays dinámicos: Se genera código para solicitar memoria al Heap en tiempo de ejecución.
+        # - Arrays estaticos: Se reserva un bloque contiguo de memoria.
+        # - Arrays dinamicos: Se genera codigo para solicitar memoria al Heap en tiempo de ejecucion.
         
         var_type = p[1]
         name = p[2]
         is_init = len(p) == 6 and p[3] == '='
         is_array_decl = len(p) == 7 and p[3] == '['
 
-        # Declaración con inicialización
+        # Declaracion con inicializacion
         if is_init:
             expr = p[4]
             expr_code = expr[0]
             expr_type = expr[1]
             expr_ast = expr[2]
 
-            # Validación de Tipos
+            # Validacion de Tipos
             if var_type != expr_type:
                 self._error(f"Error de tipo: No se puede asignar '{expr_type}' a variable de tipo '{var_type}'", p)
 
@@ -249,7 +251,7 @@ class Parser:
             p[0] = (f"{expr_code}\nST R0, [{label}]", {"type": "Declaration", "var_type": var_type, "name": name, "init": expr_ast})
             return
 
-        # Declaración de instancia TDA (el tipo existe en type_table)
+        # Declaracion de instancia TDA (el tipo existe en type_table)
         if var_type in self.type_table:
             adt_info = self.type_table[var_type]
             instance_label = self._new_label(f"adt_{name}")
@@ -277,27 +279,27 @@ class Parser:
                 'is_adt': True,
                 'members': member_map
             }, p)
-            # Añadir todas las líneas de miembros a data_section
+            # Anadir todas las lineas de miembros a data_section
             self.data_section.extend(data_lines)
             p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
             return
 
-        # Declaración de array
+        # Declaracion de array
         if is_array_decl:
             size_expr = p[4]
             size_code = size_expr[0]
             size_ast = size_expr[2]
             base_label = self._new_label(f"arr_{name}")
             
-            # Comprobar si el tamaño es un literal entero estático (optimización)
-            # size_code será "MOVI R0, <int>"
+            # Comprobar si el tamano es un literal entero estatico (optimizacion)
+            # size_code sera "MOVI R0, <int>"
             import re
             match = re.match(r"MOVI R0, (\d+)", size_code)
             
             ast_node = {"type": "ArrayDeclaration", "var_type": var_type, "name": name, "size": size_ast}
 
             if match:
-                # Asignación estática
+                # Asignacion estatica
                 size = int(match.group(1))
                 self._declare(name, {
                     'label': base_label,
@@ -305,13 +307,13 @@ class Parser:
                     'is_array': True,
                     'size': size,
                     'is_adt': False,
-                    'is_param': False # Array estático
+                    'is_param': False # Array estatico
                 }, p)
                 words = ' '.join(['0' for _ in range(size)])
                 self.data_section.append(f"{base_label}: DW {words}")
                 p[0] = ("", ast_node)
             else:
-                # Asignación dinámica
+                # Asignacion dinámica
                 self._declare(name, {
                     'label': base_label,
                     'type': var_type,
@@ -323,7 +325,7 @@ class Parser:
                 # Crear variable puntero
                 self.data_section.append(f"{base_label}: DW 0")
                 
-                # Generar código de asignación
+                # Generar codigo de asignacion
                 alloc_code = f"""
                 {size_code}
                 MOVI R1, 8
@@ -381,10 +383,10 @@ class Parser:
                       | expression SHIFT_LEFT expression
                       | expression SHIFT_RIGHT expression"""
         
-        # Generación de código para operaciones binarias usando la PILA (Stack).
-        # 1. Se genera el código del operando izquierdo (resultado en R0).
+        # Generacion de codigo para operaciones binarias usando la PILA (Stack).
+        # 1. Se genera el codigo del operando izquierdo (resultado en R0).
         # 2. Se hace PUSH R0 para guardarlo.
-        # 3. Se genera el código del operando derecho (resultado en R0).
+        # 3. Se genera el codigo del operando derecho (resultado en R0).
         # 4. Se hace POP R1 para recuperar el izquierdo.
         # 5. Se opera R0 y R1.
         
@@ -404,7 +406,7 @@ class Parser:
         
         ast_node = {"type": "BinaryOp", "op": op, "left": ast1, "right": ast2}
         
-        # Diccionario para operaciones aritméticas y bitwise simples
+        # Diccionario para operaciones aritmeticas y bitwise simples
         simple_ops = {
             '+': 'ADD', '-': 'SUB', '*': 'MUL', '/': 'DIV', '%': 'MOD',
             '&': 'AND', '|': 'OR', '^': 'XOR', '<<': 'SHL', '>>': 'SHR',
@@ -424,22 +426,22 @@ class Parser:
                 p[0] = (f"{code1}\nPUSH R0\n{code2}\nPOP R1\n{asm_op} R0, R1, R0", 'int', ast_node)
             return
 
-        # Lógica de comparación
+        # Logica de comparacion
         lbl_true = self.get_new_label()
         lbl_end = self.get_new_label()
         lbl_false = self.get_new_label() + "_false"
         
         compare_logic = "CMP R1, R0\n"
         
-        # Diccionario para instrucciones de salto basadas en comparación
+        # Diccionario para instrucciones de salto basadas en comparacion
         # (jump_if_true, jump_if_false_check_needed)
         comparisons = {
             '==': (f"JZ {lbl_true}", False),
             '!=': (f"JNZ {lbl_true}", False),
             '<':  (f"JS {lbl_true}", False),
             '<=': (f"JS {lbl_true}\nJZ {lbl_true}", False),
-            '>':  (f"JMP {lbl_true}", True), # Lógica caso especial
-            '>=': (f"JMP {lbl_true}", True)  # Lógica caso especial
+            '>':  (f"JMP {lbl_true}", True), # Logica caso especial
+            '>=': (f"JMP {lbl_true}", True)  # Logica caso especial
         }
 
         if op in ['>', '>=']:
@@ -512,7 +514,7 @@ class Parser:
         entry = self._lookup(var_name)
         if not entry:
             # Si no se encuentra, asumir int y error (o dejar que _generate_var_access maneje el error)
-            # _generate_var_access también usa _lookup ahora (lo actualizaremos)
+            # _generate_var_access tambien usa _lookup ahora (lo actualizaremos)
             entry = {} 
         
         var_type = entry.get('type', 'int')
@@ -557,23 +559,23 @@ class Parser:
 
     def p_expression_func_call(self, p):
         """expression : func_call"""
-        # func_call devuelve cadena de código. Necesitamos inferir el tipo.
+        # func_call devuelve cadena de codigo. Necesitamos inferir el tipo.
         # Por ahora, asumir 'int' a menos que rastreemos tipos de retorno de funciones.
-        # TODO: Rastrear tipos de retorno de funciones en tabla de símbolos.
+        # TODO: Rastrear tipos de retorno de funciones en tabla de simbolos.
         p[0] = (p[1][0], 'int', p[1][1])
 
     def p_expression_string(self, p):
         """expression : STRING"""
-        # Generar etiqueta única para cadena en sección de datos
+        # Generar etiqueta unica para cadena en seccion de datos
         self.string_count += 1
         str_label = f"STR_{self.string_count}"
         
-        # Añadir cadena a sección de datos usando directiva DB
-        # Escapar la cadena apropiadamente y añadir terminador nulo
+        # Anadir cadena a seccion de datos usando directiva DB
+        # Escapar la cadena apropiadamente y anadir terminador nulo
         string_content = p[1]
         self.data_section.append(f'{str_label}: DB "{string_content}", 0')
         
-        # Devolver código para cargar dirección de cadena en R0
+        # Devolver codigo para cargar direccion de cadena en R0
         p[0] = (f"MOVI R0, {str_label}", 'string', {"type": "Literal", "value": string_content})
 
     def p_expression_bool(self, p):
@@ -582,7 +584,7 @@ class Parser:
         val = True if p[1] == 'true' else False
         p[0] = ("MOVI R0, 1" if val else "MOVI R0, 0", 'bool', {"type": "Literal", "value": val})
 
-    # Lista de parámetros (restaurar reglas perdidas)
+    # Lista de parametros (restaurar reglas perdidas)
     def p_param_list_opt(self, p):
         """param_list_opt : param_list
                            | empty"""
@@ -605,7 +607,7 @@ class Parser:
         if len(p) == 3:
             p[0] = (p[1], p[2])
         else:
-            # Parámetro array: marcar como tupla para que p_func_decl sepa que es array
+            # Parametro array: marcar como tupla para que p_func_decl sepa que es array
             p[0] = (p[1], (p[2], 'array'))
 
     def p_return_stmt(self, p):
@@ -628,13 +630,13 @@ class Parser:
                      | ID DOT ID LPAREN arg_list_opt RPAREN"""
         
         if len(p) == 5:
-            # Llamada a función normal
+            # Llamada a funcion normal
             func_name = p[1]
             args = p[3] if p[3] else []
             
             ast_node = {"type": "Call", "function": func_name, "args": [arg[2] for arg in args]}
 
-            # Función especial incorporada 'print' para imprimir sin nueva línea
+            # Funcion especial incorporada 'print' para imprimir sin nueva linea
             if func_name == 'print':
                 if not args:
                     p[0] = ("", ast_node)
@@ -647,29 +649,29 @@ class Parser:
                 if arg_type == 'string':
                      p[0] = (f"{arg_code}\nOUTS R0, 0xFFFF0008", ast_node)
                 elif arg_type == 'float':
-                     # Float sin nueva línea: func=6 (subop=3)
+                     # Float sin nueva linea: func=6 (subop=3)
                      p[0] = (f"{arg_code}\nOUT R0, 0xFFFF0008, 6", ast_node)
                 else:
-                     # Int sin nueva línea: func=4 (subop=2)
+                     # Int sin nueva linea: func=4 (subop=2)
                      p[0] = (f"{arg_code}\nOUT R0, 0xFFFF0008, 4", ast_node)
                 return
 
-            # Construir código de empuje de argumentos - empujar en orden inverso para que el primer arg esté arriba
+            # Construir codigo de empuje de argumentos - empujar en orden inverso para que el primer arg esté arriba
             args_code = ""
             if args:
                 for arg_code, arg_type, arg_ast in reversed(args):
-                    # Asegurar que arg_code termina con nueva línea
+                    # Asegurar que arg_code termina con nueva linea
                     if not arg_code.endswith('\n'):
                         arg_code += '\n'
                     args_code += f"{arg_code}PUSH R0\n"
             
-            # Registrar llamada para validación posterior
+            # Registrar llamada para validacion posterior
             self.called_functions.add(func_name)
             
             p[0] = (f"{args_code}CALL FUNC_{func_name}", ast_node)
             
         else:
-            # Llamada a método: obj.method(args)
+            # Llamada a metodo: obj.method(args)
             obj_name = p[1]
             method_name = p[3]
             args = p[5] if p[5] else []
@@ -697,7 +699,7 @@ class Parser:
             
             methods = adt_info.get('methods', {})
             if method_name not in methods:
-                self._error(f"Método '{method_name}' no encontrado en TDA '{adt_type}'", p)
+                self._error(f"Metodo '{method_name}' no encontrado en TDA '{adt_type}'", p)
                 p[0] = ("", ast_node)
                 return
             
@@ -707,7 +709,7 @@ class Parser:
             if method_info['visibility'] == 'private':
                 # Permitir si dentro del mismo contexto TDA
                 if self.current_context != adt_type:
-                    self._error(f"Acceso ilegal a método privado '{method_name}' de '{adt_type}'", p)
+                    self._error(f"Acceso ilegal a metodo privado '{method_name}' de '{adt_type}'", p)
                     p[0] = ("", ast_node)
                     return
             
@@ -720,7 +722,7 @@ class Parser:
                         arg_code += '\n'
                     args_code += f"{arg_code}PUSH R0\n"
             
-            # Empujar 'this' (dirección del objeto)
+            # Empujar 'this' (direccion del objeto)
             obj_label = obj_entry['label']
             this_code = f"MOVI R0, {obj_label}\nPUSH R0\n"
             
@@ -732,22 +734,22 @@ class Parser:
     # ==========================================================================
     def p_func_decl(self, p):
         """func_decl : func_start statements ENDFUNC"""
-        # Estructura de una función en ensamblador:
+        # Estructura de una funcion en ensamblador:
         # Etiqueta FUNC_nombre:
-        #   POP R14 (Guardar dirección de retorno temporalmente)
+        #   POP R14 (Guardar direccion de retorno temporalmente)
         #   POP params... (Sacar argumentos de la pila y guardarlos en variables locales)
-        #   PUSH R14 (Restaurar dirección de retorno para RET)
+        #   PUSH R14 (Restaurar direccion de retorno para RET)
         #   ...cuerpo...
         #   RET
         
         func_name, params, param_setup, param_names, original_name = p[1]
         body_code, body_ast = p[2]
         
-        # Asegurar que el cuerpo de la función no se mezcle con el código principal
+        # Asegurar que el cuerpo de la funcion no se mezcle con el codigo principal
         # Marcamos el inicio y fin claramente para el separador en p_program
-        result = f"FUNC_{func_name}:\n{param_setup}{body_code}\nRET"
+        result = f"FUNC_{func_name}:\n{param_setup}{body_code}\n__END_FUNC__"
         
-        # Salir del ámbito de la función
+        # Salir del ambito de la funcion
         self._exit_scope()
         
         ast_node = {"type": "FunctionDecl", "name": original_name, "params": params, "body": body_ast}
@@ -763,19 +765,19 @@ class Parser:
             # Nombre decorado (mangled)
             mangled_name = f"{self.current_context}_{func_name}"
             
-            # Almacenar info del método
+            # Almacenar info del metodo
             self.current_adt_methods[func_name] = {
                 'label': f"FUNC_{mangled_name}",
-                'params': params.copy(), # Params originales antes de añadir 'this'
+                'params': params.copy(), # Params originales antes de anadir 'this'
                 'visibility': 'public' # Por defecto
             }
             
-            # Añadir param 'this'
+            # Anadir param 'this'
             # (type, name)
             params.insert(0, (self.current_context, 'this'))
             func_name = mangled_name
         
-        # Registrar símbolo de función en el ámbito actual (antes de entrar al de la función)
+        # Registrar símbolo de funcion en el ambito actual (antes de entrar al de la funcion)
         self._declare(f"FUNC_{func_name}", {
             'type': 'function',
             'label': f"FUNC_{func_name}",
@@ -784,22 +786,22 @@ class Parser:
             'params': params
         }, p)
 
-        # Entrar a nuevo ámbito para parámetros y variables locales
+        # Entrar a nuevo ambito para parametros y variables locales
         self._enter_scope()
 
-        # Añadir parámetros a la tabla de símbolos AHORA (antes de que se parsen las sentencias)
-        # Después de CALL, la pila tiene: [ret_addr] [arg1] [arg2] ...
-        # El primer POP obtiene ret_addr (manejado por RET), así que necesitamos saltarlo
+        # Anadir parametros a la tabla de simbolos AHORA (antes de que se parsen las sentencias)
+        # Despues de CALL, la pila tiene: [ret_addr] [arg1] [arg2] ...
+        # El primer POP obtiene ret_addr (manejado por RET), asi que necesitamos saltarlo
         param_setup = ""
         param_names = []
         
-        # Primero, sacar y guardar la dirección de retorno temporalmente
-        param_setup += "POP R14\n"  # R14 = dirección de retorno
+        # Primero, sacar y guardar la direccion de retorno temporalmente
+        param_setup += "POP R14\n"  # R14 = direccion de retorno
         
-        # Ahora sacar parámetros en orden normal (el primer param está arriba)
+        # Ahora sacar parametros en orden normal (el primer param esta arriba)
         for param_type, param_name in params:
             is_array = False
-            if isinstance(param_name, tuple):  # Parámetro array
+            if isinstance(param_name, tuple):  # Parametro array
                 param_name = param_name[0]
                 is_array = True
             
@@ -810,13 +812,13 @@ class Parser:
                 'type': param_type,
                 'is_array': is_array,
                 'is_adt': False,
-                'is_param': True  # Marcar como parámetro
+                'is_param': True  # Marcar como parametro
             }, p)
             self.data_section.append(f"{label}: DW 0")
-            # Sacar parámetro de la pila al almacenamiento
+            # Sacar parametro de la pila al almacenamiento
             param_setup += f"POP R0\nST R0, [{label}]\n"
         
-        # Empujar dirección de retorno de vuelta para instrucción RET
+        # Empujar direccion de retorno de vuelta para instrucción RET
         param_setup += "PUSH R14\n"
         
         p[0] = (func_name, params, param_setup, param_names, original_name)
@@ -838,7 +840,7 @@ class Parser:
     def p_arg(self, p):
         """arg : ID
               | expression"""
-        # Siempre usar el resultado de la expresión (que maneja búsqueda de ID vía _generate_var_access)
+        # Siempre usar el resultado de la expresión (que maneja busqueda de ID vía _generate_var_access)
         expr = p[1]
         expr_code = expr[0]
         expr_type = expr[1]
@@ -850,9 +852,9 @@ class Parser:
     # ==========================================================================
     def p_adt_head(self, p):
         """adt_head : ADT ID LPAREN param_list_opt RPAREN COLON"""
-        # Inicio de declaración de una Clase/Struct (TDA).
-        # Prepara el contexto para que las funciones internas se traten como métodos
-        # y tengan acceso implícito a 'this'.
+        # Inicio de declaracion de una Clase/Struct (TDA).
+        # Prepara el contexto para que las funciones internas se traten como metodos
+        # y tengan acceso implicito a 'this'.
         self.current_context = p[2]
         self.current_adt_members = {}
         self.current_adt_methods = {}
@@ -862,7 +864,7 @@ class Parser:
     def p_adt_decl(self, p):
         """adt_decl : adt_head adt_body ENDADT"""
         adt_name = p[1]
-        # raw_members contiene variables y métodos
+        # raw_members contiene variables y metodos
         raw_members = [m for m in p[2] if m is not None]
         
         members_dict = {}
@@ -900,7 +902,7 @@ class Parser:
         self.current_adt_offset = 0
         
         ast_node = {"type": "ADTDecl", "name": adt_name, "members": members_ast, "methods": methods_ast}
-        # Devolver el código de método acumulado
+        # Devolver el codigo de metodo acumulado
         p[0] = ("\n".join(method_code_list), ast_node)
 
     def p_adt_body(self, p):
@@ -947,7 +949,7 @@ class Parser:
         if len(p) == 4:
             name = p[2]
             mtype = p[1]
-            # Añadir a miembros TDA actuales
+            # Anadir a miembros TDA actuales
             if self.current_context:
                 self.current_adt_members[name] = {
                     'type': mtype,
@@ -981,7 +983,7 @@ class Parser:
             index_code = target[2]
             index_ast = target[3]
             
-            # Validación de tipo para array
+            # Validacion de tipo para array
             entry = self._lookup(arr_name)
             if entry:
                 target_type = entry.get('type', 'int')
@@ -997,7 +999,7 @@ class Parser:
             obj_name = target[1]
             member_name = target[2]
             
-            # Validación de tipo para miembro
+            # Validacion de tipo para miembro
             inst = self._lookup(obj_name)
             if inst and inst.get('is_adt'):
                 members = inst.get('members', {})
@@ -1014,7 +1016,7 @@ class Parser:
             # target: ('var', name, lvalue_ast)
             name = target[1]
             
-            # Validación de tipo para variable
+            # Validacion de tipo para variable
             entry = self._lookup(name)
             if entry:
                 target_type = entry.get('type', 'int')
@@ -1026,7 +1028,7 @@ class Parser:
             p[0] = (code, ast)
             
         else:
-            self._error("Objetivo de asignación inválido", p)
+            self._error("Objetivo de asignacion invalido", p)
             p[0] = ("", None)
 
     def p_lvalue(self, p):
@@ -1117,21 +1119,21 @@ class Parser:
             p[0] = ("", ast)
 
     # ----------------------------------------
-    # Flujo de Control (Básico)
+    # Flujo de Control (Basico)
     # ----------------------------------------
     def p_if_stmt(self, p):
         """if_stmt : IF LPAREN expression RPAREN COLON statements ENDIF
                    | IF LPAREN expression RPAREN COLON statements ELSE COLON statements ENDIF"""
         
-        # Generación de etiquetas para control de flujo.
+        # Generacion de etiquetas para control de flujo.
         # IF-ELSE:
-        #   ...código condición...
+        #   ...codigo condición...
         #   CMP R0, 0
         #   JZ label_else (Si es falso, salta al else)
-        #   ...código true...
+        #   ...codigo true...
         #   JMP label_end
         # label_else:
-        #   ...código else...
+        #   ...codigo else...
         # label_end:
         
         cond = p[3]
@@ -1194,12 +1196,12 @@ class Parser:
              # 6 = (3 << 1) | 0
              p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008, 6", ast)
         else:
-            # Usar OUT para salida numérica
+            # Usar OUT para salida numerica
             p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008", ast)
 
     def p_print_stmt(self, p):
         """statement : ID LPAREN expression RPAREN SEMI"""
-        # Comprobar sintaxis "print(expr)" para imprimir sin nueva línea
+        # Comprobar sintaxis "print(expr)" para imprimir sin nueva linea
         if p[1] == 'print':
             expr = p[3]
             expr_code = expr[0]
@@ -1212,17 +1214,17 @@ class Parser:
                  # Usar OUT con func=6 (subop=3 -> print float)
                  p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008, 6", ast)
             else:
-                 # Usar OUT con func=4 (subop=2 -> print int sin nueva línea)
+                 # Usar OUT con func=4 (subop=2 -> print int sin nueva linea)
                  # 4 = (2 << 1) | 0
                  p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008, 4", ast)
         else:
-            # Retroceder a lógica de llamada a función normal si no es 'print'
+            # Retroceder a logica de llamada a funcion normal si no es 'print'
             # Pero espera, p_statement ya maneja func_call_stmt.
-            # Esta regla podría entrar en conflicto.
-            # Mejor añadir 'print' como palabra clave o manejarlo en func_call.
+            # Esta regla podria entrar en conflicto.
+            # Mejor anadir 'print' como palabra clave o manejarlo en func_call.
             p[0] = ("", None)
             
-    # Manejaremos 'print' como una llamada a función especial en p_func_call
+    # Manejaremos 'print' como una llamada a funcion especial en p_func_call
 
 
     def p_input_stmt(self, p):
@@ -1245,7 +1247,7 @@ class Parser:
     def p_error(self, p):
         self.error_count += 1
         if p:
-            print(f"Error de sintaxis en '{p.value}' línea {p.lineno}")
+            print(f"Error de sintaxis en '{p.value}' linea {p.lineno}")
         else:
             print("Error de sintaxis en EOF")
 
@@ -1266,7 +1268,7 @@ class Parser:
             is_library = func_label in self.library_functions
             
             if not is_defined and not is_library:
-                print(f"[Error del Parser] Función '{func_name}' llamada pero no definida ni encontrada en librerías.")
+                print(f"[Error del Parser] Funcion '{func_name}' llamada pero no definida ni encontrada en librerias.")
                 self.error_count += 1
 
         if self.error_count > 0:
@@ -1274,11 +1276,11 @@ class Parser:
             
         if result:
             asm_code, ast = result
-            # Agregar código de librerías al final si existe
+            # Agregar codigo de librerias al final si existe
             if library_asm:
                 asm_code += "\n\n# --- Library Functions ---\n" + library_asm
             
-            # Definir inicio del Heap al final de todo el código (incluyendo librerías)
+            # Definir inicio del Heap al final de todo el codigo (incluyendo librerias)
             asm_code += "\n\n__HEAP_START: DW 0\n"
             
             return asm_code, ast
@@ -1286,12 +1288,12 @@ class Parser:
         return result
 
     # ----------------------------------------
-    # Métodos Auxiliares de Generación
+    # Metodos Auxiliares de Generacion
     # ----------------------------------------
     def _generate_array_access(self, var_name, index_code, p):
         """
-        Genera código para acceder a un elemento de un array: base + (index * 8).
-        Maneja la diferencia entre arrays estáticos (dirección fija) y dinámicos (punteros).
+        Genera codigo para acceder a un elemento de un array: base + (index * 8).
+        Maneja la diferencia entre arrays estaticos (direccion fija) y dinamicos (punteros).
         """
         entry = self._lookup(var_name)
         if not entry:
@@ -1303,24 +1305,24 @@ class Parser:
             return "MOVI R0, 0"
             
         base_label = entry['label']
-        # Cálculo de dirección común: index * 8
+        # Cálculo de direccion común: index * 8
         calc_offset = f"{index_code}\nMOVI R1, 8\nMUL R1, R0, R1"
         
         if entry.get('is_param'):
-            # Dirección base es dinámica (pasada como param)
-            # Cargar el valor de dirección almacenado en la ubicación del parámetro
+            # Direccion base es dinámica (pasada como param)
+            # Cargar el valor de direccion almacenado en la ubicacion del parametro
             return f"{calc_offset}\nLD R2, [{base_label}]\nADD R15, R2, R1\nLD R0, R15, 0"
         
-        # Dirección base es etiqueta estática
+        # Direccion base es etiqueta estatica
         return f"{calc_offset}\nMOVI R2, {base_label}\nADD R15, R2, R1\nLD R0, R15, 0"
 
     def _generate_var_access(self, var_name, p):
         """
-        Genera código para leer una variable.
-        Detecta automáticamente si se está accediendo a un miembro de clase dentro de un método
-        para inyectar el acceso a través de 'this'.
+        Genera codigo para leer una variable.
+        Detecta automaticamente si se esta accediendo a un miembro de clase dentro de un metodo
+        para inyectar el acceso a traves de 'this'.
         """
-        # Comprobar acceso a miembro TDA vía 'this' implícito
+        # Comprobar acceso a miembro TDA vía 'this' implicito
         if self.current_context and var_name in self.current_adt_members:
             offset = self.current_adt_members[var_name]['offset']
             this_entry = self._lookup('this')
@@ -1335,7 +1337,7 @@ class Parser:
             print(f"Error: Variable {var_name} no declarada.")
             return "MOVI R0, 0"
         
-        # Si es array, devolver dirección
+        # Si es array, devolver direccion
         if isinstance(entry, dict) and entry.get('is_array'):
             label = entry['label']
             if entry.get('is_param'):
@@ -1345,7 +1347,7 @@ class Parser:
 
         # Marcador de valor de instancia TDA
         if isinstance(entry, dict) and entry.get('is_adt'):
-            # Devolver la dirección base de la instancia
+            # Devolver la direccion base de la instancia
             label = entry.get('label', var_name)
             return f"MOVI R0, {label}"
         
@@ -1353,7 +1355,7 @@ class Parser:
         return f"LD R0, [{label}]"
 
     def _generate_var_assignment(self, target, expr_code, p):
-        # Comprobar asignación a miembro TDA vía 'this' implícito
+        # Comprobar asignacion a miembro TDA vía 'this' implicito
         if self.current_context and target in self.current_adt_members:
             offset = self.current_adt_members[target]['offset']
             this_entry = self._lookup('this')
@@ -1384,7 +1386,7 @@ class Parser:
         base_label = entry['label']
         calc_offset = f"{index_code}\nMOVI R1, 8\nMUL R1, R0, R1"
         
-        # Calcular dirección objetivo en R15
+        # Calcular direccion objetivo en R15
         if entry.get('is_param'):
             addr_calc = f"{calc_offset}\nLD R2, [{base_label}]\nADD R15, R2, R1"
         else:

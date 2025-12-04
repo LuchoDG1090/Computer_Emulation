@@ -12,6 +12,7 @@ class ProgramSelectorFrame(ctk.CTkFrame):
         self.update_state_callback = kwargs.get("update_state_callback", None)
         self.memory = kwargs.get("memory", None)
         self.ram_display = kwargs.get("ram_display", None)
+        self.clear_console_callback = None
         self._label_to_program = {}
 
         self.columnconfigure(0, weight=1)
@@ -114,6 +115,9 @@ class ProgramSelectorFrame(ctk.CTkFrame):
             self.selector.configure(values=["Ninguno"])
             self.selector.set("Ninguno")
 
+    def set_clear_console_callback(self, callback):
+        self.clear_console_callback = callback
+
     def __on_program_selected(self, selected_label):
         """Configura el CPU para ejecutar el programa seleccionado."""
         if not self.cpu:
@@ -124,6 +128,10 @@ class ProgramSelectorFrame(ctk.CTkFrame):
         if not program:
             print(f"Programa '{selected_label}' no encontrado.")
             return
+
+        # Limpiar consola si hay callback
+        if self.clear_console_callback:
+            self.clear_console_callback()
 
         self.__configure_cpu_for_program(program)
 

@@ -208,8 +208,9 @@ class ConsoleFrame(ctk.CTkFrame):
         self.console_textbox.delete("1.0", "end")
         self.console_textbox.configure(state="disabled")
 
-        self.entrada_textbox.configure(state="disabled")
+        self.entrada_textbox.configure(state="normal")
         self.entrada_textbox.delete("1.0", "end")
+        self.entrada_textbox.configure(state="disabled")
 
         self.waiting_for_input = False
         self.input_result = None
