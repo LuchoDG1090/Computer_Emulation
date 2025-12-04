@@ -32,6 +32,7 @@ class CompleteExecute(ctk.CTkFrame):
         self.ejecutar_completo = ctk.CTkButton(
             self, 
             text = 'Ejecutar completo',
+            width=180,
             # image = ejecutar_completo_imagen,
             # compound = 'right',
             fg_color="#4C44AC",
@@ -47,6 +48,7 @@ class CompleteExecute(ctk.CTkFrame):
         self.tempo_ejecutar = ctk.CTkButton(
             self,
             text = "Ejecutar con temporizador",
+            width=220,
             fg_color="#4C44AC",
             text_color = "white",
             corner_radius=50,
@@ -99,7 +101,7 @@ class CompleteExecute(ctk.CTkFrame):
         self.execution_mode = 'delay'
         
         # Update UI
-        self.tempo_ejecutar.configure(text="Detener", fg_color="#AA0000")
+        self.tempo_ejecutar.configure(text="Detener ejecución", fg_color="#AA0000")
         self.ejecutar_completo.configure(state="disabled")
         
         self.__run_step_loop(delay_ms)
@@ -114,7 +116,7 @@ class CompleteExecute(ctk.CTkFrame):
         self.execution_mode = 'complete'
         
         # Update UI
-        self.ejecutar_completo.configure(text="Detener", fg_color="#AA0000")
+        self.ejecutar_completo.configure(text="Detener ejecución", fg_color="#AA0000")
         self.tempo_ejecutar.configure(state="disabled")
         
         # Run as fast as possible without freezing UI (1ms delay)
