@@ -88,8 +88,8 @@
                   
 
                   // parsing and collecting nodes and edges from the python
-                  nodes = new vis.DataSet([{"color": "#97c2fc", "id": 0, "label": "Agent 0", "shape": "dot", "title": "Mi nodo 1"}, {"color": "#97c2fc", "id": 1, "label": "Agent 1", "shape": "dot"}, {"color": "#97c2fc", "id": 2, "label": "Agent 2", "shape": "dot"}, {"color": "#97c2fc", "id": 3, "label": "Agent 3", "shape": "dot"}, {"color": "#97c2fc", "id": 4, "label": "Agent 4", "shape": "dot"}, {"color": "#97c2fc", "id": 5, "label": "Agent 5", "shape": "dot"}, {"color": "#97c2fc", "id": 6, "label": "Agent 6", "shape": "dot"}]);
-                  edges = new vis.DataSet([{"color": "blue", "from": 0, "label": "e0", "to": 4}, {"color": "blue", "from": 1, "label": "e0", "to": 5}, {"color": "blue", "from": 0, "label": "e0", "to": 1}, {"color": "blue", "from": 4, "label": "e0", "to": 1}, {"color": "blue", "from": 0, "label": "e0", "to": 5}, {"color": "blue", "from": 4, "label": "e0", "to": 5}, {"color": "red", "from": 1, "label": "e1", "to": 3}, {"color": "green", "from": 2, "label": "e3", "to": 6}, {"color": "purple", "from": 3, "label": "e2", "to": 4}, {"color": "purple", "from": 3, "label": "e2", "to": 5}]);
+                  nodes = new vis.DataSet([{"color": "#97c2fc", "id": 0, "label": "Agent 0", "shape": "dot"}, {"color": "#97c2fc", "id": 1, "label": "Agent 1", "shape": "dot"}, {"color": "#97c2fc", "id": 2, "label": "Agent 2", "shape": "dot"}, {"color": "#97c2fc", "id": 3, "label": "Agent 3", "shape": "dot"}, {"color": "#97c2fc", "id": 4, "label": "Agent 4", "shape": "dot"}, {"color": "#97c2fc", "id": 5, "label": "Agent 5", "shape": "dot"}]);
+                  edges = new vis.DataSet([{"from": 0, "to": 1}, {"from": 0, "to": 2}, {"from": 2, "to": 3}, {"from": 4, "to": 5}]);
 
                   nodeColors = {};
                   allNodes = nodes.get({ returnType: "Object" });
@@ -119,14 +119,6 @@
         "hideNodesOnDrag": false
     },
     "physics": {
-        "barnesHut": {
-            "avoidOverlap": 0,
-            "centralGravity": 0.5,
-            "damping": 0.09,
-            "gravitationalConstant": -8000,
-            "springConstant": 0.01,
-            "springLength": 50
-        },
         "enabled": true,
         "stabilization": {
             "enabled": true,

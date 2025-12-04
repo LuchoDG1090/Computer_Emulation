@@ -1,13 +1,9 @@
 from __future__ import annotations
-from typing import Iterable, Set, List
 import itertools
-import pydot
-from pyvis.network import Network
+from graphics_generator import GraphicsGenerator
+from messages import ManageMessages
 
-COLOR_PALETTE = [
-    "blue", "red", "green", "purple", "orange",
-    "brown", "cyan", "magenta", "gray", "darkgreen"
-]
+
 
 class Agent:
     def __init__(self, id: int, parent: "Agent" = None, links: dict = None, agent_name:str = None) -> None:
@@ -16,25 +12,28 @@ class Agent:
         self.children = []
         self.links = links.copy() if links else {}
         self.agent_name = agent_name
-
         self.__check_parent()
 
     def __check_parent(self):
         if self.parent:
             self.parent.children.append(self)
+    
+    def send_ack(self, type, origin):
+        return f"\033[34mACK {type} inquiry from AGENT-{origin.id} to AGENT-{self.id}\033[0m"
 
-    def get_agent_info(self):
-        link_info = {name: node.id for name, node in self.links.items()}
+    def get_agent_info(self, links):
         parent_id = self.parent.id if self.parent else None
 
         return (
             f"\033[35mCommunicatingAgent ID={self.id} | "
-            f"Links={link_info} | "
-            f"Parent={parent_id}\033[0m"
+            f"Links= {links} | "
+            f"Parent= {parent_id} | "
+            f"Name= {self.agent_name}\033[0m"
         )
+    
 
 
-class CommunicatingAgents:
+class CommunicatingAgents(ManageMessages):
     def __init__(self, name: str = 'G'):
         allowed_names = {"A": "Ă", "B": "B̆", "C": "C̆", "D": "D̆", "E": "Ĕ", "F": "F̆", "G": "Ğ", "H": "H̆", 
                          "I": "Ĭ", "J": "J̆", "K": "K̆", "L": "L̆", "M": "M̆", "N": "N̆", "Ñ": "Ñ̆", "O": "Ŏ", 
@@ -43,9 +42,10 @@ class CommunicatingAgents:
         if len(name) > 1:
             raise ValueError("Name too long")
         if name not in allowed_names.keys():
-            raise ValueError("Name noit allowed, only capital letters")
+            raise ValueError("Name not allowed, only capital letters")
         self.name = allowed_names[name.upper()]
         self._id_counter = itertools.count()
+        self.graphics = GraphicsGenerator()
         self.agents = []
 
     def add_agent(self, parent=None, links=None, agent_name = None):
@@ -58,93 +58,6 @@ class CommunicatingAgents:
             origin.links[name] = []
         
         origin.links[name].append(destiny)
-
-    def get_agent_info(self):
-        link_info = {
-            name: [node.id for node in nodes]
-            for name, nodes in self.links.items()
-        }
-        parent_id = self.parent.id if self.parent else None
-
-        return (
-            f"\033[35mCommunicatingAgent ID={self.id} | "
-            f"Links={link_info} | "
-            f"Parent={parent_id}\033[0m"
-        )
-
-    def __collect_clustered_nodes(self, node: Agent, visited = None):
-        if visited is None:
-            visited = set()
-
-        if node in visited:
-            return set()
-
-        visited.add(node)
-        result = {node}
-
-        for child in node.children:
-            result |= self.__collect_clustered_nodes(child, visited)
-
-        return result
-    
-    def get_bigraph_forest(self, outfile="forest.html"):
-        net = Network(directed=False, height='750px', width='100%')
-
-        for agent in self.agents:
-            if agent.agent_name:
-                net.add_node(agent.id, label=f"Agent {agent.id}", title = agent.agent_name)
-            else:
-                net.add_node(agent.id, label=f"Agent {agent.id}")
-
-        for agent in self.agents:
-            if agent.parent is not None:
-                net.add_edge(agent.parent.id, agent.id)
-
-        net.save_graph(outfile)
-
-
-    def get_hyper_graph(self, outfile="hypergraph.html"):
-        net = Network(directed=False, height='750px', width='100%')
-        net.barnes_hut(
-            gravity=-8000,
-            central_gravity=0.5,
-            spring_length=50,
-            spring_strength=0.01,
-            damping=0.09,
-            overlap=0,
-        )
-
-        for agent in self.agents:
-            if agent.agent_name:
-                net.add_node(agent.id, label=f'Agent {agent.id}', title = agent.agent_name)
-            else:
-                net.add_node(agent.id, label=f'Agent {agent.id}')
-
-
-        complete_links = self.get_links()
-
-        COLOR_PALETTE = [
-            "blue", "red", "green", "purple", "orange",
-            "brown", "cyan", "magenta", "gray", "darkgreen"
-        ]
-        tags = list(complete_links.keys())
-        tag_color = {
-            tag: COLOR_PALETTE[i % len(COLOR_PALETTE)]
-            for i, tag in enumerate(tags)
-        }
-
-        for tag, pairs in complete_links.items():
-            color = tag_color[tag]
-            for (src, dst) in pairs:
-                net.add_edge(
-                    src,
-                    dst,
-                    label=tag,
-                    color=color
-                )
-
-        net.save_graph(outfile)
-
 
     def __cartessian_product_links(self, bare_links: dict) -> dict:
         for tag, links in bare_links.items():
@@ -183,68 +96,35 @@ class CommunicatingAgents:
 
                 if not origin.links[link_name]:
                     del origin.links[link_name]
+    
+    def get_links_with_id(self, id):
+        links_from_id = []
+        links = self.get_links()
+        for tag, val in links.items():
+            for o1, o2 in val:
+                if id == o1:
+                    links_from_id.append(o2)
+                elif id == o2:
+                    links_from_id.append(o1)
+        return links_from_id
 
 
-    def __build_cluster(self, parent: Agent):
-        tag = f"Agent {parent.id} - {parent.agent_name}" if parent.agent_name else f"Agent {parent.id}"
+    def send_message(self, message):
+        available_channel = self._send_message_validations(message, self.agents, self.get_links())
+        if available_channel[0]:
+            print(available_channel[2].send_ack(available_channel[3], available_channel[1]))
 
-        cluster = pydot.Cluster(
-            f"cluster_{parent.id}",
-            label=tag,
-            style="rounded, filled",
-            color="lightgrey",
-            fillcolor="#F8F8F8",
-        )
+            if available_channel[3] == "INFO":
+                print(available_channel[2].get_agent_info(self.get_links_with_id(available_channel[2].id)))
 
-        parent_node = pydot.Node(
-            str(parent.id),
-            shape="ellipse",
-            style="filled",
-            fillcolor="white"
-        )
-        cluster.add_node(parent_node)
+    def receive_message():
+        pass
+    
+    def get_bigraph(self):
+        return self.graphics.render_graph(self.agents, self.get_links())
 
-        for child in parent.children:
-            cluster.add_subgraph(self.__build_cluster(child))
-
-        return cluster
-
-
-    def render_graph(self, outfile="graph.png"):
-
-        graph = pydot.Dot(graph_type="digraph")
-
-        for agent in self.agents:
-            if agent.parent is None:
-                graph.add_subgraph(self.__build_cluster(agent))
-
-
-        complete_links = self.get_links()
-        tags = list(complete_links.keys())
-        tag_color = {
-            tag: COLOR_PALETTE[i % len(COLOR_PALETTE)]
-            for i, tag in enumerate(tags)
-}
-
-        for tag, pairs in complete_links.items():
-            color = tag_color[tag]
-            for (src, dst) in pairs:
-                graph.add_edge(
-                    pydot.Edge(
-                        str(src),
-                        str(dst),
-                        style="solid",
-                        arrowhead="dot",
-                        arrowtail="dot",
-                        dir="both",
-                        color=color,
-                        label=tag,
-                        fontsize="10",
-                        fontcolor=color
-                    )
-                )
-
-        graph.write_png(outfile)
-        return outfile
-
-
+    def get_hyper_graph(self):
+        return self.graphics.get_hyper_graph(self.agents, self.get_links())
+    
+    def get_forest(self):
+        return self.graphics.get_bigraph_forest(self.agents)
