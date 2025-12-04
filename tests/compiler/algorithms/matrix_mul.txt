@@ -44,7 +44,7 @@ int C[12];   # resultado 3x4
 
 # Inicializar A (3x2) con inputs
 output "Ingrese la matriz A (3x2), una fila por linea (2 numeros separados por espacio):";
-output "\n";
+# output "\n"; eliminado porque output ya salta linea
 int row = 0;
 int col = 0;
 int temp = 0;
@@ -64,7 +64,7 @@ endwhile
 
 # Inicializar B (2x4) con inputs
 output "Ingrese la matriz B (2x4), una fila por linea (4 numeros separados por espacio):";
-output "\n";
+# output "\n"; eliminado porque output ya salta linea
 row = 0;
 while (row < rowsB):
     col = 0;
@@ -78,32 +78,32 @@ while (row < rowsB):
 endwhile
 
 # Imprimir Matriz A
-output "Matriz A:\n";
+output "Matriz A:";
 row = 0;
 while (row < rowsA):
     col = 0;
     while (col < colsA):
         idx = row * colsA + col;
         print(A[idx]);
-        output " ";
+        print(" ");
         col = col + 1;
     endwhile
-    output "\n";
+    output "";
     row = row + 1;
 endwhile
 
 # Imprimir Matriz B
-output "Matriz B:\n";
+output "Matriz B:";
 row = 0;
 while (row < rowsB):
     col = 0;
     while (col < colsB):
         idx = row * colsB + col;
         print(B[idx]);
-        output " ";
+        print(" ");
         col = col + 1;
     endwhile
-    output "\n";
+    output "";
     row = row + 1;
 endwhile
 
@@ -111,7 +111,7 @@ endwhile
 mat_mul(A, B, C, rowsA, colsA, colsB);
 
 # Imprimir la matriz resultante C (3x4) por filas
-output "Matriz C = A x B:\n";
+output "Matriz C = A x B:";
 int r = 0;
 int c = 0;
 int pos = 0;
@@ -121,9 +121,9 @@ while (r < rowsA):
     while (c < colsB):
         pos = r * colsB + c;
         print(C[pos]);
-        output " ";
+        print(" ");
         c = c + 1;
     endwhile
-    output "\n";
+    output "";
     r = r + 1;
 endwhile

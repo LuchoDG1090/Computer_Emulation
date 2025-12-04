@@ -1,0 +1,25 @@
+/*
+  Ejemplo de bucle FOR simple
+  Imprime la tabla de multiplicar del 5
+*/
+
+output "--- Tabla del 5 ---";
+
+int i;
+int res = 0;
+
+# Bucle del 1 al 10 (el limite superior es exclusivo, asi que usamos 11)
+for (i in 1 .. 11):
+    res = 5 * i;
+    
+    # Usamos print para que salga en la misma linea
+    print(5);
+    print(" x ");
+    print(i);
+    print(" = ");
+    
+    # Usamos output para el resultado final y el salto de linea
+    output res;
+endfor
+
+output "--- Fin del programa ---";

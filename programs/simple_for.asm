@@ -1,0 +1,56 @@
+ORG 0
+MOVI R0, STR_1
+OUTS R0, 0xFFFF0008
+MOVI R0, 10
+OUT R0, 0xFFFF0000
+
+MOVI R0, 0
+ST R0, [var_res_2]
+MOVI R0, 1
+ST R0, [var_i_1]
+L3:
+MOVI R0, 11
+PUSH R0
+LD R0, [var_i_1]
+POP R1
+CMP R0, R1
+JS L3_cont
+JMP L4
+L3_cont:
+MOVI R0, 5
+PUSH R0
+LD R0, [var_i_1]
+POP R1
+MUL R0, R1, R0
+ST R0, [var_res_2]
+MOVI R0, 5
+OUT R0, 0xFFFF0008, 4
+MOVI R0, STR_2
+OUTS R0, 0xFFFF0008
+LD R0, [var_i_1]
+OUT R0, 0xFFFF0008, 4
+MOVI R0, STR_3
+OUTS R0, 0xFFFF0008
+LD R0, [var_res_2]
+OUT R0, 0xFFFF0008
+LD R0, [var_i_1]
+MOVI R1, 1
+ADD R0, R0, R1
+ST R0, [var_i_1]
+JMP L3
+L4:
+MOVI R0, STR_4
+OUTS R0, 0xFFFF0008
+MOVI R0, 10
+OUT R0, 0xFFFF0000
+HALT
+
+STR_1: DB "--- Tabla del 5 ---", 0
+var_i_1: DW 0
+var_res_2: DW 0
+STR_2: DB " x ", 0
+STR_3: DB " = ", 0
+STR_4: DB "--- Fin del programa ---", 0
+__HEAP_PTR: DW __HEAP_START
+
+__HEAP_START: DW 0

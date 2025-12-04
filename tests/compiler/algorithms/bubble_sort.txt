@@ -50,9 +50,9 @@ output "Arreglo ordenado:";
 k = 0;
 while (k < n):
     print(arr[k]);
-    output " ";
+    print(" ");
     k = k + 1;
 endwhile
-output "\n";
+output "";
 
 

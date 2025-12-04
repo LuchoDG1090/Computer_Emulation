@@ -1079,22 +1079,26 @@ class Parser:
         end_ast = end_expr[2]
         
         # Declarar variable de iteración si no existe
-        if not self._lookup(var_name):
+        entry = self._lookup(var_name)
+        if not entry:
+            label = var_name
             self._declare(var_name, {
-                'label': var_name,
+                'label': label,
                 'type': 'int',
                 'is_array': False,
                 'is_adt': False
             }, p)
-            self.data_section.append(f"{var_name}: DW 0")
+            self.data_section.append(f"{label}: DW 0")
+        else:
+            label = entry['label']
         
         lbl_start = self.get_new_label()
         lbl_end = self.get_new_label()
         self.loop_stack.append((lbl_start, lbl_end))
         
-        init_code = f"{start_code}\nST R0, [{var_name}]"
-        check_code = f"{end_code}\nPUSH R0\nLD R0, [{var_name}]\nPOP R1\nCMP R0, R1\nJS {lbl_start}_cont\nJMP {lbl_end}\n{lbl_start}_cont:"
-        inc_code = f"LD R0, [{var_name}]\nMOVI R1, 1\nADD R0, R0, R1\nST R0, [{var_name}]"
+        init_code = f"{start_code}\nST R0, [{label}]"
+        check_code = f"{end_code}\nPUSH R0\nLD R0, [{label}]\nPOP R1\nCMP R0, R1\nJS {lbl_start}_cont\nJMP {lbl_end}\n{lbl_start}_cont:"
+        inc_code = f"LD R0, [{label}]\nMOVI R1, 1\nADD R0, R0, R1\nST R0, [{label}]"
         
         p[0] = (init_code, check_code, inc_code, lbl_start, lbl_end, var_name, start_ast, end_ast)
 
@@ -1211,7 +1215,9 @@ class Parser:
             
             ast = {"type": "Call", "function": "print", "args": [expr_ast]}
             
-            if expr_type == 'float':
+            if expr_type == 'string':
+                 p[0] = (f"{expr_code}\nOUTS R0, 0xFFFF0008", ast)
+            elif expr_type == 'float':
                  # Usar OUT con func=6 (subop=3 -> print float)
                  p[0] = (f"{expr_code}\nOUT R0, 0xFFFF0008, 6", ast)
             else:

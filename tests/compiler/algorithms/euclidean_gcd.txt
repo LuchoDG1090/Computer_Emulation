@@ -16,16 +16,16 @@ endfunc
 
 # Leer primer número
 int a;
-output "Ingrese el primer numero: \n";
+output "Ingrese el primer numero:";
 input a;
 
 # Leer segundo número
 int b;
-output "Ingrese el segundo numero: \n";
+output "Ingrese el segundo numero:";
 input b;
 
 a = maxcd(a, b);
 
 # Imprimir resultado (el MCD está en 'a')
-output "El resultado es: \n";
+output "El resultado es:";
 output a;
