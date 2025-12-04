@@ -1,0 +1,7 @@
+/* Demo: Error de Tipo en Asignación */
+
+func main():
+    int numero = 10;
+    /* Error: Asignar float a int */
+    numero = 5.5;
+endfunc

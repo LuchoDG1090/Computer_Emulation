@@ -6,23 +6,30 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import ply.yacc as yacc
 
-class MyParser:
+class Parser:
+    """
+    El Parser se encarga del análisis sintáctico y la generación de código ensamblador.
+    Utiliza la librería PLY (Python Lex-Yacc) para procesar los tokens.
+    
+    Estrategia de Generación de Código:
+    - El código se genera en una sola pasada (Single-pass compiler).
+    - Las expresiones se evalúan utilizando una estrategia basada en Pila (Stack Machine):
+      se empujan operandos y los operadores consumen de la pila.
+    - Las estructuras de control (if, while, for) generan etiquetas y saltos (JMP, JZ, etc.).
+    """
     def __init__(self, tokens, library_functions=None):
         self.tokens = tokens
         self.parser = yacc.yacc(module=self)
         self.library_functions = library_functions if library_functions else set()
         self.called_functions = set()
 
-        # Tabla de símbolos: nombre -> {
-        #   'type': <nombre_tipo>,
-        #   'label': <etiqueta_memoria>,
-        #   'is_array': bool,
-        #   'array_size': int|None,
-        #   'is_adt': bool
-        # }
-        self.symbol_table = {}
+        # Tabla de Símbolos: Estructura central para el análisis semántico.
+        # Ahora implementada como una pila de ámbitos (scopes) para manejar variables locales.
+        # self.scopes[0] es el ámbito global.
+        self.scopes = [{}]
 
-        # Sección de datos: lista de líneas para emitir después de HALT
+        # Sección de Datos: Almacena las directivas de memoria (DW, DB) que se
+        # emitirán al final del código ensamblador (después del HALT).
         self.data_section = []
 
         # Contador de etiquetas para etiquetas únicas
@@ -53,6 +60,24 @@ class MyParser:
         
         # Contador de errores
         self.error_count = 0
+
+    # Métodos de gestión de Scope (Ámbito)
+    def _enter_scope(self):
+        self.scopes.append({})
+
+    def _exit_scope(self):
+        self.scopes.pop()
+
+    def _lookup(self, name):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name]
+        return None
+
+    def _declare(self, name, info, p):
+        if name in self.scopes[-1]:
+            self._error(f"Identificador '{name}' ya declarado en este ámbito", p)
+        self.scopes[-1][name] = info
 
     # Generador de etiquetas de utilidad usado por la nueva lógica de declaración
     def _new_label(self, prefix: str):
@@ -90,6 +115,11 @@ class MyParser:
     
     def p_program(self, p):
         """program : statements"""
+        # Esta regla define la estructura final del ejecutable.
+        # 1. Inicializa el puntero al Heap (__HEAP_PTR).
+        # 2. Separa el código de funciones del código principal (Main).
+        # 3. Genera el punto de entrada (ORG 0) y el salto al Main.
+        
         code, ast = p[1]
         
         # Añadir Puntero al Heap
@@ -126,6 +156,10 @@ class MyParser:
         func_section = "\n".join(functions)
         main_section = "\n".join(main_code)
         
+        # Invocar automáticamente a main() si existe
+        if self._lookup("FUNC_main"):
+            main_section += "\nCALL FUNC_main"
+
         p[0] = (f"ORG 0\nJMP __MAIN\n{func_section}\n__MAIN:\n{main_section}\nHALT\n\n{data_section_str}", {"type": "Program", "body": ast})
 
     def p_statements(self, p):
@@ -182,27 +216,36 @@ class MyParser:
         """declaration : type ID SEMI
                         | type ID ASSIGN expression SEMI
                         | type ID LBRACKET expression RBRACKET SEMI"""
+        # Maneja la reserva de memoria para variables.
+        # - Variables simples: Se crea una etiqueta y se reserva espacio con DW 0.
+        # - Arrays estáticos: Se reserva un bloque contiguo de memoria.
+        # - Arrays dinámicos: Se genera código para solicitar memoria al Heap en tiempo de ejecución.
+        
         var_type = p[1]
         name = p[2]
         is_init = len(p) == 6 and p[3] == '='
         is_array_decl = len(p) == 7 and p[3] == '['
 
-        if name in self.symbol_table:
-            self._error(f"Identificador '{name}' ya declarado", p)
-
         # Declaración con inicialización
         if is_init:
+            expr = p[4]
+            expr_code = expr[0]
+            expr_type = expr[1]
+            expr_ast = expr[2]
+
+            # Validación de Tipos
+            if var_type != expr_type:
+                self._error(f"Error de tipo: No se puede asignar '{expr_type}' a variable de tipo '{var_type}'", p)
+
             label = self._new_label(f"var_{name}")
-            self.symbol_table[name] = {
+            self._declare(name, {
                 'label': label,
                 'type': var_type,
                 'is_array': False,
                 'is_adt': False
-            }
+            }, p)
             self.data_section.append(f"{label}: DW 0")
-            expr = p[4]
-            expr_code = expr[0]
-            expr_ast = expr[2]
+            
             p[0] = (f"{expr_code}\nST R0, [{label}]", {"type": "Declaration", "var_type": var_type, "name": name, "init": expr_ast})
             return
 
@@ -227,13 +270,13 @@ class MyParser:
                 }
                 data_lines.append(f"{mem_label}: DW 0")
 
-            self.symbol_table[name] = {
+            self._declare(name, {
                 'label': instance_label,
                 'type': var_type,
                 'is_array': False,
                 'is_adt': True,
                 'members': member_map
-            }
+            }, p)
             # Añadir todas las líneas de miembros a data_section
             self.data_section.extend(data_lines)
             p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
@@ -256,27 +299,27 @@ class MyParser:
             if match:
                 # Asignación estática
                 size = int(match.group(1))
-                self.symbol_table[name] = {
+                self._declare(name, {
                     'label': base_label,
                     'type': var_type,
                     'is_array': True,
                     'size': size,
                     'is_adt': False,
                     'is_param': False # Array estático
-                }
+                }, p)
                 words = ' '.join(['0' for _ in range(size)])
                 self.data_section.append(f"{base_label}: DW {words}")
                 p[0] = ("", ast_node)
             else:
                 # Asignación dinámica
-                self.symbol_table[name] = {
+                self._declare(name, {
                     'label': base_label,
                     'type': var_type,
                     'is_array': True,
                     'size': None, # Desconocido en tiempo de compilación
                     'is_adt': False,
                     'is_param': True # Tratar como puntero
-                }
+                }, p)
                 # Crear variable puntero
                 self.data_section.append(f"{base_label}: DW 0")
                 
@@ -293,12 +336,12 @@ class MyParser:
                 p[0] = (alloc_code, ast_node)
         else:
             label = self._new_label(f"var_{name}")
-            self.symbol_table[name] = {
+            self._declare(name, {
                 'label': label,
                 'type': var_type,
                 'is_array': False,
                 'is_adt': False
-            }
+            }, p)
             self.data_section.append(f"{label}: DW 0")
             p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
 
@@ -337,6 +380,13 @@ class MyParser:
                       | expression BIT_XOR expression
                       | expression SHIFT_LEFT expression
                       | expression SHIFT_RIGHT expression"""
+        
+        # Generación de código para operaciones binarias usando la PILA (Stack).
+        # 1. Se genera el código del operando izquierdo (resultado en R0).
+        # 2. Se hace PUSH R0 para guardarlo.
+        # 3. Se genera el código del operando derecho (resultado en R0).
+        # 4. Se hace POP R1 para recuperar el izquierdo.
+        # 5. Se opera R0 y R1.
         
         op = p[2]
         expr1 = p[1]
@@ -459,7 +509,12 @@ class MyParser:
         var_name = p[1]
         is_array_access = len(p) == 5
         
-        entry = self.symbol_table.get(var_name, {})
+        entry = self._lookup(var_name)
+        if not entry:
+            # Si no se encuentra, asumir int y error (o dejar que _generate_var_access maneje el error)
+            # _generate_var_access también usa _lookup ahora (lo actualizaremos)
+            entry = {} 
+        
         var_type = entry.get('type', 'int')
 
         if is_array_access:
@@ -475,12 +530,12 @@ class MyParser:
         obj = p[1]
         member = p[3]
         
-        if obj not in self.symbol_table:
+        inst = self._lookup(obj)
+        if not inst:
             self._error(f"Instancia TDA '{obj}' no declarada", p)
             p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
             return
             
-        inst = self.symbol_table[obj]
         if not (isinstance(inst, dict) and inst.get('is_adt')):
             self._error(f"'{obj}' no es una instancia TDA", p)
             p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
@@ -621,12 +676,12 @@ class MyParser:
             
             ast_node = {"type": "MethodCall", "object": obj_name, "method": method_name, "args": [arg[2] for arg in args]}
             
-            if obj_name not in self.symbol_table:
+            obj_entry = self._lookup(obj_name)
+            if not obj_entry:
                 self._error(f"Objeto '{obj_name}' no declarado", p)
                 p[0] = ("", ast_node)
                 return
             
-            obj_entry = self.symbol_table[obj_name]
             if not obj_entry.get('is_adt'):
                 self._error(f"'{obj_name}' no es una instancia TDA", p)
                 p[0] = ("", ast_node)
@@ -677,6 +732,14 @@ class MyParser:
     # ==========================================================================
     def p_func_decl(self, p):
         """func_decl : func_start statements ENDFUNC"""
+        # Estructura de una función en ensamblador:
+        # Etiqueta FUNC_nombre:
+        #   POP R14 (Guardar dirección de retorno temporalmente)
+        #   POP params... (Sacar argumentos de la pila y guardarlos en variables locales)
+        #   PUSH R14 (Restaurar dirección de retorno para RET)
+        #   ...cuerpo...
+        #   RET
+        
         func_name, params, param_setup, param_names, original_name = p[1]
         body_code, body_ast = p[2]
         
@@ -684,10 +747,8 @@ class MyParser:
         # Marcamos el inicio y fin claramente para el separador en p_program
         result = f"FUNC_{func_name}:\n{param_setup}{body_code}\nRET"
         
-        # Eliminar parámetros de la tabla de símbolos (fin del ámbito de función)
-        for pname in param_names:
-            if pname in self.symbol_table:
-                del self.symbol_table[pname]
+        # Salir del ámbito de la función
+        self._exit_scope()
         
         ast_node = {"type": "FunctionDecl", "name": original_name, "params": params, "body": body_ast}
         p[0] = (result, ast_node)
@@ -714,6 +775,18 @@ class MyParser:
             params.insert(0, (self.current_context, 'this'))
             func_name = mangled_name
         
+        # Registrar símbolo de función en el ámbito actual (antes de entrar al de la función)
+        self._declare(f"FUNC_{func_name}", {
+            'type': 'function',
+            'label': f"FUNC_{func_name}",
+            'is_array': False,
+            'is_adt': False,
+            'params': params
+        }, p)
+
+        # Entrar a nuevo ámbito para parámetros y variables locales
+        self._enter_scope()
+
         # Añadir parámetros a la tabla de símbolos AHORA (antes de que se parsen las sentencias)
         # Después de CALL, la pila tiene: [ret_addr] [arg1] [arg2] ...
         # El primer POP obtiene ret_addr (manejado por RET), así que necesitamos saltarlo
@@ -732,28 +805,19 @@ class MyParser:
             
             param_names.append(param_name)
             label = self._new_label(f"param_{param_name}")
-            self.symbol_table[param_name] = {
+            self._declare(param_name, {
                 'label': label,
                 'type': param_type,
                 'is_array': is_array,
                 'is_adt': False,
                 'is_param': True  # Marcar como parámetro
-            }
+            }, p)
             self.data_section.append(f"{label}: DW 0")
             # Sacar parámetro de la pila al almacenamiento
             param_setup += f"POP R0\nST R0, [{label}]\n"
         
         # Empujar dirección de retorno de vuelta para instrucción RET
         param_setup += "PUSH R14\n"
-        
-        # Registrar símbolo de función
-        self.symbol_table[f"FUNC_{func_name}"] = {
-            'type': 'function',
-            'label': f"FUNC_{func_name}",
-            'is_array': False,
-            'is_adt': False,
-            'params': params
-        }
         
         p[0] = (func_name, params, param_setup, param_names, original_name)
 
@@ -786,6 +850,9 @@ class MyParser:
     # ==========================================================================
     def p_adt_head(self, p):
         """adt_head : ADT ID LPAREN param_list_opt RPAREN COLON"""
+        # Inicio de declaración de una Clase/Struct (TDA).
+        # Prepara el contexto para que las funciones internas se traten como métodos
+        # y tengan acceso implícito a 'this'.
         self.current_context = p[2]
         self.current_adt_members = {}
         self.current_adt_methods = {}
@@ -903,6 +970,7 @@ class MyParser:
         target = p[1]
         expr = p[3]
         expr_code = expr[0]
+        expr_type = expr[1]
         expr_ast = expr[2]
         
         kind = target[0]
@@ -913,6 +981,13 @@ class MyParser:
             index_code = target[2]
             index_ast = target[3]
             
+            # Validación de tipo para array
+            entry = self._lookup(arr_name)
+            if entry:
+                target_type = entry.get('type', 'int')
+                if target_type != expr_type:
+                    self._error(f"Error de tipo: No se puede asignar '{expr_type}' a elemento de array de tipo '{target_type}'", p)
+
             code = self._generate_array_assignment(arr_name, index_code, expr_code, p)
             ast = {"type": "ArrayAssignment", "target": arr_name, "index": index_ast, "value": expr_ast}
             p[0] = (code, ast)
@@ -922,6 +997,15 @@ class MyParser:
             obj_name = target[1]
             member_name = target[2]
             
+            # Validación de tipo para miembro
+            inst = self._lookup(obj_name)
+            if inst and inst.get('is_adt'):
+                members = inst.get('members', {})
+                if member_name in members:
+                    target_type = members[member_name].get('type', 'int')
+                    if target_type != expr_type:
+                        self._error(f"Error de tipo: No se puede asignar '{expr_type}' a miembro '{member_name}' de tipo '{target_type}'", p)
+
             code = self._generate_member_assignment(obj_name, member_name, expr_code, p)
             ast = {"type": "MemberAssignment", "object": obj_name, "member": member_name, "value": expr_ast}
             p[0] = (code, ast)
@@ -930,6 +1014,13 @@ class MyParser:
             # target: ('var', name, lvalue_ast)
             name = target[1]
             
+            # Validación de tipo para variable
+            entry = self._lookup(name)
+            if entry:
+                target_type = entry.get('type', 'int')
+                if target_type != expr_type:
+                    self._error(f"Error de tipo: No se puede asignar '{expr_type}' a variable '{name}' de tipo '{target_type}'", p)
+
             code = self._generate_var_assignment(name, expr_code, p)
             ast = {"type": "Assignment", "target": name, "value": expr_ast}
             p[0] = (code, ast)
@@ -985,8 +1076,14 @@ class MyParser:
         end_code = end_expr[0]
         end_ast = end_expr[2]
         
-        if var_name not in self.symbol_table:
-            self.symbol_table[var_name] = var_name
+        # Declarar variable de iteración si no existe
+        if not self._lookup(var_name):
+            self._declare(var_name, {
+                'label': var_name,
+                'type': 'int',
+                'is_array': False,
+                'is_adt': False
+            }, p)
             self.data_section.append(f"{var_name}: DW 0")
         
         lbl_start = self.get_new_label()
@@ -1025,6 +1122,17 @@ class MyParser:
     def p_if_stmt(self, p):
         """if_stmt : IF LPAREN expression RPAREN COLON statements ENDIF
                    | IF LPAREN expression RPAREN COLON statements ELSE COLON statements ENDIF"""
+        
+        # Generación de etiquetas para control de flujo.
+        # IF-ELSE:
+        #   ...código condición...
+        #   CMP R0, 0
+        #   JZ label_else (Si es falso, salta al else)
+        #   ...código true...
+        #   JMP label_end
+        # label_else:
+        #   ...código else...
+        # label_end:
         
         cond = p[3]
         cond_code = cond[0]
@@ -1122,11 +1230,11 @@ class MyParser:
         var_name = p[2]
         ast = {"type": "Input", "variable": var_name}
         
-        if var_name not in self.symbol_table:
+        entry = self._lookup(var_name)
+        if not entry:
              print(f"Error: Variable {var_name} no declarada.")
              p[0] = ("", ast)
              return
-        entry = self.symbol_table[var_name]
         label = entry['label'] if isinstance(entry, dict) and 'label' in entry else var_name
         p[0] = (f"IN R0, 0xFFFF0018\nST R0, [{label}]", ast)
 
@@ -1145,7 +1253,7 @@ class MyParser:
         self.asm = ""
         self.label_count = 0
         self.string_count = 0
-        self.symbol_table = {}
+        self.scopes = [{}] # Reiniciar scopes
         self.data_section = []
         self.error_count = 0
         self.called_functions = set()
@@ -1154,7 +1262,7 @@ class MyParser:
         # Validar llamadas a funciones
         for func_name in self.called_functions:
             func_label = f"FUNC_{func_name}"
-            is_defined = func_label in self.symbol_table
+            is_defined = self._lookup(f"FUNC_{func_name}") # Buscar en scopes
             is_library = func_label in self.library_functions
             
             if not is_defined and not is_library:
@@ -1181,11 +1289,15 @@ class MyParser:
     # Métodos Auxiliares de Generación
     # ----------------------------------------
     def _generate_array_access(self, var_name, index_code, p):
-        if var_name not in self.symbol_table:
+        """
+        Genera código para acceder a un elemento de un array: base + (index * 8).
+        Maneja la diferencia entre arrays estáticos (dirección fija) y dinámicos (punteros).
+        """
+        entry = self._lookup(var_name)
+        if not entry:
             self._error(f"Array '{var_name}' no declarado", p)
             return "MOVI R0, 0"
             
-        entry = self.symbol_table[var_name]
         if not (isinstance(entry, dict) and entry.get('is_array')):
             self._error(f"'{var_name}' no es un array", p)
             return "MOVI R0, 0"
@@ -1203,21 +1315,25 @@ class MyParser:
         return f"{calc_offset}\nMOVI R2, {base_label}\nADD R15, R2, R1\nLD R0, R15, 0"
 
     def _generate_var_access(self, var_name, p):
+        """
+        Genera código para leer una variable.
+        Detecta automáticamente si se está accediendo a un miembro de clase dentro de un método
+        para inyectar el acceso a través de 'this'.
+        """
         # Comprobar acceso a miembro TDA vía 'this' implícito
         if self.current_context and var_name in self.current_adt_members:
             offset = self.current_adt_members[var_name]['offset']
-            this_entry = self.symbol_table.get('this')
+            this_entry = self._lookup('this')
             if this_entry:
                 this_label = this_entry['label']
                 byte_offset = offset * 8
                 # Cargar puntero 'this' luego cargar miembro en offset
                 return f"LD R1, [{this_label}]\nLD R0, R1, {byte_offset}"
 
-        if var_name not in self.symbol_table:
+        entry = self._lookup(var_name)
+        if not entry:
             print(f"Error: Variable {var_name} no declarada.")
             return "MOVI R0, 0"
-
-        entry = self.symbol_table[var_name]
         
         # Si es array, devolver dirección
         if isinstance(entry, dict) and entry.get('is_array'):
@@ -1240,27 +1356,27 @@ class MyParser:
         # Comprobar asignación a miembro TDA vía 'this' implícito
         if self.current_context and target in self.current_adt_members:
             offset = self.current_adt_members[target]['offset']
-            this_entry = self.symbol_table.get('this')
+            this_entry = self._lookup('this')
             if this_entry:
                 this_label = this_entry['label']
                 byte_offset = offset * 8
                 # Almacenar R0 en [this + offset]
                 return f"{expr_code}\nLD R1, [{this_label}]\nST R0, R1, {byte_offset}"
 
-        if target not in self.symbol_table:
+        entry = self._lookup(target)
+        if not entry:
             self._error(f"Variable '{target}' no declarada", p)
             return ""
             
-        entry = self.symbol_table[target]
         label = entry.get('label', target)
         return f"{expr_code}\nST R0, [{label}]"
 
     def _generate_array_assignment(self, arr_name, index_code, expr_code, p):
-        if arr_name not in self.symbol_table:
+        entry = self._lookup(arr_name)
+        if not entry:
             self._error(f"Array '{arr_name}' no declarado", p)
             return ""
             
-        entry = self.symbol_table[arr_name]
         if not entry.get('is_array'):
             self._error(f"'{arr_name}' no es un array", p)
             return ""
@@ -1277,7 +1393,7 @@ class MyParser:
         return f"{addr_calc}\nPUSH R15\n{expr_code}\nPOP R15\nST R0, R15, 0"
 
     def _generate_member_assignment(self, obj, member, expr_code, p):
-        inst = self.symbol_table.get(obj)
+        inst = self._lookup(obj)
         if not inst or not inst.get('is_adt'):
             self._error(f"'{obj}' no es una instancia TDA", p)
             return ""

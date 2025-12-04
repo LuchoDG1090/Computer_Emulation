@@ -1,0 +1,6 @@
+/* Demo: Error de Tipo en Declaración */
+
+func main():
+    /* Error: Intentar asignar string a int */
+    int numero = "esto no es un numero";
+endfunc

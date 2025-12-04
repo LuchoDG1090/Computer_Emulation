@@ -9,7 +9,7 @@ if ROOT_DIR not in sys.path:
 
 from src.compiler.preprocessor import Preprocessor
 from src.compiler.lexer import MyLexer
-from src.compiler.parser import MyParser
+from src.compiler.parser import Parser
 from src.assembler.assembler import Assembler
 from src.cpu.cpu import CPU
 from src.memory.loader import Loader
@@ -37,7 +37,7 @@ def compile_file(input_path: str, output_dir: str) -> str:
     library_funcs = pre.get_available_library_functions()
 
     # 3. Parser
-    parser = MyParser(MyLexer.tokens, library_functions=library_funcs)
+    parser = Parser(MyLexer.tokens, library_functions=library_funcs)
     try:
         result = parser.parse(preprocessed_code, lexer_instance.lexer, library_asm=library_asm)
         if result:

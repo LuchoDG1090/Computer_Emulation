@@ -5,7 +5,7 @@ from PIL import Image
 from src.user_interface.gui.func import high_level_code as func
 from src.compiler.preprocessor import Preprocessor
 from src.compiler.lexer import MyLexer
-from src.compiler.parser import MyParser
+from src.compiler.parser import Parser
 from .design_variable_elements import Fonts
 from .compiler_phases_window import CompilerPhasesWindow
 
@@ -100,7 +100,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
                 def input(self, data): pass
 
             token_iterator = ListLexer(tokens_list)
-            parser = MyParser(MyLexer.tokens, library_functions=available_funcs)
+            parser = Parser(MyLexer.tokens, library_functions=available_funcs)
             
             # Pasamos el iterador personalizado y el código de librerías
             result = parser.parse(preprocessed_code, lexer=token_iterator, library_asm=library_asm)

@@ -1,0 +1,36 @@
+/* Test de bucles y control de flujo */
+
+func main():
+    int limit = 5;
+    
+    output "--- For Loop ---";
+    output "\n";
+    
+    /* Sintaxis: for (var in start range end): */
+    for (i in 0 range limit):
+        output i;
+        output " ";
+    endfor
+    output "\n";
+    
+    output "--- While Loop ---";
+    output "\n";
+    
+    int j = 0;
+    while (j < limit):
+        output j;
+        output " ";
+        j = j + 1;
+    endwhile
+    output "\n";
+    
+    output "--- If/Else ---";
+    output "\n";
+    
+    if (limit == 5) then:
+        output "Limit es 5";
+    else:
+        output "Limit no es 5";
+    endif
+    output "\n";
+endfunc

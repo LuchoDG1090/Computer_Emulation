@@ -1,0 +1,11 @@
+/* Demo: Error de Scope (Acceso a variable local desde fuera) */
+
+func myFunction():
+    int local_var = 99;
+endfunc
+
+func main():
+    myFunction();
+    /* Error: local_var no existe en este scope */
+    output local_var; 
+endfunc

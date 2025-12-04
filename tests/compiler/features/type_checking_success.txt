@@ -1,0 +1,23 @@
+/* Demo: Tipos Correctos */
+
+func main():
+    int a = 10;
+    float b = 3.14;
+    string s = "Hola Mundo";
+    
+    output a;
+    output "\n";
+    output b;
+    output "\n";
+    output s;
+    output "\n";
+    
+    /* Operaciones válidas */
+    a = a + 5;
+    b = b * 2.0;
+    
+    output a;
+    output "\n";
+    output b;
+    output "\n";
+endfunc

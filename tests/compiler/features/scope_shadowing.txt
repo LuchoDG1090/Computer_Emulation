@@ -1,0 +1,28 @@
+/* Demo: Scope Correcto (Shadowing y Globales) */
+
+int x = 10; /* Global */
+
+func print_global():
+    output x; /* Debería imprimir 10 */
+    output "\n";
+endfunc
+
+func modify_local():
+    int x = 20; /* Local, oculta a la global */
+    output x; /* Debería imprimir 20 */
+    output "\n";
+    x = 30;
+    output x; /* Debería imprimir 30 */
+    output "\n";
+endfunc
+
+func main():
+    output "Global inicial: ";
+    print_global();
+    
+    output "Local modificada: ";
+    modify_local();
+    
+    output "Global post-local: ";
+    print_global(); /* Debería seguir siendo 10 */
+endfunc
