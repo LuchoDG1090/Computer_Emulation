@@ -251,7 +251,122 @@ class Parser:
             p[0] = (f"{expr_code}\nST R0, [{label}]", {"type": "Declaration", "var_type": var_type, "name": name, "init": expr_ast})
             return
 
+        # Declaracion de array (DEBE IR ANTES que la verificacion de TDA simple)
+        if is_array_decl:
+            size_expr = p[4]
+            size_code = size_expr[0]
+            size_ast = size_expr[2]
+            base_label = self._new_label(f"arr_{name}")
+            
+            # Comprobar si el tamano es un literal entero estatico (optimizacion)
+            # size_code sera "MOVI R0, <int>"
+            import re
+            match = re.match(r"MOVI R0, (\d+)", size_code)
+            
+            ast_node = {"type": "ArrayDeclaration", "var_type": var_type, "name": name, "size": size_ast}
+
+            # Verificar si es un array de TDAs
+            if var_type in self.type_table:
+                # Array de TDA
+                adt_info = self.type_table[var_type]
+                element_size = adt_info['size']  # Número de miembros en el TDA
+                
+                if match:
+                    # Array estático de TDAs
+                    array_size = int(match.group(1))
+                    
+                    # Crear estructura completa: etiquetas para cada miembro de cada elemento
+                    self.data_section.append(f"{base_label}:")
+                    
+                    for i in range(array_size):
+                        elem_label = f"{base_label}_{i}"
+                        self.data_section.append(f"{elem_label}:")
+                        
+                        for member_name, member_info in adt_info['members'].items():
+                            member_label = f"{elem_label}_{member_name}"
+                            self.data_section.append(f"{member_label}: DW 0")
+                    
+                    self._declare(name, {
+                        'label': base_label,
+                        'type': var_type,
+                        'is_array': True,
+                        'size': array_size,
+                        'element_size': element_size,
+                        'is_adt_array': True,
+                        'is_param': False,
+                        'adt_info': adt_info
+                    }, p)
+                    p[0] = ("", ast_node)
+                else:
+                    # Array dinámico de TDAs
+                    total_element_size = element_size * 8  # Cada miembro = 8 bytes
+                    
+                    alloc_code = f"""
+                {size_code}
+                MOVI R1, {total_element_size}
+                MUL R0, R0, R1
+                LD R1, [__HEAP_PTR]
+                ST R1, [{base_label}]
+                ADD R1, R1, R0
+                ST R1, [__HEAP_PTR]
+                """
+                    
+                    self._declare(name, {
+                        'label': base_label,
+                        'type': var_type,
+                        'is_array': True,
+                        'size': None,
+                        'element_size': element_size,
+                        'is_adt_array': True,
+                        'is_param': True,
+                        'adt_info': adt_info
+                    }, p)
+                    self.data_section.append(f"{base_label}: DW 0")
+                    p[0] = (alloc_code, ast_node)
+            else:
+                # Array de tipo primitivo (código original)
+                if match:
+                    # Asignacion estatica
+                    size = int(match.group(1))
+                    self._declare(name, {
+                        'label': base_label,
+                        'type': var_type,
+                        'is_array': True,
+                        'size': size,
+                        'is_adt': False,
+                        'is_param': False # Array estatico
+                    }, p)
+                    words = ' '.join(['0' for _ in range(size)])
+                    self.data_section.append(f"{base_label}: DW {words}")
+                    p[0] = ("", ast_node)
+                else:
+                    # Asignacion dinámica
+                    self._declare(name, {
+                        'label': base_label,
+                        'type': var_type,
+                        'is_array': True,
+                        'size': None, # Desconocido en tiempo de compilación
+                        'is_adt': False,
+                        'is_param': True # Tratar como puntero
+                    }, p)
+                    # Crear variable puntero
+                    self.data_section.append(f"{base_label}: DW 0")
+                    
+                    # Generar codigo de asignacion
+                    alloc_code = f"""
+                {size_code}
+                MOVI R1, 8
+                MUL R0, R0, R1
+                LD R1, [__HEAP_PTR]
+                ST R1, [{base_label}]
+                ADD R1, R1, R0
+                ST R1, [__HEAP_PTR]
+                """
+                    p[0] = (alloc_code, ast_node)
+            return
+
         # Declaracion de instancia TDA (el tipo existe en type_table)
+        # IMPORTANTE: Esto va DESPUÉS de verificar arrays
         if var_type in self.type_table:
             adt_info = self.type_table[var_type]
             instance_label = self._new_label(f"adt_{name}")
@@ -284,68 +399,16 @@ class Parser:
             p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
             return
 
-        # Declaracion de array
-        if is_array_decl:
-            size_expr = p[4]
-            size_code = size_expr[0]
-            size_ast = size_expr[2]
-            base_label = self._new_label(f"arr_{name}")
-            
-            # Comprobar si el tamano es un literal entero estatico (optimizacion)
-            # size_code sera "MOVI R0, <int>"
-            import re
-            match = re.match(r"MOVI R0, (\d+)", size_code)
-            
-            ast_node = {"type": "ArrayDeclaration", "var_type": var_type, "name": name, "size": size_ast}
-
-            if match:
-                # Asignacion estatica
-                size = int(match.group(1))
-                self._declare(name, {
-                    'label': base_label,
-                    'type': var_type,
-                    'is_array': True,
-                    'size': size,
-                    'is_adt': False,
-                    'is_param': False # Array estatico
-                }, p)
-                words = ' '.join(['0' for _ in range(size)])
-                self.data_section.append(f"{base_label}: DW {words}")
-                p[0] = ("", ast_node)
-            else:
-                # Asignacion dinámica
-                self._declare(name, {
-                    'label': base_label,
-                    'type': var_type,
-                    'is_array': True,
-                    'size': None, # Desconocido en tiempo de compilación
-                    'is_adt': False,
-                    'is_param': True # Tratar como puntero
-                }, p)
-                # Crear variable puntero
-                self.data_section.append(f"{base_label}: DW 0")
-                
-                # Generar codigo de asignacion
-                alloc_code = f"""
-                {size_code}
-                MOVI R1, 8
-                MUL R0, R0, R1
-                LD R1, [__HEAP_PTR]
-                ST R1, [{base_label}]
-                ADD R1, R1, R0
-                ST R1, [__HEAP_PTR]
-                """
-                p[0] = (alloc_code, ast_node)
-        else:
-            label = self._new_label(f"var_{name}")
-            self._declare(name, {
-                'label': label,
-                'type': var_type,
-                'is_array': False,
-                'is_adt': False
-            }, p)
-            self.data_section.append(f"{label}: DW 0")
-            p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
+        # Declaracion de variable simple (primitiva)
+        label = self._new_label(f"var_{name}")
+        self._declare(name, {
+            'label': label,
+            'type': var_type,
+            'is_array': False,
+            'is_adt': False
+        }, p)
+        self.data_section.append(f"{label}: DW 0")
+        p[0] = ("", {"type": "Declaration", "var_type": var_type, "name": name})
 
     # ==========================================================================
     # 3. TIPOS DE DATOS
@@ -528,34 +591,77 @@ class Parser:
             p[0] = (self._generate_var_access(var_name, p), var_type, {"type": "Identifier", "name": var_name})
 
     def p_expression_member(self, p):
-        """expression : ID DOT ID"""
-        obj = p[1]
-        member = p[3]
-        
-        inst = self._lookup(obj)
-        if not inst:
-            self._error(f"Instancia TDA '{obj}' no declarada", p)
-            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
-            return
+        """expression : ID DOT ID
+                      | ID LBRACKET expression RBRACKET DOT ID"""
+        if len(p) == 4:
+            # ID.ID - Acceso a miembro de TDA
+            obj = p[1]
+            member = p[3]
             
-        if not (isinstance(inst, dict) and inst.get('is_adt')):
-            self._error(f"'{obj}' no es una instancia TDA", p)
-            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
-            return
+            inst = self._lookup(obj)
+            if not inst:
+                self._error(f"Instancia TDA '{obj}' no declarada", p)
+                p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
+                return
+                
+            if not (isinstance(inst, dict) and inst.get('is_adt')):
+                self._error(f"'{obj}' no es una instancia TDA", p)
+                p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
+                return
+                
+            members = inst.get('members', {})
+            if member not in members:
+                self._error(f"Miembro '{member}' no encontrado en instancia TDA '{obj}'", p)
+                p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
+                return
+                
+            meta = members[member]
+            if meta.get('visibility') == 'private' and self.current_context is None:
+                self._error(f"Acceso ilegal a miembro privado '{member}' de '{obj}'", p)
+                p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
+                return
+                
+            p[0] = (f"LD R0, [{meta['label']}]", meta.get('type', 'int'), {"type": "MemberAccess", "object": obj, "member": member})
+        else:
+            # ID[expr].ID - Acceso a miembro de elemento de array de TDA
+            arr_name = p[1]
+            index_expr = p[3]
+            member_name = p[6]
             
-        members = inst.get('members', {})
-        if member not in members:
-            self._error(f"Miembro '{member}' no encontrado en instancia TDA '{obj}'", p)
-            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
-            return
+            index_code = index_expr[0]
+            index_ast = index_expr[2]
             
-        meta = members[member]
-        if meta.get('visibility') == 'private' and self.current_context is None:
-            self._error(f"Acceso ilegal a miembro privado '{member}' de '{obj}'", p)
-            p[0] = ("MOVI R0, 0", 'int', {"type": "Literal", "value": 0})
-            return
+            entry = self._lookup(arr_name)
+            if not entry or not entry.get('is_adt_array'):
+                self._error(f"'{arr_name}' no es un array de TDA", p)
+                p[0] = ("MOVI R0, 0", 'int', {"type": "ArrayMemberAccess", "array": arr_name, "index": index_ast, "member": member_name})
+                return
+                
+            adt_info = entry.get('adt_info')
+            if not adt_info or member_name not in adt_info['members']:
+                self._error(f"Miembro '{member_name}' no encontrado en TDA", p)
+                p[0] = ("MOVI R0, 0", 'int', {"type": "ArrayMemberAccess", "array": arr_name, "index": index_ast, "member": member_name})
+                return
+                
+            member_info = adt_info['members'][member_name]
+            member_offset = member_info.get('offset', 0) * 8  # Offset en bytes
+            member_type = member_info.get('type', 'int')
+            element_bytes = entry['element_size'] * 8
             
-        p[0] = (f"LD R0, [{meta['label']}]", meta.get('type', 'int'), {"type": "MemberAccess", "object": obj, "member": member})
+            # Calcular direccion del elemento
+            base_label = entry['label']
+            calc_offset = f"{index_code}\nMOVI R1, {element_bytes}\nMUL R1, R0, R1"
+            
+            if entry.get('is_param'):
+                # Array dinamico
+                addr_calc = f"{calc_offset}\nLD R2, [{base_label}]\nADD R15, R2, R1"
+            else:
+                # Array estatico
+                addr_calc = f"{calc_offset}\nMOVI R2, {base_label}\nADD R15, R2, R1"
+            
+            # Cargar valor del miembro
+            code = f"{addr_calc}\nLD R0, R15, {member_offset}"
+            p[0] = (code, member_type, {"type": "ArrayMemberAccess", "array": arr_name, "index": index_ast, "member": member_name})
 
     def p_expression_func_call(self, p):
         """expression : func_call"""
@@ -994,6 +1100,26 @@ class Parser:
             ast = {"type": "ArrayAssignment", "target": arr_name, "index": index_ast, "value": expr_ast}
             p[0] = (code, ast)
             
+        elif kind == 'array_member':
+            # target: ('array_member', arr_name, index_code, index_ast, member_name, lvalue_ast)
+            arr_name = target[1]
+            index_code = target[2]
+            index_ast = target[3]
+            member_name = target[4]
+            
+            # Validacion de tipo para miembro de array de TDA
+            entry = self._lookup(arr_name)
+            if entry and entry.get('is_adt_array'):
+                adt_info = entry.get('adt_info')
+                if adt_info and member_name in adt_info['members']:
+                    target_type = adt_info['members'][member_name].get('type', 'int')
+                    if target_type != expr_type:
+                        self._error(f"Error de tipo: No se puede asignar '{expr_type}' a miembro '{member_name}' de tipo '{target_type}'", p)
+
+            code = self._generate_array_member_assignment(arr_name, index_code, member_name, expr_code, p)
+            ast = {"type": "ArrayMemberAssignment", "array": arr_name, "index": index_ast, "member": member_name, "value": expr_ast}
+            p[0] = (code, ast)
+            
         elif kind == 'member':
             # target: ('member', obj_name, member_name, lvalue_ast)
             obj_name = target[1]
@@ -1034,7 +1160,8 @@ class Parser:
     def p_lvalue(self, p):
         """lvalue : ID
                   | ID DOT ID
-                  | ID LBRACKET expression RBRACKET"""
+                  | ID LBRACKET expression RBRACKET
+                  | ID LBRACKET expression RBRACKET DOT ID"""
         if len(p) == 2:
             # ID
             p[0] = ('var', p[1], {"type": "Identifier", "name": p[1]})
@@ -1051,6 +1178,14 @@ class Parser:
             index_code = index_expr[0]
             index_ast = index_expr[2]
             p[0] = ('array', arr_name, index_code, index_ast, {"type": "ArrayAccess", "array": arr_name, "index": index_ast})
+        elif len(p) == 7:
+            # ID[expr].ID - Acceso a miembro de elemento de array de TDA
+            arr_name = p[1]
+            index_expr = p[3]
+            member_name = p[6]
+            index_code = index_expr[0]
+            index_ast = index_expr[2]
+            p[0] = ('array_member', arr_name, index_code, index_ast, member_name, {"type": "ArrayMemberAccess", "array": arr_name, "index": index_ast, "member": member_name})
 
     # ----------------------------------------
     # Flujo de Control (Extendido)
@@ -1299,8 +1434,9 @@ class Parser:
     # ----------------------------------------
     def _generate_array_access(self, var_name, index_code, p):
         """
-        Genera codigo para acceder a un elemento de un array: base + (index * 8).
+        Genera codigo para acceder a un elemento de un array: base + (index * element_size).
         Maneja la diferencia entre arrays estaticos (direccion fija) y dinamicos (punteros).
+        Para arrays de TDAs, devuelve la DIRECCIÓN del elemento (no el valor).
         """
         entry = self._lookup(var_name)
         if not entry:
@@ -1312,16 +1448,30 @@ class Parser:
             return "MOVI R0, 0"
             
         base_label = entry['label']
-        # Cálculo de direccion común: index * 8
-        calc_offset = f"{index_code}\nMOVI R1, 8\nMUL R1, R0, R1"
         
-        if entry.get('is_param'):
-            # Direccion base es dinámica (pasada como param)
-            # Cargar el valor de direccion almacenado en la ubicacion del parametro
-            return f"{calc_offset}\nLD R2, [{base_label}]\nADD R15, R2, R1\nLD R0, R15, 0"
-        
-        # Direccion base es etiqueta estatica
-        return f"{calc_offset}\nMOVI R2, {base_label}\nADD R15, R2, R1\nLD R0, R15, 0"
+        # Determinar tamaño del elemento
+        if entry.get('is_adt_array'):
+            # Array de TDA: cada elemento ocupa element_size * 8 bytes
+            element_bytes = entry['element_size'] * 8
+            calc_offset = f"{index_code}\nMOVI R1, {element_bytes}\nMUL R1, R0, R1"
+            
+            # Para TDAs, devolver DIRECCIÓN del elemento (no cargar valor)
+            if entry.get('is_param'):
+                # Array dinámico: base es puntero
+                return f"{calc_offset}\nLD R2, [{base_label}]\nADD R0, R2, R1"
+            else:
+                # Array estático: base es etiqueta
+                return f"{calc_offset}\nMOVI R2, {base_label}\nADD R0, R2, R1"
+        else:
+            # Array primitivo: cada elemento ocupa 8 bytes, cargar valor
+            calc_offset = f"{index_code}\nMOVI R1, 8\nMUL R1, R0, R1"
+            
+            if entry.get('is_param'):
+                # Direccion base es dinámica (pasada como param)
+                return f"{calc_offset}\nLD R2, [{base_label}]\nADD R15, R2, R1\nLD R0, R15, 0"
+            
+            # Direccion base es etiqueta estatica
+            return f"{calc_offset}\nMOVI R2, {base_label}\nADD R15, R2, R1\nLD R0, R15, 0"
 
     def _generate_var_access(self, var_name, p):
         """
@@ -1391,7 +1541,15 @@ class Parser:
             return ""
             
         base_label = entry['label']
-        calc_offset = f"{index_code}\nMOVI R1, 8\nMUL R1, R0, R1"
+        
+        # Determinar tamaño del elemento
+        if entry.get('is_adt_array'):
+            # Array de TDA: cada elemento ocupa element_size * 8 bytes
+            element_bytes = entry['element_size'] * 8
+            calc_offset = f"{index_code}\nMOVI R1, {element_bytes}\nMUL R1, R0, R1"
+        else:
+            # Array primitivo: cada elemento ocupa 8 bytes
+            calc_offset = f"{index_code}\nMOVI R1, 8\nMUL R1, R0, R1"
         
         # Calcular direccion objetivo en R15
         if entry.get('is_param'):
@@ -1400,6 +1558,36 @@ class Parser:
             addr_calc = f"{calc_offset}\nMOVI R2, {base_label}\nADD R15, R2, R1"
             
         return f"{addr_calc}\nPUSH R15\n{expr_code}\nPOP R15\nST R0, R15, 0"
+
+    def _generate_array_member_assignment(self, arr_name, index_code, member_name, expr_code, p):
+        """Genera código para arr[i].member = value"""
+        entry = self._lookup(arr_name)
+        if not entry or not entry.get('is_adt_array'):
+            self._error(f"'{arr_name}' no es un array de TDA", p)
+            return ""
+            
+        adt_info = entry.get('adt_info')
+        if not adt_info or member_name not in adt_info['members']:
+            self._error(f"Miembro '{member_name}' no encontrado en TDA", p)
+            return ""
+            
+        member_info = adt_info['members'][member_name]
+        member_offset = member_info.get('offset', 0) * 8  # Offset en bytes
+        element_bytes = entry['element_size'] * 8
+        
+        # Calcular dirección del elemento: base + (index * element_size)
+        base_label = entry['label']
+        calc_offset = f"{index_code}\nMOVI R1, {element_bytes}\nMUL R1, R0, R1"
+        
+        if entry.get('is_param'):
+            # Array dinámico
+            addr_calc = f"{calc_offset}\nLD R2, [{base_label}]\nADD R15, R2, R1"
+        else:
+            # Array estático
+            addr_calc = f"{calc_offset}\nMOVI R2, {base_label}\nADD R15, R2, R1"
+        
+        # Sumar offset del miembro y almacenar valor
+        return f"{addr_calc}\nPUSH R15\n{expr_code}\nPOP R15\nST R0, R15, {member_offset}"
 
     def _generate_member_assignment(self, obj, member, expr_code, p):
         inst = self._lookup(obj)
