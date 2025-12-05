@@ -58,7 +58,7 @@ class SimpleDisk:
     def _load_index(self):
         """Carga índice de programas desde el header del disco"""
         try:
-            with open(self.path, 'rb') as f:
+            with open(self.path, 'rb') as f: # rb --> leer binario
                 header_bytes = f.read(self.HEADER_SIZE)
                 header_str = header_bytes.decode('utf-8', errors='ignore').rstrip('\x00')
                 
