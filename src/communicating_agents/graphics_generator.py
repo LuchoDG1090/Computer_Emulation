@@ -74,8 +74,9 @@ class GraphicsGenerator():
                         fontcolor=color
                     )
                 )
-
-        graph.write_png(outfile)
+        graph.set_graph_defaults(size="10,10!")
+        graph.set_graph_defaults(dpi="100")
+        graph.write_png(outfile, prog = "dot")
         return outfile
 
 

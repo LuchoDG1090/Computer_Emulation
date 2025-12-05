@@ -42,6 +42,10 @@ class ManageMessages():
         message_type = self.__get_message_type(message = message)
         channel, origin, destiny = self.__get_message_payload(message = message)
 
+        if message_type == "CRE_LINK":
+            if origin in agents and destiny in agents:
+                return [True, origin, destiny, message_type, channel]
+
         try:
             channel_connections = links[channel]
         except KeyError:
@@ -57,7 +61,7 @@ class ManageMessages():
             print("parent_validation")
 
         if connection_exists:
-            return [True, origin, destiny, message_type]
+            return [True, origin, destiny, message_type, channel]
         return [False]
 
         

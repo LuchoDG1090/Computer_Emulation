@@ -1,6 +1,4 @@
-import customtkinter as ctk
 from CommunicatingAgent import CommunicatingAgents
-from tkinterweb import HtmlFrame
 
 def main():
     agents = CommunicatingAgents()
@@ -23,8 +21,6 @@ def main():
     agents.add_link(agent_v3, agent_v5, "e2")
     agents.add_link(agent_v2, agent_v6, "e3")
 
-    
-
     info_message = {
         "type": "INFO",
         "payload": {
@@ -33,8 +29,35 @@ def main():
             "destiny": agent_v4
         }
     }
-
+    
     agents.send_message(info_message)
+
+    delete_message = {
+        "type": "DEL_LINK",
+        "payload": {
+            "channel": "e0",
+            "origin": agent_v0,
+            "destiny": agent_v4
+        }
+    }
+
+    agents.send_message(delete_message)
+
+
+    add_link_message = {
+        "type": "CRE_LINK",
+        "payload": {
+            "channel": "e8",
+            "origin": agent_v0,
+            "destiny": agent_v6
+        }
+    }
+
+    agents.send_message(add_link_message)
+
+    agents.generate_graphs()
+
+
 
 if __name__ == '__main__':
     main()

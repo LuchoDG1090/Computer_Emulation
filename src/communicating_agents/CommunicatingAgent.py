@@ -30,6 +30,10 @@ class Agent:
             f"Parent= {parent_id} | "
             f"Name= {self.agent_name}\033[0m"
         )
+
+    def send_action_ACK(self, type, origin):
+        return f"\033[34mACK process {type} from AGENT-{origin.id} to AGENT-{self.id} ACTION COMPLETE.\033[0m"
+
     
 
 
@@ -47,6 +51,7 @@ class CommunicatingAgents(ManageMessages):
         self._id_counter = itertools.count()
         self.graphics = GraphicsGenerator()
         self.agents = []
+        self.excluded_links = []
 
     def add_agent(self, parent=None, links=None, agent_name = None):
         agent = Agent(next(self._id_counter), parent=parent, links=links, agent_name=agent_name)
@@ -68,11 +73,11 @@ class CommunicatingAgents(ManageMessages):
                     for secondary_link in links:
                         t2_e1, t2_e2 = secondary_link
                         link = ()
-                        if t1_e1 != t2_e1 and (t1_e1, t2_e1) not in links: 
+                        if t1_e1 != t2_e1 and (t1_e1, t2_e1) not in links and (t1_e1, t2_e1) not in self.excluded_links: 
                             link = (t1_e1, t2_e1)
-                        elif t1_e2 != t2_e2 and (t1_e2, t2_e2) not in links:
+                        elif t1_e2 != t2_e2 and (t1_e2, t2_e2) not in links and (t1_e2, t2_e2) not in self.excluded_links:
                             link = (t1_e2, t2_e2)
-                        elif (t1_e1, t2_e2) not in links and t1_e1 != t2_e2: 
+                        elif (t1_e1, t2_e2) not in links and t1_e1 != t2_e2 and (t1_e1, t2_e2) not in self.excluded_links: 
                             link = (t1_e1, t2_e2)
                         if link and link not in links and (link[1], link[0]) not in links:
                             links.append(link)
@@ -90,22 +95,37 @@ class CommunicatingAgents(ManageMessages):
 
 
     def break_link(self, origin: Agent, link_name: str, target: Agent):
-        if link_name in origin.links:
-            if target in origin.links[link_name]:
-                origin.links[link_name].remove(target)
+        removed = False
+        links_origin = origin.links.get(link_name, [])
+        for agent in links_origin:
+            if agent.id == target.id:
+                links_origin.remove(agent)
+                removed = True
+                break
 
-                if not origin.links[link_name]:
-                    del origin.links[link_name]
+        links_target = target.links.get(link_name, [])
+        for agent in links_target:
+            if agent.id == origin.id:
+                links_target.remove(agent)
+                removed = True
+                break
+
+        if not removed:
+            self.excluded_links.append((origin.id, target.id))
+            self.excluded_links.append((target.id, origin.id))
+
+
     
     def get_links_with_id(self, id):
         links_from_id = []
         links = self.get_links()
         for tag, val in links.items():
             for o1, o2 in val:
-                if id == o1:
-                    links_from_id.append(o2)
-                elif id == o2:
-                    links_from_id.append(o1)
+                if (o1, o2) not in self.excluded_links and (o2, o1) not in self.excluded_links:
+                    if id == o1:
+                        links_from_id.append(o2)
+                    elif id == o2:
+                        links_from_id.append(o1)
         return links_from_id
 
 
@@ -113,18 +133,21 @@ class CommunicatingAgents(ManageMessages):
         available_channel = self._send_message_validations(message, self.agents, self.get_links())
         if available_channel[0]:
             print(available_channel[2].send_ack(available_channel[3], available_channel[1]))
-
             if available_channel[3] == "INFO":
                 print(available_channel[2].get_agent_info(self.get_links_with_id(available_channel[2].id)))
+            elif available_channel[3] == "DEL_LINK":
+                self.break_link(available_channel[1], available_channel[4], available_channel[2])
+                print(available_channel[2].send_action_ACK(available_channel[3], available_channel[1]))
+            elif available_channel[3] == "CRE_LINK":
+                self.add_link(available_channel[1], available_channel[2], available_channel[4])
+                print(available_channel[2].send_action_ACK(available_channel[3], available_channel[1]))
+
 
     def receive_message():
         pass
     
-    def get_bigraph(self):
-        return self.graphics.render_graph(self.agents, self.get_links())
-
-    def get_hyper_graph(self):
-        return self.graphics.get_hyper_graph(self.agents, self.get_links())
-    
-    def get_forest(self):
-        return self.graphics.get_bigraph_forest(self.agents)
+    def generate_graphs(self):
+        self.graphics.render_graph(self.agents, self.get_links())
+        self.graphics.get_hyper_graph(self.agents, self.get_links())
+        self.graphics.get_bigraph_forest(self.agents)
+        pass
