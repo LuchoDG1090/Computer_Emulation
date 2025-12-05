@@ -1,0 +1,6 @@
+agents:
+    a0 = create agent Root;
+    a1 = create agent a0;
+    link a0 -> a1 on ch_0;
+endagents;
+run;

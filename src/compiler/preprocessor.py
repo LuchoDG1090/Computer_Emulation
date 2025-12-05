@@ -15,6 +15,7 @@ if SRC_DIR not in sys.path:
 
 import ply.lex as lex
 from src.compiler.library_loader import LibraryLoader
+from src.disk.simple_disk import SimpleDisk
 
 tokens = [
     'INCLUDE_QUOTED',
@@ -79,12 +80,13 @@ class MacroTable:
 
 
 class Preprocessor:
-    def __init__(self):
+    def __init__(self, disk_path: str = "disk.img"):
         self.macros = MacroTable()
-        self.include_paths = ['.', 'includes']
+        self.include_paths = ['.']  # Solo directorio actual para includes con comillas
         self.processed_files = set()
         self.library_loader = LibraryLoader()
-        self.smart_includes = [] # Lista de rutas de librerías ASM detectadas
+        self.smart_includes = []  # Lista de rutas de librerías ASM detectadas
+        self.disk = SimpleDisk(disk_path)  # Disco virtual para programas precompilados
 
     def preprocess_file(self, filename):
         self.processed_files.clear()
@@ -135,64 +137,142 @@ class Preprocessor:
         return self.macros.replace_in_line(line)
 
     def _handle_include(self, filename, base_dir, system_file):
-        search_dirs = self.include_paths if system_file else [base_dir] + self.include_paths
-
-        for d in search_dirs:
-            path = os.path.join(d, filename)
-            if os.path.exists(path):
-                return self._process_file(path, os.path.dirname(path))
+        """
+        Maneja directivas #include.
+        
+        - #include <library>: Busca SOLO en disk.img (programas precompilados)
+        - #include "file.txt": Busca en directorio local
+        """
+        
+        if system_file:
+            # Include de sistema: buscar ÚNICAMENTE en disco virtual
+            asm_code = self.disk.read_program(filename)
             
-            # Si es un include de sistema (<lib>), intentar buscar versión .asm para smart include
-            if system_file:
-                asm_path = os.path.join(d, filename + ".asm")
-                if os.path.exists(asm_path):
-                    self.smart_includes.append(asm_path)
-                    return "" # Eliminar la línea de include del código fuente
-
-        raise Exception(f"Archivo incluido no encontrado: {filename}")
+            if asm_code:
+                # Programa encontrado en disco
+                print(f"\033[36m[Preprocessor] Cargando '{filename}' desde disk.img\033[0m")
+                self.smart_includes.append((filename, asm_code))
+                return ""  # Eliminar línea de include del código fuente
+            else:
+                # No encontrado en disco - ERROR (sin fallback a includes/)
+                raise Exception(
+                    f"Programa '{filename}' no encontrado en disco virtual.\n"
+                    f"  Sugerencia: Compila la librería y añádela al disco con:\n"
+                    f"    python tools/disk_manager.py write {filename} <archivo.asm>"
+                )
+        else:
+            # Include con comillas: buscar en directorio local
+            search_dirs = [base_dir] + self.include_paths
+            
+            for d in search_dirs:
+                path = os.path.join(d, filename)
+                if os.path.exists(path):
+                    print(f"\033[36m[Preprocessor] Incluyendo '{filename}' desde {d}\033[0m")
+                    return self._process_file(path, os.path.dirname(path))
+            
+            raise Exception(f"Archivo incluido no encontrado: {filename}")
 
     def get_smart_includes_asm(self, source_code):
         """
-        Escanea el código fuente en busca de funciones definidas en las librerías incluidas
-        y devuelve el código ASM correspondiente.
+        Procesa smart includes desde disco virtual.
+        
+        Para cada librería incluida desde disk.img, extrae solo las funciones
+        que realmente se usan en el código fuente.
+        
+        Args:
+            source_code: Código fuente preprocesado
+        
+        Returns:
+            Código ASM combinado de todas las funciones usadas
         """
         combined_asm = []
         
-        for lib_path in self.smart_includes:
-            available_funcs = self.library_loader.get_defined_functions(lib_path)
-            
-            for func in available_funcs:
-                # Manejar convención FUNC_
-                # Si la función en ASM es FUNC_pow, buscamos 'pow(' en el código fuente
-                search_name = func
-                if func.startswith("FUNC_"):
-                    search_name = func[5:]
-
-                # Buscar uso de la función en el código (e.g., "func(")
-                # Usamos regex simple para detectar llamadas
-                pattern = r'\b' + re.escape(search_name) + r'\s*\('
-                if re.search(pattern, source_code):
-                    asm_code = self.library_loader.get_function_code(lib_path, func)
-                    combined_asm.append(f"# --- Begin {search_name} from {os.path.basename(lib_path)} ---")
-                    combined_asm.append(asm_code)
-                    combined_asm.append(f"# --- End {search_name} ---")
+        for item in self.smart_includes:
+            # Los smart includes ahora son tuplas (nombre, asm_code) desde disk.img
+            if isinstance(item, tuple):
+                lib_name, asm_code = item
+                
+                # Analizar el código ASM para extraer funciones
+                # (usar LibraryLoader para parsear funciones del código ASM en memoria)
+                import tempfile
+                
+                # Crear archivo temporal para que LibraryLoader lo procese
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.asm', delete=False, encoding='utf-8') as tmp:
+                    tmp.write(asm_code)
+                    tmp_path = tmp.name
+                
+                try:
+                    available_funcs = self.library_loader.get_defined_functions(tmp_path)
                     
+                    for func in available_funcs:
+                        # Manejar convención FUNC_
+                        search_name = func
+                        if func.startswith("FUNC_"):
+                            search_name = func[5:]
+                        
+                        # Buscar uso de la función en el código
+                        pattern = r'\b' + re.escape(search_name) + r'\s*\('
+                        if re.search(pattern, source_code):
+                            func_code = self.library_loader.get_function_code(tmp_path, func)
+                            combined_asm.append(f"# --- Begin {search_name} from {lib_name} ---")
+                            combined_asm.append(func_code)
+                            combined_asm.append(f"# --- End {search_name} ---")
+                finally:
+                    # Limpiar archivo temporal
+                    os.unlink(tmp_path)
+            else:
+                # Compatibilidad con includes antiguos (rutas de archivos)
+                lib_path = item
+                available_funcs = self.library_loader.get_defined_functions(lib_path)
+                
+                for func in available_funcs:
+                    search_name = func
+                    if func.startswith("FUNC_"):
+                        search_name = func[5:]
+                    
+                    pattern = r'\b' + re.escape(search_name) + r'\s*\('
+                    if re.search(pattern, source_code):
+                        asm_code = self.library_loader.get_function_code(lib_path, func)
+                        combined_asm.append(f"# --- Begin {search_name} from {os.path.basename(lib_path)} ---")
+                        combined_asm.append(asm_code)
+                        combined_asm.append(f"# --- End {search_name} ---")
+        
         return "\n".join(combined_asm)
 
     def get_available_library_functions(self):
         """
         Devuelve un conjunto con los nombres de todas las funciones disponibles
-        en las librerías incluidas (smart includes).
+        en las librerías incluidas desde disco virtual.
         """
         available_funcs = set()
-        for lib_path in self.smart_includes:
-            funcs = self.library_loader.get_defined_functions(lib_path)
-            available_funcs.update(funcs)
+        
+        import tempfile
+        
+        for item in self.smart_includes:
+            if isinstance(item, tuple):
+                # Smart include desde disco: (nombre, asm_code)
+                lib_name, asm_code = item
+                
+                # Crear archivo temporal para analizar
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.asm', delete=False, encoding='utf-8') as tmp:
+                    tmp.write(asm_code)
+                    tmp_path = tmp.name
+                
+                try:
+                    funcs = self.library_loader.get_defined_functions(tmp_path)
+                    available_funcs.update(funcs)
+                finally:
+                    os.unlink(tmp_path)
+            else:
+                # Include tradicional (archivo)
+                funcs = self.library_loader.get_defined_functions(item)
+                available_funcs.update(funcs)
+        
         return available_funcs
 
 
 # -------------------------------------------------------
-# NUEVA FUNCIÓN PARA EJECUCIÓN TIPO "PIPELINE"
+# FUNCIÓN PARA EJECUCIÓN TIPO "PIPELINE"
 # -------------------------------------------------------
 def preprocess_file_cli(input_path: str, output_dir: str) -> str:
     if not os.path.isfile(input_path):

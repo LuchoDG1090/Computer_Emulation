@@ -16,7 +16,12 @@ reserved = {
     'bool': 'BOOL_TYPE', 'char': 'CHAR_TYPE', 'void': 'VOID_TYPE',
     'true': 'TRUE', 'false': 'FALSE',
     'adt': 'ADT', 'endadt': 'ENDADT', 'private': 'PRIVATE', 'public': 'PUBLIC',
-    'in': 'IN'
+    'in': 'IN',
+
+    #Agentes comunicantes
+    'create' : 'CREATE', 'agent': 'AGENT', 'move': 'MOVE', 'delete': 'DELETE',
+    'link': 'LINK', 'unlink': 'UNLINK', 'send': 'SEND', 'from': 'FROM', 'to': 'TO', 'on': 'ON', 'via': 'VIA',
+    'agents': 'AGENTS', 'endagents': 'ENDAGENTS', 'run': 'RUN', 'step': 'STEP'
 }
 
 class MyLexer:
@@ -42,6 +47,9 @@ class MyLexer:
         'BIT_AND', 'BIT_OR', 'BIT_XOR', 'BIT_NOT', 'SHIFT_LEFT', 'SHIFT_RIGHT',
         'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET',
         'COMMA', 'COLON', 'SEMI', 'DOT', 'RANGE',
+
+        # Agentes comunicantes
+        'CHANNEL', 'ARROW',
     ) + tuple(reserved.values())
 
     # -------------------------------
@@ -129,6 +137,27 @@ class MyLexer:
     t_SEMI = r';'
     t_DOT = r'\.'
     t_RANGE = r'\.\.'
+
+    # --------------------------------
+    # Agentes comunicantes
+    # --------------------------------
+    t_CREATE    = r'create'
+    t_AGENT     = r'agent'
+    t_MOVE      = r'move'
+    t_DELETE    = r'delete'
+    t_LINK      = r'link'
+    t_UNLINK    = r'unlink'
+    t_SEND      = r'send'
+    t_FROM      = r'from'
+    t_TO        = r'to'
+    t_ON        = r'on'
+    t_VIA       = r'via'
+    t_AGENTS    = r'agents'
+    t_ENDAGENTS = r'endagents'
+    t_RUN       = r'run'
+    t_STEP      = r'step'
+    t_ARROW = r'->'
+    t_CHANNEL = r'ch_[A-Za-z0-9_]+'
 
     # -------------------------------
     # Identificadores y palabras reservadas
