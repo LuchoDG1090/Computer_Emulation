@@ -18,10 +18,19 @@ reserved = {
     'adt': 'ADT', 'endadt': 'ENDADT', 'private': 'PRIVATE', 'public': 'PUBLIC',
     'in': 'IN',
 
-    #Agentes comunicantes
-    'create' : 'CREATE', 'agent': 'AGENT', 'move': 'MOVE', 'delete': 'DELETE',
-    'link': 'LINK', 'unlink': 'UNLINK', 'send': 'SEND', 'from': 'FROM', 'to': 'TO', 'on': 'ON', 'via': 'VIA',
-    'agents': 'AGENTS', 'endagents': 'ENDAGENTS', 'run': 'RUN', 'step': 'STEP'
+    # Agentes comunicantes - Palabras clave
+    'create': 'CREATE', 'agent': 'AGENT', 'move': 'MOVE',
+    'link': 'LINK', 'unlink': 'UNLINK', 'send': 'SEND',
+    'from': 'FROM', 'to': 'TO', 'on': 'ON', 'via': 'VIA',
+    'agents': 'AGENTS', 'endagents': 'ENDAGENTS', 'run': 'RUN', 'step': 'STEP',
+    
+    # Agentes comunicantes - Estructura de mensajes
+    'type': 'TYPE_KEY', 'payload': 'PAYLOAD_KEY', 'channel': 'CHANNEL_KEY',
+    'origin': 'ORIGIN_KEY', 'destiny': 'DESTINY_KEY',
+    
+    # Agentes comunicantes - Tipos de mensajes
+    'INFO': 'MSG_INFO', 'CHG_PARENT': 'MSG_CHG_PARENT',
+    'DEL_LINK': 'MSG_DEL_LINK', 'CRE_LINK': 'MSG_CRE_LINK'
 }
 
 class MyLexer:
@@ -48,8 +57,11 @@ class MyLexer:
         'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET',
         'COMMA', 'COLON', 'SEMI', 'DOT', 'RANGE',
 
-        # Agentes comunicantes
-        'CHANNEL', 'ARROW',
+        # Agentes comunicantes - Estructuras
+        'LBRACE', 'RBRACE',  # Llaves para JSON-like
+        'ARROW',             # -> para enlaces
+        'CHANNEL_ID',        # Identificador de canal: e_0, e_1, e_2, etc.
+        
     ) + tuple(reserved.values())
 
     # -------------------------------
@@ -132,32 +144,21 @@ class MyLexer:
     t_RPAREN = r'\)'
     t_LBRACKET = r'\['
     t_RBRACKET = r'\]'
+    t_LBRACE = r'\{'
+    t_RBRACE = r'\}'
     t_COMMA = r','
     t_COLON = r':'
     t_SEMI = r';'
     t_DOT = r'\.'
     t_RANGE = r'\.\.'
-
-    # --------------------------------
-    # Agentes comunicantes
-    # --------------------------------
-    t_CREATE    = r'create'
-    t_AGENT     = r'agent'
-    t_MOVE      = r'move'
-    t_DELETE    = r'delete'
-    t_LINK      = r'link'
-    t_UNLINK    = r'unlink'
-    t_SEND      = r'send'
-    t_FROM      = r'from'
-    t_TO        = r'to'
-    t_ON        = r'on'
-    t_VIA       = r'via'
-    t_AGENTS    = r'agents'
-    t_ENDAGENTS = r'endagents'
-    t_RUN       = r'run'
-    t_STEP      = r'step'
     t_ARROW = r'->'
-    t_CHANNEL = r'ch_[A-Za-z0-9_]+'
+
+    # -------------------------------
+    # Agentes comunicantes - Identificador de canal
+    # -------------------------------
+    def t_CHANNEL_ID(self, t):
+        r'e_\d+'
+        return t
 
     # -------------------------------
     # Identificadores y palabras reservadas
@@ -168,12 +169,8 @@ class MyLexer:
         t.type = reserved.get(t.value, 'ID')
         
         if t.type == 'ID':
-            prefijo = ''
-            if t.value[:len(prefijo)] != prefijo:
-                print(f"Error léxico: Cadena ilegal '{t.value}' en línea {t.lineno}")
-                print(f'Sugerencia: "{prefijo}_{t.value}"')
-            else:
-                self.id_count += 1
+            # Validación de prefijo deshabilitada para permitir nombres libres
+            self.id_count += 1
         else:
             # Es una palabra reservada
             self.kw_count += 1

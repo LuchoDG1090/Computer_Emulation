@@ -1,0 +1,49 @@
+# Test completo de sintaxis de agentes comunicantes
+# Prueba todas las variantes sintácticas
+
+agents
+    # Variante 1: Creación simple
+    Agent servidor = create agent("main_server");
+    Agent cliente1 = create agent(servidor, "client_1");
+    Agent cliente2 = create agent(servidor);
+    Agent standalone = create agent;
+    
+    # Variante 2: Enlaces con 'to...via'
+    link servidor to cliente1 via "conexion";
+    link servidor to cliente2 via "conexion";
+    link cliente1 to cliente2 via "peer";
+    
+    # Variante 3: Mensajes tipo JSON
+    send {
+        type: MSG_INFO,
+        payload: {
+            channel: "conexion",
+            origin: servidor,
+            destiny: cliente1
+        }
+    };
+    
+    send {
+        type: MSG_CRE_LINK,
+        payload: {
+            channel: "backup",
+            origin: cliente1,
+            destiny: cliente2
+        }
+    };
+    
+    send {
+        type: MSG_DEL_LINK,
+        payload: {
+            channel: "peer",
+            origin: cliente1,
+            destiny: cliente2
+        }
+    };
+    
+    # Variante 4: Desenlazar
+    unlink servidor from cliente2 on "conexion";
+    
+    # Ejecutar visualización
+    run;
+endagents

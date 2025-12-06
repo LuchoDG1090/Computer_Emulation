@@ -1,7 +1,6 @@
 
 
 # Computador: Euclid-64 
-## **Empresa: Peñatech Labs**
 
 Sistema completo de emulación computacional con arquitectura Von Neumann de 64 bits, incluyendo CPU, memoria, ensamblador, compilador de alto nivel y almacenamiento secundario.
 

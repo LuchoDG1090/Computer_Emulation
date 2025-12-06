@@ -1,0 +1,27 @@
+# Test de canales con formato e_N
+
+agents
+    Agent a0 = create agent("Root");
+    Agent a1 = create agent(a0, "Child1");
+    Agent a2 = create agent(a0, "Child2");
+    
+    # Enlaces con canales e_0, e_1, e_2
+    link a0 to a1 via e_0;
+    link a0 to a2 via e_1;
+    link a1 to a2 via e_2;
+    
+    # Enviar mensaje usando canal
+    send {
+        type: MSG_INFO,
+        payload: {
+            channel: e_0,
+            origin: a0,
+            destiny: a1
+        }
+    };
+    
+    # Eliminar enlace con canal
+    unlink a1 from a2 on e_2;
+    
+    run;
+endagents
