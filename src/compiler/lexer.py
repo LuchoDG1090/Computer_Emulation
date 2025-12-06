@@ -19,7 +19,7 @@ reserved = {
     'in': 'IN',
 
     # Agentes comunicantes - Palabras clave
-    'create': 'CREATE', 'agent': 'AGENT', 'move': 'MOVE',
+    'Agent':'AGENT_TYPE','create': 'CREATE', 'agent': 'AGENT', 'move': 'MOVE',
     'link': 'LINK', 'unlink': 'UNLINK', 'send': 'SEND',
     'from': 'FROM', 'to': 'TO', 'on': 'ON', 'via': 'VIA',
     'agents': 'AGENTS', 'endagents': 'ENDAGENTS', 'run': 'RUN', 'step': 'STEP',
