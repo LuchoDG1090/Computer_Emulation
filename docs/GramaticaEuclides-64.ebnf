@@ -19,6 +19,7 @@ statement ::= declaration
             | continue_stmt
             | adt_decl
             | ID '(' expression ')' ';'
+            | agents_block
 
 /* Declarations */
 declaration ::= type ID ';'
@@ -124,6 +125,48 @@ continue_stmt ::= 'continue' ';'
 output_stmt ::= 'output' expression ';'
 
 input_stmt ::= 'input' ID ';'
+
+/* Communicating Agents */
+
+agents_block ::= 'agents' agent_statements 'endagents'
+
+agent_statements ::= agent_statement 
+                    | agent_statement agent_statements
+
+agent_statement ::= agent_creation
+                  | link_statement
+                  | unlink_statement
+                  | send_statement
+                  | run_statement
+                  | func_call_stmt
+
+agent_creation ::= 'Agent' ID '=' 'create' 'agent' agent_paren_opt ';'
+
+agent_paren_opt ::= '(' agent_arg ')' | 
+
+agent_arg ::=  parent_arg | parent_arg ',' name_node_arg
+
+parent_arg ::= ID
+
+name_node_arg ::= STRING
+
+link_statement ::= 'link' ID 'to' ID 'via' STRING ';'
+
+unlink_statement ::= 'unlink' ID 'from' ID 'on' STRING ';'
+
+send_statement ::= 'send' '{' json_statement '}' ';'
+
+json_statement ::= 'type' ':' ID ',' 'payload' ':' '{' json_preload '}'
+
+json_preload ::= 'channel' ':' STRING ',' 'origin' ':' ID ',' 'destiny' ':' ID
+
+run_statement ::= 'run' ';'
+
+
+
+
+
+
 
 /* Terminal definitions - SIMPLIFIED */
 ID ::= [a-zA-Z][a-zA-Z0-9_]*
