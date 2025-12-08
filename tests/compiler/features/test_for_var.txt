@@ -1,0 +1,5 @@
+output "Test For Var";
+for (k in 1 .. 5):
+    print(k);
+    output "\n";
+endfor

@@ -1,0 +1,7 @@
+output "Test For Int";
+for (k in 1 .. 5):
+    int y = k * 2;
+    print(y);
+    output " ";
+endfor
+output "\n";

@@ -1,0 +1,8 @@
+output "Test For Float";
+output "\n";
+float sum = 0.0;
+for (k in 1.0 .. 6.0):
+    sum = sum + (1.0 / k);
+endfor
+print(sum);
+output "\n";

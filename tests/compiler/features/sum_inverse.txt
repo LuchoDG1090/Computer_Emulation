@@ -1,0 +1,15 @@
+output "Suma de inversos de los primeros 10 numeros naturales (con for float)";
+output "\n";
+
+float sum = 0.0;
+
+# Iteramos 10 veces (k va de 1.0 a 10.0)
+# Al usar 1.0 .. 11.0, la variable k se infiere como float
+for (k in 1.0 .. 11.0):
+    sum = sum + (1.0 / k);
+endfor
+
+output "\n";
+output "Suma total: ";
+print(sum);
+output "\n";

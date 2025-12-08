@@ -1207,6 +1207,7 @@ class Parser:
         var_name = p[3]
         start_expr = p[5]
         start_code = start_expr[0]
+        start_type = start_expr[1]
         start_ast = start_expr[2]
         
         end_expr = p[7]
@@ -1219,7 +1220,7 @@ class Parser:
             label = var_name
             self._declare(var_name, {
                 'label': label,
-                'type': 'int',
+                'type': start_type,
                 'is_array': False,
                 'is_adt': False
             }, p)
@@ -1233,7 +1234,11 @@ class Parser:
         
         init_code = f"{start_code}\nST R0, [{label}]"
         check_code = f"{end_code}\nPUSH R0\nLD R0, [{label}]\nPOP R1\nCMP R0, R1\nJS {lbl_start}_cont\nJMP {lbl_end}\n{lbl_start}_cont:"
-        inc_code = f"LD R0, [{label}]\nMOVI R1, 1\nADD R0, R0, R1\nST R0, [{label}]"
+        
+        if start_type == 'float':
+             inc_code = f"LD R0, [{label}]\nMOVI R1, 1.0\nFADD R0, R0, R1\nST R0, [{label}]"
+        else:
+             inc_code = f"LD R0, [{label}]\nMOVI R1, 1\nADD R0, R0, R1\nST R0, [{label}]"
         
         p[0] = (init_code, check_code, inc_code, lbl_start, lbl_end, var_name, start_ast, end_ast)
 
