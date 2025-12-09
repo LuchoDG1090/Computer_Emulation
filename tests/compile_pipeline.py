@@ -39,7 +39,7 @@ def compile_file(input_path: str, output_dir: str) -> str:
     # 3. Parser
     parser = Parser(MyLexer.tokens, library_functions=library_funcs)
     try:
-        result = parser.parse(preprocessed_code, lexer_instance.lexer, library_asm=library_asm)
+        result = parser.parse(preprocessed_code, lexer_instance.lexer, library_asm=library_asm, filename=input_path)
         if result:
             asm_code, ast = result
         else:

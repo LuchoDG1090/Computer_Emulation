@@ -1,0 +1,28 @@
+agents
+    # Create agents
+    create agent A;
+    create agent B;
+    create agent C;
+    
+    # Link A -> B
+    link A -> B via "channel1";
+    
+    # Show initial positions
+    output agents;
+    
+    # Send message A -> B
+    send {
+        type: INFO,
+        payload: {
+            channel: "channel1",
+            origin: A,
+            destiny: B
+        }
+    };
+    
+    # "Consequence": Move B to C (simulated by script sequence)
+    move B to C;
+    
+    # Show new positions
+    output agents;
+endagents

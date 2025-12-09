@@ -1,6 +1,7 @@
 import pydot
 import networkx as nx
 import matplotlib.pyplot as plt
+import os
 
 
 COLOR_PALETTE = [
@@ -15,8 +16,15 @@ font_size_edges = 20
 
 
 class GraphicsGenerator():
-    def __init__(self):
-        pass
+    def __init__(self, output_dir="."):
+        self.output_dir = output_dir
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+
+    def set_output_dir(self, output_dir):
+        self.output_dir = output_dir
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
 
     def __build_cluster(self, parent):
         tag = f"Agent {parent.id} - {parent.agent_name}" if parent.agent_name else f"Agent {parent.id}"
@@ -44,6 +52,7 @@ class GraphicsGenerator():
 
 
     def render_graph(self, agents, complete_links, outfile="graph.png", width=1000, height=800):
+        outfile = os.path.join(self.output_dir, outfile)
         graph = pydot.Dot(graph_type="digraph")
         graph.set_size(f"{width},{height}!")
 
@@ -81,6 +90,7 @@ class GraphicsGenerator():
 
 
     def get_bigraph_forest(self, agents, outfile="forest.png"):
+        outfile = os.path.join(self.output_dir, outfile)
         G = nx.Graph()
 
         for agent in agents:
@@ -127,6 +137,7 @@ class GraphicsGenerator():
 
 
     def get_hyper_graph(self, agents, complete_links,outfile="hypergraph.png"):
+        outfile = os.path.join(self.output_dir, outfile)
         G = nx.Graph()
 
         for agent in agents:

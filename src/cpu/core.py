@@ -177,12 +177,16 @@ class ALU:
             flags |= 1 << Flags.POSITIVE
 
         # Carry flag (para operaciones aritmeticas)
-        if operation in [ALUOperation.ADD, ALUOperation.SUB]:
-            if operation == ALUOperation.ADD:
-                if (op1 > 0 and op2 > 0 and result < 0) or (
-                    op1 < 0 and op2 < 0 and result > 0
-                ):
-                    flags |= 1 << Flags.CARRY
+        # Treat operands as unsigned for Carry calculation
+        u_op1 = op1 & 0xFFFFFFFFFFFFFFFF
+        u_op2 = op2 & 0xFFFFFFFFFFFFFFFF
+        
+        if operation == ALUOperation.ADD:
+            if u_op1 + u_op2 > 0xFFFFFFFFFFFFFFFF:
+                flags |= 1 << Flags.CARRY
+        elif operation in [ALUOperation.SUB, ALUOperation.CMP]:
+            if u_op1 < u_op2:
+                flags |= 1 << Flags.CARRY
 
         # Overflow flag
         if operation in [ALUOperation.ADD, ALUOperation.SUB, ALUOperation.MUL]:

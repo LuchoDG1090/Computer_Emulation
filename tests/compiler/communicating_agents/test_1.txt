@@ -1,0 +1,32 @@
+agents
+    /* Create agents */
+    create agent A;
+    create agent B (A);              /* B is child of A */
+    create agent C (A, "Node C");    /* C is child of A with custom name */
+    
+    /* Create links */
+    link A -> B via "channel1";
+    link B -> C via e_1;
+    
+    /* Send message */
+    send {
+        type: INFO,
+        payload: {
+            channel: "channel1",
+            origin: A,
+            destiny: B
+        }
+    };
+    
+    send {
+        type: INFO,
+        payload: {
+            channel: "channel1",
+            origin: B,
+            destiny: A
+        }
+    };
+
+    /* Generate graphs */
+    run();
+endagents

@@ -38,7 +38,7 @@ class Agent:
 
 
 class CommunicatingAgents(ManageMessages):
-    def __init__(self, name: str = 'G'):
+    def __init__(self, name: str = 'G', output_dir: str = "."):
         allowed_names = {"A": "Ă", "B": "B̆", "C": "C̆", "D": "D̆", "E": "Ĕ", "F": "F̆", "G": "Ğ", "H": "H̆", 
                          "I": "Ĭ", "J": "J̆", "K": "K̆", "L": "L̆", "M": "M̆", "N": "N̆", "Ñ": "Ñ̆", "O": "Ŏ", 
                          "P": "P̆", "Q": "Q̆", "R": "R̆", "S": "S̆", "T": "T̆", "U": "Ŭ", "V": "V̆", "W": "W̆", 
@@ -49,9 +49,12 @@ class CommunicatingAgents(ManageMessages):
             raise ValueError("Name not allowed, only capital letters")
         self.name = allowed_names[name.upper()]
         self._id_counter = itertools.count()
-        self.graphics = GraphicsGenerator()
+        self.graphics = GraphicsGenerator(output_dir=output_dir)
         self.agents = []
         self.excluded_links = []
+
+    def set_output_dir(self, output_dir):
+        self.graphics.set_output_dir(output_dir)
 
     def add_agent(self, parent=None, links=None, agent_name = None):
         agent = Agent(next(self._id_counter), parent=parent, links=links, agent_name=agent_name)
@@ -63,6 +66,13 @@ class CommunicatingAgents(ManageMessages):
             origin.links[name] = []
         
         origin.links[name].append(destiny)
+
+    def move_agent(self, agent: Agent, new_parent: Agent):
+        if agent.parent:
+            agent.parent.children.remove(agent)
+        agent.parent = new_parent
+        if new_parent:
+            new_parent.children.append(agent)
 
     def __cartessian_product_links(self, bare_links: dict) -> dict:
         for tag, links in bare_links.items():

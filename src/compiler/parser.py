@@ -3,8 +3,11 @@ import os
 
 # Anadir directorio src al path para permitir 'import ply.yacc'
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Anadir directorio communicating_agents al path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'communicating_agents'))
 
 import ply.yacc as yacc
+from CommunicatingAgent import CommunicatingAgents
 
 class Parser:
     """
@@ -60,6 +63,10 @@ class Parser:
         
         # Contador de errores
         self.error_count = 0
+
+        # Agentes Comunicantes
+        self.communicating_agents = CommunicatingAgents()
+        self.agent_map = {}
 
     # Metodos de gestion de Scope (Ambito)
     def _enter_scope(self):
@@ -128,9 +135,19 @@ class Parser:
         
         data_section_str = "\n".join(self.data_section)
         
+        # Cargar Runtime de Agentes si es necesario
+        agents_runtime = ""
+        if getattr(self, 'agents_used', False):
+            agents_asm_path = os.path.join(os.path.dirname(__file__), '..', '..', 'includes', 'agents.asm')
+            if os.path.exists(agents_asm_path):
+                with open(agents_asm_path, 'r') as f:
+                    agents_runtime = f"\n# --- AGENTS RUNTIME LIBRARY ---\n{f.read()}\n"
+            else:
+                print(f"Warning: Agents runtime not found at {agents_asm_path}")
+
         # Si no hay funciones definidas, todo es codigo principal
         if 'FUNC_' not in code:
-             p[0] = (f"ORG 0\n{code}\nHALT\n\n{data_section_str}", {"type": "Program", "body": ast})
+             p[0] = (f"ORG 0\n{code}\nHALT\n{agents_runtime}\n{data_section_str}", {"type": "Program", "body": ast})
              return
 
         # Separar funciones del codigo principal
@@ -162,7 +179,7 @@ class Parser:
         if self._lookup("FUNC_main"):
             main_section += "\nCALL FUNC_main"
 
-        p[0] = (f"ORG 0\nJMP __MAIN\n{func_section}\n__MAIN:\n{main_section}\nHALT\n\n{data_section_str}", {"type": "Program", "body": ast})
+        p[0] = (f"ORG 0\nJMP __MAIN\n{func_section}\n__MAIN:\n{main_section}\nHALT\n{agents_runtime}\n{data_section_str}", {"type": "Program", "body": ast})
 
     def p_statements(self, p):
         """statements : statement statements
@@ -199,7 +216,8 @@ class Parser:
                      | func_call_stmt
                      | break_stmt
                      | continue_stmt
-                     | adt_decl"""
+                     | adt_decl
+                     | agent_block"""
         if p[1] is None:
             p[0] = ("", None)
         elif isinstance(p[1], tuple):
@@ -420,6 +438,7 @@ class Parser:
                 | BOOL_TYPE
                 | CHAR_TYPE
                 | VOID_TYPE
+                | AGENT_TYPE
                 | ID""" # ID para tipos TDA
         p[0] = p[1]
 
@@ -1398,7 +1417,7 @@ class Parser:
         else:
             print("Error de sintaxis en EOF")
 
-    def parse(self, code, lexer, library_asm=None):
+    def parse(self, code, lexer, library_asm=None, filename="output"):
         self.asm = ""
         self.label_count = 0
         self.string_count = 0
@@ -1406,6 +1425,11 @@ class Parser:
         self.data_section = []
         self.error_count = 0
         self.called_functions = set()
+        
+        # Configurar directorio de salida para imagenes
+        output_dir = os.path.join("images", os.path.splitext(os.path.basename(filename))[0])
+        self.communicating_agents.set_output_dir(output_dir)
+        
         result = self.parser.parse(code, lexer=lexer)
         
         # Validar llamadas a funciones
@@ -1610,4 +1634,319 @@ class Parser:
             return ""
             
         return f"{expr_code}\nST R0, {meta['label']}"
+
+    # ==========================================================================
+    # AGENTES COMUNICANTES
+    # ==========================================================================
+
+    def p_agent_block(self, p):
+        """agent_block : AGENTS agent_statements ENDAGENTS"""
+        # Incluir la libreria de runtime de agentes
+        # Prepend INIT call
+        self.asm = "\n# --- AGENT RUNTIME INIT ---\nCALL __AGENT_INIT\n" + self.asm
+        self.agents_used = True
+        p[0] = (self.asm, {"type": "AgentBlock", "body": p[2]})
+        self.asm = "" # Reset asm buffer
+
+    def p_agent_statements(self, p):
+        """agent_statements : agent_statements agent_statement
+                            | agent_statement"""
+        if len(p) == 3:
+            p[0] = p[1] + [p[2]]
+        else:
+            p[0] = [p[1]]
+
+    def p_agent_statement(self, p):
+        """agent_statement : create_agent_stmt
+                           | link_agent_stmt
+                           | unlink_agent_stmt
+                           | move_agent_stmt
+                           | send_msg_stmt
+                           | show_agents_stmt
+                           | run_stmt
+                           | step_stmt"""
+        p[0] = p[1]
+
+    def p_create_agent_stmt(self, p):
+        """create_agent_stmt : CREATE AGENT ID LPAREN ID COMMA STRING RPAREN SEMI
+                             | CREATE AGENT ID LPAREN ID RPAREN SEMI
+                             | CREATE AGENT ID LPAREN RPAREN SEMI
+                             | CREATE AGENT ID ON ID SEMI
+                             | CREATE AGENT ID SEMI"""
+        agent_id = p[3]
+        parent_id = None
+        name = None
+        
+        if len(p) == 10: # ( ID , STRING )
+             parent_id = p[5]
+             name = p[7]
+        elif len(p) == 8: # ( ID )
+             parent_id = p[5]
+        elif len(p) == 6 and p[4] == 'on': # ON ID
+             parent_id = p[5]
+        
+        # Python Logic (Graph Generation)
+        parent = self.agent_map.get(parent_id) if parent_id else None
+        name_str = name
+        if name and (name.startswith('"') or name.startswith("'")):
+            name_str = name[1:-1]
+            
+        new_agent = self.communicating_agents.add_agent(parent=parent, agent_name=name_str)
+        self.agent_map[agent_id] = new_agent
+        
+        # Assembly Logic (Runtime Simulation)
+        # R1: Parent ID (-1 if none), R2: Name Ptr (0 if none)
+        
+        asm_code = f"\n# Create Agent {agent_id}\n"
+        
+        # Parent ID
+        if parent_id:
+            # Assuming parent_id is a variable holding the agent ID (integer)
+            # But in our map, we store the object. We need the numeric ID.
+            # For simplicity, we'll assume the variable name in ASM holds the ID.
+            # Wait, we need to store the ID in a variable named agent_id
+            asm_code += f"LD R1, var_{parent_id}\n"
+        else:
+            asm_code += "MOVI R1, -1\n"
+            
+        # Name
+        if name:
+            label_name = self._new_label("str_agent_name")
+            self.data_section.append(f'{label_name}: DB "{name_str}", 0')
+            asm_code += f"MOVI R2, {label_name}\n"
+        else:
+            asm_code += "MOVI R2, 0\n"
+            
+        asm_code += "CALL __AGENT_CREATE\n"
+        
+        # Store the returned ID (R0) into a variable named agent_id
+        # We need to declare this variable if it doesn't exist
+        var_label = f"var_{agent_id}"
+        if not self._lookup(agent_id):
+             self._declare(agent_id, {'label': var_label, 'type': 'Agent'}, p)
+             self.data_section.append(f"{var_label}: DW 0")
+             
+        asm_code += f"ST R0, {var_label}\n"
+        
+        self.asm += asm_code
+        p[0] = {"type": "CreateAgent", "id": agent_id}
+
+    def p_link_agent_stmt(self, p):
+        """link_agent_stmt : LINK ID ARROW ID VIA CHANNEL_ID SEMI
+                           | LINK ID ARROW ID VIA STRING SEMI"""
+        origin_id = p[2]
+        destiny_id = p[4]
+        channel = p[6]
+        
+        # Python Logic
+        channel_str = channel
+        if channel and (channel.startswith('"') or channel.startswith("'")):
+            channel_str = channel[1:-1]
+        
+        origin = self.agent_map.get(origin_id)
+        destiny = self.agent_map.get(destiny_id)
+        
+        if origin and destiny:
+            self.communicating_agents.add_link(origin, destiny, channel_str)
+            
+        # Assembly Logic
+        # R1: Origin ID, R2: Destiny ID, R3: Channel ID/Name Ptr
+        asm_code = f"\n# Link {origin_id} -> {destiny_id}\n"
+        asm_code += f"LD R1, var_{origin_id}\n"
+        asm_code += f"LD R2, var_{destiny_id}\n"
+        
+        # Channel
+        label_channel = self._new_label("str_channel")
+        self.data_section.append(f'{label_channel}: DB "{channel_str}", 0')
+        asm_code += f"MOVI R3, {label_channel}\n"
+        
+        asm_code += "CALL __AGENT_LINK\n"
+        self.asm += asm_code
+            
+        p[0] = {"type": "LinkAgent", "origin": origin_id, "destiny": destiny_id, "channel": channel}
+
+    def p_unlink_agent_stmt(self, p):
+        """unlink_agent_stmt : UNLINK ID ARROW ID VIA CHANNEL_ID SEMI
+                             | UNLINK ID ARROW ID VIA STRING SEMI
+                             | UNLINK ID FROM ID VIA CHANNEL_ID SEMI
+                             | UNLINK ID FROM ID VIA STRING SEMI"""
+        origin_id = p[2]
+        destiny_id = p[4]
+        channel = p[6]
+        
+        # Python Logic
+        channel_str = channel
+        if channel and (channel.startswith('"') or channel.startswith("'")):
+            channel_str = channel[1:-1]
+        
+        origin = self.agent_map.get(origin_id)
+        destiny = self.agent_map.get(destiny_id)
+        
+        if origin and destiny:
+            self.communicating_agents.break_link(origin, channel_str, destiny)
+            
+        # Assembly Logic
+        # R1: Origin ID, R2: Destiny ID, R3: Channel ID/Name Ptr
+        asm_code = f"\n# Unlink {origin_id} -> {destiny_id}\n"
+        asm_code += f"LD R1, var_{origin_id}\n"
+        asm_code += f"LD R2, var_{destiny_id}\n"
+        
+        # Channel
+        label_channel = self._new_label("str_channel")
+        self.data_section.append(f'{label_channel}: DB "{channel_str}", 0')
+        asm_code += f"MOVI R3, {label_channel}\n"
+        
+        asm_code += "CALL __AGENT_UNLINK\n"
+        self.asm += asm_code
+            
+        p[0] = {"type": "UnlinkAgent", "origin": origin_id, "destiny": destiny_id, "channel": channel}
+
+    def p_move_agent_stmt(self, p):
+        """move_agent_stmt : MOVE ID TO ID SEMI"""
+        agent_id = p[2]
+        new_parent_id = p[4]
+        
+        # Python Logic
+        agent = self.agent_map.get(agent_id)
+        new_parent = self.agent_map.get(new_parent_id)
+        
+        if agent and new_parent:
+            self.communicating_agents.move_agent(agent, new_parent)
+            
+        # Assembly Logic
+        # R1: Agent ID, R2: New Parent ID
+        asm_code = f"\n# Move {agent_id} to {new_parent_id}\n"
+        asm_code += f"LD R1, var_{agent_id}\n"
+        asm_code += f"LD R2, var_{new_parent_id}\n"
+        
+        asm_code += "CALL __AGENT_MOVE\n"
+        self.asm += asm_code
+        
+        p[0] = {"type": "MoveAgent", "agent": agent_id, "new_parent": new_parent_id}
+
+    def p_show_agents_stmt(self, p):
+        """show_agents_stmt : OUTPUT AGENTS SEMI"""
+        self.asm += "\nCALL __AGENT_DUMP\n"
+        p[0] = {"type": "ShowAgents"}
+
+    def p_send_msg_stmt(self, p):
+        """send_msg_stmt : SEND json_msg SEMI"""
+        msg = p[2]
+        self.communicating_agents.send_message(msg)
+        
+        # Assembly Logic
+        # R1: Type (String Ptr), R2: Payload (Struct Ptr - ignored for now), R3: Origin ID, R4: Destiny ID
+        
+        msg_type = msg.get('type', 'UNKNOWN')
+        payload = msg.get('payload', {})
+        origin_agent = payload.get('origin') # This is the Agent object in Python
+        destiny_agent = payload.get('destiny') # This is the Agent object in Python
+        
+        # We need to find the variable names associated with these agents
+        # In our map, we have ID -> Agent Object. We need Agent Object -> ID (or just use the ID from the payload if we can find it)
+        # Actually, the payload construction in p_payload_pair uses self.agent_map.get(val)
+        # So 'origin' in payload is the Agent object.
+        
+        # Reverse lookup to find the ID string (variable name) from the Agent object
+        origin_id_str = None
+        destiny_id_str = None
+        
+        for aid, agent in self.agent_map.items():
+            if agent == origin_agent:
+                origin_id_str = aid
+            if agent == destiny_agent:
+                destiny_id_str = aid
+                
+        asm_code = "\n# Send Message\n"
+        
+        # Type
+        label_type = self._new_label("str_msg_type")
+        self.data_section.append(f'{label_type}: DB "{msg_type}", 0')
+        asm_code += f"MOVI R1, {label_type}\n"
+        
+        # Payload (Ignored for now)
+        asm_code += "MOVI R2, 0\n"
+        
+        # Origin ID
+        if origin_id_str:
+            asm_code += f"LD R3, var_{origin_id_str}\n"
+        else:
+            asm_code += "MOVI R3, -1\n"
+            
+        # Destiny ID
+        if destiny_id_str:
+            asm_code += f"LD R4, var_{destiny_id_str}\n"
+        else:
+            asm_code += "MOVI R4, -1\n"
+            
+        asm_code += "CALL __AGENT_SEND\n"
+        self.asm += asm_code
+        
+        p[0] = {"type": "SendMessage", "msg": msg}
+
+    def p_json_msg(self, p):
+        """json_msg : LBRACE json_pairs RBRACE"""
+        p[0] = p[2]
+
+    def p_json_pairs(self, p):
+        """json_pairs : json_pair COMMA json_pairs
+                      | json_pair"""
+        if len(p) == 4:
+            p[3].update(p[1])
+            p[0] = p[3]
+        else:
+            p[0] = p[1]
+
+    def p_json_pair(self, p):
+        """json_pair : TYPE_KEY COLON STRING
+                     | TYPE_KEY COLON MSG_INFO
+                     | TYPE_KEY COLON MSG_CHG_PARENT
+                     | TYPE_KEY COLON MSG_DEL_LINK
+                     | TYPE_KEY COLON MSG_CRE_LINK
+                     | PAYLOAD_KEY COLON LBRACE payload_pairs RBRACE"""
+        key = p[1]
+        
+        if key == 'type':
+             val = p[3]
+             if val.startswith('"') or val.startswith("'"):
+                 val = val[1:-1]
+             p[0] = {'type': val}
+        elif key == 'payload':
+             p[0] = {'payload': p[4]}
+        else:
+             p[0] = {}
+
+    def p_payload_pairs(self, p):
+        """payload_pairs : payload_pair COMMA payload_pairs
+                         | payload_pair"""
+        if len(p) == 4:
+            p[3].update(p[1])
+            p[0] = p[3]
+        else:
+            p[0] = p[1]
+
+    def p_payload_pair(self, p):
+        """payload_pair : CHANNEL_KEY COLON STRING
+                        | CHANNEL_KEY COLON CHANNEL_ID
+                        | ORIGIN_KEY COLON ID
+                        | DESTINY_KEY COLON ID"""
+        key = p[1]
+        val = p[3]
+        
+        if key == 'origin' or key == 'destiny':
+            val = self.agent_map.get(val)
+        elif key == 'channel':
+            if val.startswith('"') or val.startswith("'"):
+                val = val[1:-1]
+            
+        p[0] = {key: val}
+
+    def p_run_stmt(self, p):
+        """run_stmt : RUN LPAREN RPAREN SEMI"""
+        self.communicating_agents.generate_graphs()
+        p[0] = {"type": "RunAgents"}
+
+    def p_step_stmt(self, p):
+        """step_stmt : STEP LPAREN RPAREN SEMI"""
+        p[0] = {"type": "StepAgents"}
 
