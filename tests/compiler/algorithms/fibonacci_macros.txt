@@ -23,7 +23,7 @@ func test_fibonacci():
     RETURN_ZERO
 endfunc
 
-/* El preprocesador debería expandir:
+/* El preprocesador deberia expandir:
    - MAX_FIB a 10
    - RETURN_ZERO a "return 0"
    - BASE_CASE a "n <= 1"

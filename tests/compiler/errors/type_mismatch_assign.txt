@@ -1,4 +1,4 @@
-/* Demo: Error de Tipo en Asignación */
+/* Demo: Error de Tipo en Asignacion */
 
 func main():
     int numero = 10;

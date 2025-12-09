@@ -1,6 +1,6 @@
 """Herramienta unificada: compilar .asm y opcionalmente ejecutar.
 
-Uso básico:
+Uso basico:
   python compile.py <archivo.asm> <directorio_salida>
 
 Ejecutar tras compilar:

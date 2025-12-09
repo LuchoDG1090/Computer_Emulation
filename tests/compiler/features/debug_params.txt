@@ -1,4 +1,4 @@
-# Test para depuración - solo verificar que el valor se pasa correctamente
+# Test para depuracion - solo verificar que el valor se pasa correctamente
 func debug(int x):
     output x;
 endfunc

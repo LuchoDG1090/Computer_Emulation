@@ -1,8 +1,8 @@
 # Test completo de sintaxis de agentes comunicantes
-# Prueba todas las variantes sintácticas
+# Prueba todas las variantes sintacticas
 
 agents
-    # Variante 1: Creación simple
+    # Variante 1: Creacion simple
     Agent servidor = create agent("main_server");
     Agent cliente1 = create agent(servidor, "client_1");
     Agent cliente2 = create agent(servidor);
@@ -44,6 +44,6 @@ agents
     # Variante 4: Desenlazar
     unlink servidor from cliente2 on "conexion";
     
-    # Ejecutar visualización
+    # Ejecutar visualizacion
     run;
 endagents

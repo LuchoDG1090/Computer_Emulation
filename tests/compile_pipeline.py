@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 
-# Aseguramos que el root del repositorio esté en el path antes de imports locales
+# Aseguramos que el root del repositorio este en el path antes de imports locales
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
@@ -23,7 +23,7 @@ def compile_file(input_path: str, output_dir: str) -> str:
     pre = Preprocessor()
     try:
         preprocessed_code = pre.preprocess_file(input_path)
-        # Obtener ASM de librerías incluidas (smart includes)
+        # Obtener ASM de librerias incluidas (smart includes)
         library_asm = pre.get_smart_includes_asm(preprocessed_code)
     except Exception as e:
         raise RuntimeError(f"Error en preprocesador: {e}")
@@ -33,7 +33,7 @@ def compile_file(input_path: str, output_dir: str) -> str:
     lexer_instance.build()
     lexer_instance.lexer.input(preprocessed_code)
 
-    # Obtener funciones disponibles en librerías
+    # Obtener funciones disponibles en librerias
     library_funcs = pre.get_available_library_functions()
 
     # 3. Parser
@@ -48,7 +48,7 @@ def compile_file(input_path: str, output_dir: str) -> str:
         raise RuntimeError(f"Error en parser: {e}")
 
     if not asm_code:
-        raise RuntimeError("No se generó código ensamblador (ASM).")
+        raise RuntimeError("No se genero codigo ensamblador (ASM).")
 
     # Aseguramos directorio de salida
     os.makedirs(output_dir, exist_ok=True)

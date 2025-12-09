@@ -1,4 +1,4 @@
-/* Demo: Error de Tipo en Declaración */
+/* Demo: Error de Tipo en Declaracion */
 
 func main():
     /* Error: Intentar asignar string a int */

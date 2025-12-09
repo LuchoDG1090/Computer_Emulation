@@ -1,16 +1,16 @@
-/* Multiplicación de matrices (3x2) * (2x4)
+/* Multiplicacion de matrices (3x2) * (2x4)
    Uso de arreglos planos (row-major) y funciones/while del lenguaje de alto nivel.
 */
 
 #include <Matrix_Multiplication_matmul>
 
-# Definición de dimensiones
+# Definicion de dimensiones
 int rowsA = 3;
 int colsA = 2;
 int rowsB = 2;
 int colsB = 4;
 
-# Declaración de arreglos planos
+# Declaracion de arreglos planos
 int A[6];
 int B[8];
 int C[12];   # resultado 3x4
@@ -80,7 +80,7 @@ while (row < rowsB):
     row = row + 1;
 endwhile
 
-# Llamar a la función de multiplicación
+# Llamar a la funcion de multiplicacion
 mat_mul(A, B, C, rowsA, colsA, colsB);
 
 # Imprimir la matriz resultante C (3x4) por filas

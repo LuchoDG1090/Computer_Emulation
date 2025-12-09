@@ -1,11 +1,11 @@
 /* Algoritmo de Euclides:
-    Máximo comun divisor entre dos numeros enteros > 0: a y b
+    Maximo comun divisor entre dos numeros enteros > 0: a y b
 */
 
 #include <Euclidean_Algorithm_maxcd>
 #define A 21
 #define B 49
 
-# Imprimir resultado (el MCD está en 'a')
+# Imprimir resultado (el MCD esta en 'a')
 output "El resultado es: ";
 output maxcd(A, B);

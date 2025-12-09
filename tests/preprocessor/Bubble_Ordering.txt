@@ -1,5 +1,5 @@
 /* Ordenamiento Burbuja (Bubble Ordering)
-   Código en el lenguaje de alto nivel usado en el proyecto.
+   Codigo en el lenguaje de alto nivel usado en el proyecto.
    Implementa bubble sort con arreglos, swaps y salida de resultados.
 */
 
@@ -10,7 +10,7 @@ output "Ingrese la cantidad de elementos:";
 int n = 0;
 input n;
 
-# Declaramos un arreglo con capacidad dinámica
+# Declaramos un arreglo con capacidad dinamica
 int arr[n];
 
 output "Ingrese los elementos separados por espacio:";

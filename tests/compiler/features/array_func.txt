@@ -1,4 +1,4 @@
-# Test simple de función con array
+# Test simple de funcion con array
 func test(int arr[], int size):
     int i = 0;
     while (i < size):

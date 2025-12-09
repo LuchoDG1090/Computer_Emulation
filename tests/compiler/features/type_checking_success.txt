@@ -12,7 +12,7 @@ func main():
     output s;
     output "\n";
     
-    /* Operaciones válidas */
+    /* Operaciones validas */
     a = a + 5;
     b = b * 2.0;
     

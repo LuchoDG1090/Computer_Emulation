@@ -1,4 +1,4 @@
-# Test simple sin función - modificar array directo
+# Test simple sin funcion - modificar array directo
 int nums[3];
 nums[0] = 10;
 output nums[0];

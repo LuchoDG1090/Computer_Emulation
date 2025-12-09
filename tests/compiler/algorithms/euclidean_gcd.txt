@@ -1,5 +1,5 @@
 /* Algoritmo de Euclides:
-    Máximo comun divisor entre dos numeros enteros > 0: a y b
+    Maximo comun divisor entre dos numeros enteros > 0: a y b
 */
 
 # Algoritmo de Euclides
@@ -14,18 +14,18 @@ func maxcd(int c, int d):
     return c;
 endfunc
 
-# Leer primer número
+# Leer primer numero
 int a;
 output "Ingrese el primer numero:";
 input a;
 
-# Leer segundo número
+# Leer segundo numero
 int b;
 output "Ingrese el segundo numero:";
 input b;
 
 a = maxcd(a, b);
 
-# Imprimir resultado (el MCD está en 'a')
+# Imprimir resultado (el MCD esta en 'a')
 output "El resultado es:";
 output a;

@@ -1,4 +1,4 @@
-/* Multiplicación de matrices (3x2) * (2x4)
+/* Multiplicacion de matrices (3x2) * (2x4)
    Uso de arreglos planos (row-major) y funciones/while del lenguaje de alto nivel.
 */
 
@@ -18,12 +18,12 @@ func mat_mul(int A[], int B[], int C[], int rowsA, int colsA, int colsB):
             sum = 0;
             k = 0;
             while (k < colsA):
-                idxA = i * colsA + k;        # posición A[i][k]
-                idxB = k * colsB + j;        # posición B[k][j]
+                idxA = i * colsA + k;        # posicion A[i][k]
+                idxB = k * colsB + j;        # posicion B[k][j]
                 sum = sum + A[idxA] * B[idxB];
                 k = k + 1;
             endwhile
-            idxC = i * colsB + j;            # posición C[i][j]
+            idxC = i * colsB + j;            # posicion C[i][j]
             C[idxC] = sum;
             j = j + 1;
         endwhile
@@ -31,13 +31,13 @@ func mat_mul(int A[], int B[], int C[], int rowsA, int colsA, int colsB):
     endwhile
 endfunc
 
-# Definición de dimensiones
+# Definicion de dimensiones
 int rowsA = 3;
 int colsA = 2;
 int rowsB = 2;
 int colsB = 4;
 
-# Declaración de arreglos planos
+# Declaracion de arreglos planos
 int A[6];
 int B[8];
 int C[12];   # resultado 3x4
@@ -107,7 +107,7 @@ while (row < rowsB):
     row = row + 1;
 endwhile
 
-# Llamar a la función de multiplicación
+# Llamar a la funcion de multiplicacion
 mat_mul(A, B, C, rowsA, colsA, colsB);
 
 # Imprimir la matriz resultante C (3x4) por filas
