@@ -8,6 +8,7 @@ from src.compiler.lexer import MyLexer
 from src.compiler.parser import Parser
 from .design_variable_elements import Fonts
 from .compiler_phases_window import CompilerPhasesWindow
+from .communicating_agents_window import CommunicatingAgentsVisualization
 
 class HighLevelCodeFrame(ctk.CTkFrame):
     def __init__(self, parent, fg_color = '#0C1826', **kwargs):
@@ -22,6 +23,7 @@ class HighLevelCodeFrame(ctk.CTkFrame):
         self.clean_icon = kwargs.get('clean_icon', '')
         self.assembly_callback = None
         self.compiler_window = None
+        self.agents_window = None
         self.current_file_path = None
 
         self.__build_text()
@@ -102,8 +104,14 @@ class HighLevelCodeFrame(ctk.CTkFrame):
             token_iterator = ListLexer(tokens_list)
             parser = Parser(MyLexer.tokens, library_functions=available_funcs)
             
+            # Determinar el nombre del archivo para el parser
+            if self.current_file_path:
+                filename = self.current_file_path
+            else:
+                filename = "output"
+            
             # Pasamos el iterador personalizado y el código de librerías
-            result = parser.parse(preprocessed_code, lexer=token_iterator, library_asm=library_asm)
+            result = parser.parse(preprocessed_code, lexer=token_iterator, library_asm=library_asm, filename=filename)
             
             asm_code = ""
             ast_tree = None
@@ -122,6 +130,36 @@ class HighLevelCodeFrame(ctk.CTkFrame):
                 self.compiler_window = CompilerPhasesWindow(self, preprocessed_code, tokens_list, lexer_stats, ast_tree, library_asm)
             else:
                 self.compiler_window.update_data(preprocessed_code, tokens_list, lexer_stats, ast_tree, library_asm)
+            
+            # 5. Si se usaron agentes, mostrar ventana de visualización
+            if hasattr(parser, 'agents_used') and parser.agents_used:
+                # Generar los gráficos
+                parser.communicating_agents.generate_graphs()
+                
+                # Determinar directorio de imágenes (usar ruta absoluta)
+                if self.current_file_path:
+                    file_name = os.path.splitext(os.path.basename(self.current_file_path))[0]
+                else:
+                    file_name = "output"
+                
+                # Obtener directorio base del proyecto (ruta absoluta)
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                # Subir 4 niveles: components -> gui -> user_interface -> src -> project_root
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+                image_dir = os.path.abspath(os.path.join(base_dir, "images", file_name))
+                print(f"[GUI DEBUG] Loading images from: {image_dir}")
+                print(f"[GUI DEBUG] Directory exists: {os.path.exists(image_dir)}")
+                if os.path.exists(image_dir):
+                    print(f"[GUI DEBUG] Files in directory: {os.listdir(image_dir)}")
+                
+                # Abrir o actualizar ventana de agentes
+                if self.agents_window is None or not self.agents_window.winfo_exists():
+                    self.agents_window = CommunicatingAgentsVisualization(self, image_dir=image_dir)
+                    self.agents_window.deiconify()
+                else:
+                    self.agents_window.set_image_directory(image_dir)
+                    self.agents_window.deiconify()
+                    self.agents_window.lift()
 
         except Exception as e:
             if self.assembly_callback:

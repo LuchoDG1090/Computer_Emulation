@@ -1,0 +1,21 @@
+agents
+    # Test para visualización en GUI
+    create agent A;
+    create agent B on A;
+    create agent C on A;
+    
+    link A -> B via "channel1";
+    link A -> C via "channel2";
+    link B -> C via "channel3";
+    
+    send {
+        type: INFO,
+        payload: {
+            channel: "channel1",
+            origin: A,
+            destiny: B
+        }
+    };
+    
+    run();
+endagents

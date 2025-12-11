@@ -67,6 +67,7 @@ class Parser:
         # Agentes Comunicantes
         self.communicating_agents = CommunicatingAgents()
         self.agent_map = {}
+        self.agents_used = False
 
     # Metodos de gestion de Scope (Ambito)
     def _enter_scope(self):
@@ -1426,8 +1427,13 @@ class Parser:
         self.error_count = 0
         self.called_functions = set()
         
-        # Configurar directorio de salida para imagenes
-        output_dir = os.path.join("images", os.path.splitext(os.path.basename(filename))[0])
+        # Configurar directorio de salida para imagenes (usar ruta absoluta)
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        # Obtener directorio raíz del proyecto
+        parser_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(parser_dir))
+        output_dir = os.path.abspath(os.path.join(project_root, "images", base_name))
+        print(f"[PARSER DEBUG] Setting output_dir to: {output_dir}")
         self.communicating_agents.set_output_dir(output_dir)
         
         result = self.parser.parse(code, lexer=lexer)
