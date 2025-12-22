@@ -1,5 +1,3 @@
-
-
 # Computador: Euclid-64 
 
 Sistema completo de emulación computacional con arquitectura Von Neumann de 64 bits, incluyendo CPU, memoria, ensamblador, compilador de alto nivel y almacenamiento secundario.
@@ -62,6 +60,17 @@ Sistema completo de emulación computacional con arquitectura Von Neumann de 64 
   - Caracteres individuales (IN/OUT)
   - Enteros (IN/OUT)
   - Bloques de datos (INS/OUTS)
+
+---
+
+## 👥 Integrantes del Proyecto
+
+- Buitrago Salazar Juan David
+- Garzón Morales Luis David
+- Castro Porras María Camila
+- Medina Sánchez Camilo Andrés
+- Rueda Hernandez Daniela Ariadna
+- Motta Ojeda Cristian Steven
 
 ---
 
@@ -356,6 +365,7 @@ Computer_Emulation/
 ├── tests/            # Programas de prueba
 ├── programs/         # Programas de ejemplo
 └── disk.img          # Disco virtual
+```
 
 
 
