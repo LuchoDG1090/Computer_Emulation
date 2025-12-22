@@ -2,8 +2,6 @@
 Nombre del archivo: top_menu.py
 Descripción: Este módulo es el frame de la parte superior de la interfaz gráfica en donde
              se tiene el logo y el menú de opciones.
-Autor: Camilo Medina
-Fecha: 07/10/2025
 Versión: 1.0
 """
 

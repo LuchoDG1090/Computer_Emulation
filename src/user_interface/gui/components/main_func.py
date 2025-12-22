@@ -2,8 +2,6 @@
 Nombre del archivo: main_func.py
 Descripción: Este módulo es el frame que permite tener las funcionalidades de toda la emulación.
              Acá se agrupan todos los módulos individuales
-Autor: Camilo Medina
-Fecha: 07/10/2025
 Versión: 1.0
 """
 
